@@ -1,0 +1,23 @@
+module.exports = (sequelize, DataTypes) => {
+  return sequelize.define('Employee', {
+    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+    company_id: { type: DataTypes.UUID, allowNull: false },
+    account_id: { type: DataTypes.UUID, allowNull: true },
+    code: { type: DataTypes.STRING(30), allowNull: false },
+    name_en: { type: DataTypes.STRING(150), allowNull: false },
+    name_ar: { type: DataTypes.STRING(150), allowNull: false },
+    national_id: { type: DataTypes.STRING(50) },
+    nationality: { type: DataTypes.STRING(50) },
+    phone: { type: DataTypes.STRING(30) },
+    email: { type: DataTypes.STRING(150) },
+    position: { type: DataTypes.STRING(100) },
+    department: { type: DataTypes.STRING(100) },
+    hire_date: { type: DataTypes.DATEONLY },
+    salary: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
+    is_driver: { type: DataTypes.BOOLEAN, defaultValue: false },
+    license_no: { type: DataTypes.STRING(50) },
+    license_type: { type: DataTypes.STRING(50) },
+    license_expiry: { type: DataTypes.DATEONLY },
+    is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
+  }, { tableName: 'employees', indexes: [{ unique: true, fields: ['company_id', 'code'] }] });
+};

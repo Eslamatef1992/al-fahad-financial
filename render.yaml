@@ -1,0 +1,49 @@
+# Render Blueprint — provisions the backend API + a managed PostgreSQL database together.
+# Deploy via: Render Dashboard -> New -> Blueprint -> select this repo.
+databases:
+  - name: al-fahad-financial-db
+    plan: free
+    databaseName: alfahad_financial
+    user: alfahad
+
+services:
+  - type: web
+    name: al-fahad-financial-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AUTO_MIGRATE
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      # Update this to your actual frontend domain once it's live
+      - key: CLIENT_URL
+        value: https://alfahadgroup.online
+      - key: DB_HOST
+        fromDatabase:
+          name: al-fahad-financial-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: al-fahad-financial-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: al-fahad-financial-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: al-fahad-financial-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: al-fahad-financial-db
+          property: password
