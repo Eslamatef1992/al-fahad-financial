@@ -1,16 +1,19 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Sun, Moon, LogOut } from 'lucide-react';
+import { Sun, Moon, LogOut, KeyRound } from 'lucide-react';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import CompanySwitcher from './CompanySwitcher';
 import LanguageSwitcher from './LanguageSwitcher';
+import ChangePasswordModal from './ChangePasswordModal';
 
 export default function Topbar() {
   const { t } = useTranslation();
   const { theme, toggleTheme } = useUiStore();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [pwOpen, setPwOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-slate-100 dark:border-navy-800 bg-white/80 dark:bg-navy-950/80 backdrop-blur px-6 py-3.5">
@@ -25,6 +28,9 @@ export default function Topbar() {
           <span className="text-sm font-semibold">{user?.name}</span>
           <span className="text-[11px] text-slate-400 capitalize">{user?.role?.replace('_', ' ')}</span>
         </div>
+        <button onClick={() => setPwOpen(true)} className="btn-ghost !px-2.5" title="Change password">
+          <KeyRound size={18} />
+        </button>
         <button
           onClick={() => { logout(); navigate('/login'); }}
           className="btn-ghost !px-2.5 text-red-500"
@@ -33,6 +39,7 @@ export default function Topbar() {
           <LogOut size={18} />
         </button>
       </div>
+      <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} />
     </header>
   );
 }

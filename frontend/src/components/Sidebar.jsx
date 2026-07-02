@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, BookText, Receipt, ScrollText, Users, Truck, UsersRound,
-  Landmark, Wallet, PieChart, Building2, ChevronsLeft,
+  Landmark, Wallet, PieChart, Building2, ChevronsLeft, UserCog, ShieldCheck,
 } from 'lucide-react';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
+import usePermissions from '@/hooks/usePermissions';
 
 const NAV = [
   { to: '/', icon: LayoutDashboard, key: 'dashboard', end: true },
@@ -19,14 +20,14 @@ const NAV = [
   { to: '/vehicles', icon: Truck, key: 'vehicles' },
   { to: '/cost-centers', icon: Landmark, key: 'costCenters' },
   { to: '/cash-control', icon: Wallet, key: 'cashControl' },
-  { to: '/reports/profit-and-loss', icon: PieChart, key: 'profitAndLoss' },
-  { to: '/reports/balance-sheet', icon: PieChart, key: 'balanceSheet' },
+  { to: '/reports', icon: PieChart, key: 'reports' },
 ];
 
 export default function Sidebar() {
   const { t } = useTranslation();
   const { sidebarCollapsed, toggleSidebar } = useUiStore();
   const user = useAuthStore((s) => s.user);
+  const { canDelete: isCompanyAdmin } = usePermissions();
 
   return (
     <motion.aside
@@ -68,16 +69,42 @@ export default function Sidebar() {
           </NavLink>
         ))}
         {user?.role === 'super_admin' && (
+          <>
+            <NavLink
+              to="/companies"
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`
+              }
+            >
+              <Building2 size={18} className="shrink-0" />
+              {!sidebarCollapsed && <span className="truncate">{t('nav.companies')}</span>}
+            </NavLink>
+            <NavLink
+              to="/users"
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`
+              }
+            >
+              <UserCog size={18} className="shrink-0" />
+              {!sidebarCollapsed && <span className="truncate">{t('nav.users')}</span>}
+            </NavLink>
+          </>
+        )}
+        {isCompanyAdmin && (
           <NavLink
-            to="/companies"
+            to="/audit-log"
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`
             }
           >
-            <Building2 size={18} className="shrink-0" />
-            {!sidebarCollapsed && <span className="truncate">{t('nav.companies')}</span>}
+            <ShieldCheck size={18} className="shrink-0" />
+            {!sidebarCollapsed && <span className="truncate">{t('nav.auditLog')}</span>}
           </NavLink>
         )}
       </nav>
@@ -91,6 +118,11 @@ export default function Sidebar() {
         </motion.span>
         {!sidebarCollapsed && 'Collapse'}
       </button>
+      {!sidebarCollapsed && (
+        <p className="px-5 pb-3 text-[10px] text-slate-500 text-center">
+          Powered by <a href="https://teknulugy.com" target="_blank" rel="noreferrer" className="text-gold-500/80 hover:text-gold-400">Teknulugy</a>
+        </p>
+      )}
     </motion.aside>
   );
 }

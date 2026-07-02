@@ -8,7 +8,7 @@ const TYPE_COLORS = {
   expense: 'bg-red-50 text-red-600',
 };
 
-export default function TreeNode({ node, depth = 0, onAddChild, onEdit, onDelete }) {
+export default function TreeNode({ node, depth = 0, onAddChild, onEdit, onDelete, readOnly = false }) {
   const [expanded, setExpanded] = useState(depth < 1);
   const hasChildren = node.children?.length > 0;
 
@@ -29,17 +29,19 @@ export default function TreeNode({ node, depth = 0, onAddChild, onEdit, onDelete
         <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${TYPE_COLORS[node.type]}`}>{node.type}</span>
         {!node.is_active && <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 shrink-0">inactive</span>}
 
-        <div className="hidden group-hover:flex items-center gap-1 shrink-0">
-          <button onClick={() => onAddChild(node)} title="Add sub-account" className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-navy-700 text-slate-500"><Plus size={14} /></button>
-          <button onClick={() => onEdit(node)} className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-navy-700 text-slate-500"><Pencil size={14} /></button>
-          <button onClick={() => onDelete(node)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-red-500"><Trash2 size={14} /></button>
-        </div>
+        {!readOnly && (
+          <div className="hidden group-hover:flex items-center gap-1 shrink-0">
+            <button onClick={() => onAddChild(node)} title="Add sub-account" className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-navy-700 text-slate-500"><Plus size={14} /></button>
+            <button onClick={() => onEdit(node)} className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-navy-700 text-slate-500"><Pencil size={14} /></button>
+            <button onClick={() => onDelete(node)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-red-500"><Trash2 size={14} /></button>
+          </div>
+        )}
       </div>
       <AnimatePresence initial={false}>
         {expanded && hasChildren && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             {node.children.map((child) => (
-              <TreeNode key={child.id} node={child} depth={depth + 1} onAddChild={onAddChild} onEdit={onEdit} onDelete={onDelete} />
+              <TreeNode key={child.id} node={child} depth={depth + 1} onAddChild={onAddChild} onEdit={onEdit} onDelete={onDelete} readOnly={readOnly} />
             ))}
           </motion.div>
         )}

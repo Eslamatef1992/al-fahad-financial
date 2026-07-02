@@ -17,6 +17,7 @@ const FiscalYear = require('./FiscalYear')(sequelize, DataTypes);
 const Voucher = require('./Voucher')(sequelize, DataTypes);
 const VoucherLine = require('./VoucherLine')(sequelize, DataTypes);
 const LedgerEntry = require('./LedgerEntry')(sequelize, DataTypes);
+const AuditLog = require('./AuditLog')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -74,11 +75,15 @@ LedgerEntry.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 LedgerEntry.belongsTo(CostCenter, { foreignKey: 'cost_center_id', as: 'costCenter' });
 Account.hasMany(LedgerEntry, { foreignKey: 'account_id' });
 
+AuditLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+AuditLog.belongsTo(Company, { foreignKey: 'company_id', as: 'company' });
+
 module.exports = {
   sequelize,
   Company,
   User,
   UserCompany,
+  AuditLog,
   Account,
   CostCenter,
   Client,

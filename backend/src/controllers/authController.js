@@ -20,10 +20,10 @@ exports.login = async (req, res) => {
   await user.save();
 
   const companies = user.role === 'super_admin'
-    ? await Company.findAll({ where: { is_active: true } })
+    ? (await Company.findAll({ where: { is_active: true } })).map((c) => ({ ...c.toJSON(), company_role: 'admin' }))
     : (await UserCompany.findAll({ where: { user_id: user.id }, include: [Company] }))
-        .map((uc) => uc.Company)
-        .filter((c) => c && c.is_active);
+        .filter((uc) => uc.Company && uc.Company.is_active)
+        .map((uc) => ({ ...uc.Company.toJSON(), company_role: uc.role }));
 
   res.json({
     token: signToken(user),
@@ -36,10 +36,10 @@ exports.login = async (req, res) => {
 
 exports.me = async (req, res) => {
   const companies = req.user.role === 'super_admin'
-    ? await Company.findAll({ where: { is_active: true } })
+    ? (await Company.findAll({ where: { is_active: true } })).map((c) => ({ ...c.toJSON(), company_role: 'admin' }))
     : (await UserCompany.findAll({ where: { user_id: req.user.id }, include: [Company] }))
-        .map((uc) => uc.Company)
-        .filter((c) => c && c.is_active);
+        .filter((uc) => uc.Company && uc.Company.is_active)
+        .map((uc) => ({ ...uc.Company.toJSON(), company_role: uc.role }));
 
   res.json({ user: req.user, companies });
 };
@@ -55,4 +55,16 @@ exports.register = async (req, res) => {
   }
 
   res.status(201).json({ id: user.id, name: user.name, email: user.email, role: user.role });
+};
+
+exports.changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!newPassword || newPassword.length < 8) return res.status(400).json({ message: 'New password must be at least 8 characters' });
+
+  const ok = await bcrypt.compare(currentPassword || '', req.user.password_hash);
+  if (!ok) return res.status(401).json({ message: 'Current password is incorrect' });
+
+  req.user.password_hash = await bcrypt.hash(newPassword, 10);
+  await req.user.save();
+  res.json({ message: 'Password changed successfully' });
 };

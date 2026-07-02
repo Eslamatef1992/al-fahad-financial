@@ -7,5 +7,6 @@ router.get('/', ctrl.query);
 router.get('/excel', ctrl.exportExcel);
 router.get('/trial-balance', ctrl.trialBalance);
 router.get('/trial-balance/excel', ctrl.trialBalanceExcel);
+router.get('/trial-balance/pdf', ctrl.trialBalancePdf);
 
 module.exports = router;

@@ -9,6 +9,7 @@ import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import usePermissions from '@/hooks/usePermissions';
 
 const empty = {
   code: '', plate_no: '', make: '', model: '', year: '', color: '', vin: '', chassis_no: '', engine_no: '',
@@ -21,6 +22,7 @@ export default function VehiclesPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
+  const { canCreateEdit, canDelete } = usePermissions();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -55,8 +57,8 @@ export default function VehiclesPage() {
 
   return (
     <div>
-      <PageHeader title={t('nav.vehicles')} actions={<button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>} />
-      <DataTable columns={columns} data={items} loading={loading} onDelete={setToDelete} onRowClick={(row) => navigate(`/vehicles/${row.id}`)} />
+      <PageHeader title={t('nav.vehicles')} actions={canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>} />
+      <DataTable columns={columns} data={items} loading={loading} onDelete={canDelete ? setToDelete : undefined} onRowClick={(row) => navigate(`/vehicles/${row.id}`)} />
 
       <SlideOver open={open} onClose={() => setOpen(false)} title="Add Vehicle" onSubmit={submit} submitting={saving} wide>
         <div className="grid grid-cols-3 gap-3">

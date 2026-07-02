@@ -161,4 +161,25 @@ function generateBalanceSheetPdf(res, data, company) {
   doc.end();
 }
 
-module.exports = { generateVoucherPdf, generateProfitAndLossPdf, generateBalanceSheetPdf };
+function generateTrialBalancePdf(res, rows, asOf, company) {
+  const doc = newDoc(res, `trial-balance${asOf ? '-' + asOf : ''}.pdf`);
+  header(doc, company, 'Trial Balance', asOf ? `As of ${asOf}` : 'All dates');
+
+  doc.y = 120;
+  const totalDebit = rows.reduce((s, r) => s + Number(r.debit), 0);
+  const totalCredit = rows.reduce((s, r) => s + Number(r.credit), 0);
+
+  table(doc, {
+    headers: [{ label: 'Code' }, { label: 'Account' }, { label: 'Debit', align: 'right' }, { label: 'Credit', align: 'right' }],
+    colWidths: [70, 290, 100, 100],
+    rows: rows.map((r) => [r.account?.code, r.account?.name_en, Number(r.debit).toFixed(3), Number(r.credit).toFixed(3)]),
+  });
+
+  doc.font('Helvetica-Bold').fontSize(10).fillColor('#1e293b')
+    .text(`Totals:   Debit ${totalDebit.toFixed(3)}    Credit ${totalCredit.toFixed(3)}`, { align: 'right' });
+
+  footer(doc);
+  doc.end();
+}
+
+module.exports = { generateVoucherPdf, generateProfitAndLossPdf, generateBalanceSheetPdf, generateTrialBalancePdf };

@@ -18,9 +18,13 @@ import VehiclesPage from '@/pages/vehicles/VehiclesPage';
 import VehicleDetailPage from '@/pages/vehicles/VehicleDetailPage';
 import CostCentersPage from '@/pages/costCenters/CostCentersPage';
 import CashControlPage from '@/pages/cashControl/CashControlPage';
+import ReportsHubPage from '@/pages/reports/ReportsHubPage';
 import ProfitAndLossPage from '@/pages/reports/ProfitAndLossPage';
 import BalanceSheetPage from '@/pages/reports/BalanceSheetPage';
+import TrialBalancePage from '@/pages/reports/TrialBalancePage';
 import CompaniesPage from '@/pages/companies/CompaniesPage';
+import UsersPage from '@/pages/users/UsersPage';
+import AuditLogPage from '@/pages/auditLog/AuditLogPage';
 
 export default function App() {
   const theme = useUiStore((s) => s.theme);
@@ -48,9 +52,13 @@ export default function App() {
           <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
           <Route path="/cost-centers" element={<CostCentersPage />} />
           <Route path="/cash-control" element={<CashControlPage />} />
+          <Route path="/reports" element={<ReportsHubPage />} />
           <Route path="/reports/profit-and-loss" element={<ProfitAndLossPage />} />
           <Route path="/reports/balance-sheet" element={<BalanceSheetPage />} />
+          <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
           <Route path="/companies" element={<CompaniesPage />} />
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="/audit-log" element={<AuditLogPage />} />
         </Route>
       </Route>
 

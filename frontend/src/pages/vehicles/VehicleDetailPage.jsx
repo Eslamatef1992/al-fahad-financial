@@ -5,12 +5,14 @@ import { ArrowLeft, UserCog, FileText, Wrench, Plus, Trash2, Download, Paperclip
 import toast from 'react-hot-toast';
 import api, { fileUrl } from '@/api/client';
 import PageHeader from '@/components/PageHeader';
+import usePermissions from '@/hooks/usePermissions';
 
 const TABS = ['overview', 'driver', 'documents', 'maintenance'];
 
 export default function VehicleDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canCreateEdit, canDelete } = usePermissions();
   const [vehicle, setVehicle] = useState(null);
   const [drivers, setDrivers] = useState([]);
   const [tab, setTab] = useState('overview');
@@ -112,7 +114,7 @@ export default function VehicleDetailPage() {
             </div>
           ) : <p className="text-slate-400 mb-4">No driver currently assigned.</p>}
           <label className="label">Assign a driver</label>
-          <select className="input" value={vehicle.assigned_driver_id || ''} onChange={(e) => assignDriver(e.target.value)}>
+          <select className="input" disabled={!canCreateEdit} value={vehicle.assigned_driver_id || ''} onChange={(e) => assignDriver(e.target.value)}>
             <option value="">— Unassigned —</option>
             {drivers.map((d) => <option key={d.id} value={d.id}>{d.name_en} ({d.license_no || 'no license #'})</option>)}
           </select>
@@ -121,7 +123,7 @@ export default function VehicleDetailPage() {
 
       {tab === 'documents' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid md:grid-cols-2 gap-5">
-          <form onSubmit={addDocument} className="card p-5 space-y-3 h-fit">
+          <form onSubmit={addDocument} className={`card p-5 space-y-3 h-fit ${!canCreateEdit ? "opacity-50 pointer-events-none" : ""}`}>
             <div className="flex items-center gap-2 mb-1"><FileText size={18} className="text-gold-500" /><h3 className="font-bold">Add Document</h3></div>
             <input required placeholder="Document type (registration, permit...)" className="input" value={docForm.doc_type} onChange={(e) => setDocForm({ ...docForm, doc_type: e.target.value })} />
             <input placeholder="Document number" className="input" value={docForm.doc_number} onChange={(e) => setDocForm({ ...docForm, doc_number: e.target.value })} />
@@ -151,7 +153,7 @@ export default function VehicleDetailPage() {
                         <Download size={14} />
                       </a>
                     )}
-                    <button onClick={() => removeDocument(d.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-500"><Trash2 size={14} /></button>
+                    {canDelete && <button onClick={() => removeDocument(d.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-500"><Trash2 size={14} /></button>}
                   </div>
                 </div>
               )) : <p className="text-slate-400 text-sm">No documents added yet.</p>}
@@ -162,7 +164,7 @@ export default function VehicleDetailPage() {
 
       {tab === 'maintenance' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid md:grid-cols-2 gap-5">
-          <form onSubmit={addMaintenance} className="card p-5 space-y-3 h-fit">
+          <form onSubmit={addMaintenance} className={`card p-5 space-y-3 h-fit ${!canCreateEdit ? "opacity-50 pointer-events-none" : ""}`}>
             <div className="flex items-center gap-2 mb-1"><Wrench size={18} className="text-gold-500" /><h3 className="font-bold">Add Maintenance Record</h3></div>
             <div className="grid grid-cols-2 gap-3">
               <input required type="date" className="input" value={maintForm.date} onChange={(e) => setMaintForm({ ...maintForm, date: e.target.value })} />
@@ -182,7 +184,7 @@ export default function VehicleDetailPage() {
               {vehicle.maintenanceRecords?.length ? vehicle.maintenanceRecords.map((m) => (
                 <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-navy-800/50">
                   <div><p className="font-medium text-sm">{m.type} — {m.date}</p><p className="text-xs text-slate-400">{m.vendor} · Cost: {m.cost}</p></div>
-                  <button onClick={() => removeMaintenance(m.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-500"><Trash2 size={14} /></button>
+                  {canDelete && <button onClick={() => removeMaintenance(m.id)} className="p-2 rounded-lg hover:bg-red-50 text-red-500"><Trash2 size={14} /></button>}
                 </div>
               )) : <p className="text-slate-400 text-sm">No maintenance records yet.</p>}
             </div>

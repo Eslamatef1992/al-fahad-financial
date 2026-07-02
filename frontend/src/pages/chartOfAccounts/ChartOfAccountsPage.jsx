@@ -7,6 +7,7 @@ import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import SlideOver from '@/components/SlideOver';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import usePermissions from '@/hooks/usePermissions';
 import TreeNode from './TreeNode';
 
 const TYPE_NORMAL = { asset: 'debit', expense: 'debit', liability: 'credit', equity: 'credit', revenue: 'credit' };
@@ -15,6 +16,7 @@ const empty = { code: '', name_en: '', name_ar: '', type: 'asset', normal_balanc
 export default function ChartOfAccountsPage() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
+  const { canManageStructure } = usePermissions();
   const [tree, setTree] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -60,7 +62,7 @@ export default function ChartOfAccountsPage() {
       <PageHeader
         title={t('nav.chartOfAccounts')}
         subtitle="Unlimited nested sub-levels — click a row's + to add a child account"
-        actions={<button onClick={() => openNew(null)} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>}
+        actions={canManageStructure && <button onClick={() => openNew(null)} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>}
       />
 
       <div className="card p-3">
@@ -70,7 +72,7 @@ export default function ChartOfAccountsPage() {
           <p className="text-center text-slate-400 py-10">{t('common.noData')}</p>
         ) : (
           tree.map((node) => (
-            <TreeNode key={node.id} node={node} onAddChild={openNew} onEdit={openEdit} onDelete={setToDelete} />
+            <TreeNode key={node.id} node={node} onAddChild={canManageStructure ? openNew : () => {}} onEdit={canManageStructure ? openEdit : () => {}} onDelete={canManageStructure ? setToDelete : () => {}} readOnly={!canManageStructure} />
           ))
         )}
       </div>

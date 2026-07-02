@@ -1,18 +1,57 @@
 {
-  "app": { "name": "مجموعة الفهد", "tagline": "نظام مالي متكامل" },
+  "app": {
+    "name": "مجموعة الفهد",
+    "tagline": "نظام مالي متكامل"
+  },
   "nav": {
-    "dashboard": "لوحة التحكم", "chartOfAccounts": "دليل الحسابات", "vouchers": "السندات",
-    "ledger": "دفتر الأستاذ العام", "clients": "العملاء", "suppliers": "الموردين",
-    "employees": "الموظفين", "vehicles": "المركبات", "costCenters": "مراكز التكلفة",
-    "cashControl": "ضبط النقدية", "reports": "التقارير", "profitAndLoss": "الأرباح والخسائر",
-    "balanceSheet": "الميزانية العمومية", "companies": "الشركات", "logout": "تسجيل الخروج"
+    "dashboard": "لوحة التحكم",
+    "chartOfAccounts": "دليل الحسابات",
+    "vouchers": "السندات",
+    "ledger": "دفتر الأستاذ العام",
+    "clients": "العملاء",
+    "suppliers": "الموردين",
+    "employees": "الموظفين",
+    "vehicles": "المركبات",
+    "costCenters": "مراكز التكلفة",
+    "cashControl": "ضبط النقدية",
+    "reports": "التقارير",
+    "profitAndLoss": "الأرباح والخسائر",
+    "balanceSheet": "الميزانية العمومية",
+    "companies": "الشركات",
+    "logout": "تسجيل الخروج",
+    "users": "المستخدمون والصلاحيات",
+    "auditLog": "سجل النشاطات"
   },
   "common": {
-    "search": "بحث...", "add": "إضافة جديد", "edit": "تعديل", "delete": "حذف", "save": "حفظ",
-    "cancel": "إلغاء", "actions": "إجراءات", "status": "الحالة", "active": "فعال", "inactive": "غير فعال",
-    "code": "الرمز", "nameEn": "الاسم (إنجليزي)", "nameAr": "الاسم (عربي)", "phone": "الهاتف", "email": "البريد الإلكتروني",
-    "loading": "جاري التحميل...", "noData": "لا توجد بيانات", "confirmDelete": "هل أنت متأكد من حذف هذا السجل؟",
-    "from": "من", "to": "إلى", "total": "الإجمالي", "date": "التاريخ", "description": "البيان", "all": "الكل"
+    "search": "بحث...",
+    "add": "إضافة جديد",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "actions": "إجراءات",
+    "status": "الحالة",
+    "active": "فعال",
+    "inactive": "غير فعال",
+    "code": "الرمز",
+    "nameEn": "الاسم (إنجليزي)",
+    "nameAr": "الاسم (عربي)",
+    "phone": "الهاتف",
+    "email": "البريد الإلكتروني",
+    "loading": "جاري التحميل...",
+    "noData": "لا توجد بيانات",
+    "confirmDelete": "هل أنت متأكد من حذف هذا السجل؟",
+    "from": "من",
+    "to": "إلى",
+    "total": "الإجمالي",
+    "date": "التاريخ",
+    "description": "البيان",
+    "all": "الكل"
   },
-  "auth": { "login": "تسجيل الدخول", "email": "البريد الإلكتروني", "password": "كلمة المرور", "welcome": "مرحباً بعودتك" }
+  "auth": {
+    "login": "تسجيل الدخول",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "welcome": "مرحباً بعودتك"
+  }
 }

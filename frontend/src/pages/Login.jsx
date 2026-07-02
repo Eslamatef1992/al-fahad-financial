@@ -72,6 +72,10 @@ export default function Login() {
             {loading ? t('common.loading') : t('auth.login')}
           </button>
         </form>
+
+        <p className="text-center text-xs text-slate-500 mt-6">
+          Powered by <a href="https://teknulugy.com" target="_blank" rel="noreferrer" className="text-gold-500 hover:text-gold-400 font-medium">Teknulugy</a>
+        </p>
       </motion.div>
     </div>
   );

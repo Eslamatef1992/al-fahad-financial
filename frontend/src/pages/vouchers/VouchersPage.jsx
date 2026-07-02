@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Download } from 'lucide-react';
 import api, { downloadFile } from '@/api/client';
+import usePermissions from '@/hooks/usePermissions';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
@@ -14,6 +15,7 @@ export default function VouchersPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
+  const { canCreateEdit } = usePermissions();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +36,7 @@ export default function VouchersPage() {
       <PageHeader title={t('nav.vouchers')} actions={
         <div className="flex items-center gap-2">
           <button onClick={() => downloadFile('/vouchers/excel', {}, 'vouchers.xlsx')} className="btn-ghost"><Download size={16} /> Excel</button>
-          <button onClick={() => navigate('/vouchers/new')} className="btn-primary"><Plus size={16} /> New Voucher</button>
+          {canCreateEdit && <button onClick={() => navigate('/vouchers/new')} className="btn-primary"><Plus size={16} /> New Voucher</button>}
         </div>
       } />
       <DataTable columns={columns} data={items} loading={loading} onRowClick={(row) => navigate(`/vouchers/${row.id}`)} />

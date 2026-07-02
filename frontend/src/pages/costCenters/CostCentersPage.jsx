@@ -7,6 +7,7 @@ import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import SlideOver from '@/components/SlideOver';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import usePermissions from '@/hooks/usePermissions';
 import CostCenterTreeNode from './CostCenterTreeNode';
 
 const empty = { code: '', name_en: '', name_ar: '', parent_id: null };
@@ -14,6 +15,7 @@ const empty = { code: '', name_en: '', name_ar: '', parent_id: null };
 export default function CostCentersPage() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
+  const { canManageStructure } = usePermissions();
   const [tree, setTree] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -41,11 +43,11 @@ export default function CostCentersPage() {
 
   return (
     <div>
-      <PageHeader title={t('nav.costCenters')} actions={<button onClick={() => openNew(null)} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>} />
+      <PageHeader title={t('nav.costCenters')} actions={canManageStructure && <button onClick={() => openNew(null)} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>} />
       <div className="card p-3">
         {loading ? <p className="text-center text-slate-400 py-10">{t('common.loading')}</p>
           : tree.length === 0 ? <p className="text-center text-slate-400 py-10">{t('common.noData')}</p>
-          : tree.map((node) => <CostCenterTreeNode key={node.id} node={node} onAddChild={openNew} onEdit={openEdit} onDelete={setToDelete} />)}
+          : tree.map((node) => <CostCenterTreeNode key={node.id} node={node} onAddChild={canManageStructure ? openNew : () => {}} onEdit={canManageStructure ? openEdit : () => {}} onDelete={canManageStructure ? setToDelete : () => {}} readOnly={!canManageStructure} />)}
       </div>
       <SlideOver open={open} onClose={() => setOpen(false)} title={editing ? t('common.edit') : t('common.add')} onSubmit={submit} submitting={saving}>
         <div><label className="label">{t('common.code')}</label><input required className="input" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>

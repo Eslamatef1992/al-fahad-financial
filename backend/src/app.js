@@ -7,6 +7,7 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const errorHandler = require('./middleware/errorHandler');
+const auditLogger = require('./middleware/audit');
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: process.env.CLIENT_URL || '*', credentials: true }));
 app.use(express.json());
 app.use(morgan('dev'));
+app.use(auditLogger);
 
 // Uploaded vehicle/employee documents served as static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -32,6 +34,8 @@ app.use('/api/cash-accounts', require('./routes/cashAccountRoutes'));
 app.use('/api/vouchers', require('./routes/voucherRoutes'));
 app.use('/api/ledger', require('./routes/ledgerRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/audit-logs', require('./routes/auditLogRoutes'));
 
 app.use((req, res) => res.status(404).json({ message: 'Route not found' }));
 app.use(errorHandler);

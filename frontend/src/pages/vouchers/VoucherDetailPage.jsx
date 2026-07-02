@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, XCircle, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { downloadFile } from '@/api/client';
 import PageHeader from '@/components/PageHeader';
+import usePermissions from '@/hooks/usePermissions';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 const STATUS_COLOR = { draft: 'bg-slate-100 text-slate-500', posted: 'bg-emerald-50 text-emerald-600', cancelled: 'bg-red-50 text-red-500' };
@@ -11,6 +12,7 @@ const STATUS_COLOR = { draft: 'bg-slate-100 text-slate-500', posted: 'bg-emerald
 export default function VoucherDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canCreateEdit, canDelete } = usePermissions();
   const [voucher, setVoucher] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null); // 'post' | 'cancel'
 
@@ -37,9 +39,9 @@ export default function VoucherDetailPage() {
             <button onClick={() => downloadFile(`/vouchers/${id}/pdf`, {}, `${voucher.voucher_no}.pdf`)} className="btn-ghost">
               <Download size={16} /> Download PDF
             </button>
-            {voucher.status === 'draft' ? (
+            {voucher.status === 'draft' && canCreateEdit ? (
               <button onClick={() => setConfirmAction('post')} className="btn-primary"><CheckCircle2 size={16} /> Post to Ledger</button>
-            ) : voucher.status === 'posted' ? (
+            ) : voucher.status === 'posted' && canDelete ? (
               <button onClick={() => setConfirmAction('cancel')} className="btn-danger"><XCircle size={16} /> Cancel Voucher</button>
             ) : null}
           </div>

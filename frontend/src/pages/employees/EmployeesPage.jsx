@@ -8,6 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import usePermissions from '@/hooks/usePermissions';
 
 const empty = {
   code: '', name_en: '', name_ar: '', national_id: '', nationality: '', phone: '', email: '',
@@ -17,6 +18,7 @@ const empty = {
 export default function EmployeesPage() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
+  const { canCreateEdit, canDelete } = usePermissions();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -52,8 +54,8 @@ export default function EmployeesPage() {
 
   return (
     <div>
-      <PageHeader title={t('nav.employees')} actions={<button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>} />
-      <DataTable columns={columns} data={items} loading={loading} onEdit={openEdit} onDelete={setToDelete} />
+      <PageHeader title={t('nav.employees')} actions={canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>} />
+      <DataTable columns={columns} data={items} loading={loading} onEdit={canCreateEdit ? openEdit : undefined} onDelete={canDelete ? setToDelete : undefined} />
       <SlideOver open={open} onClose={() => setOpen(false)} title={editing ? t('common.edit') : t('common.add')} onSubmit={submit} submitting={saving} wide>
         <div className="grid grid-cols-2 gap-3">
           <div><label className="label">{t('common.code')}</label><input required className="input" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>

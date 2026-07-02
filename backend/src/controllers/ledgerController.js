@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { LedgerEntry, Account, CostCenter, Voucher, Company } = require('../models');
 const { exportLedger, exportTrialBalance } = require('../services/excelService');
+const { generateTrialBalancePdf } = require('../services/pdfService');
 
 // General Ledger viewer: filter by account, cost center, date range
 exports.query = async (req, res) => {
@@ -97,4 +98,23 @@ exports.trialBalanceExcel = async (req, res) => {
 
   const company = await Company.findByPk(req.companyId);
   await exportTrialBalance(res, company, rows, as_of);
+};
+
+exports.trialBalancePdf = async (req, res) => {
+  const { as_of } = req.query;
+  const where = { company_id: req.companyId };
+  if (as_of) where.date = { [Op.lte]: as_of };
+
+  const entries = await LedgerEntry.findAll({ where, include: [{ model: Account, as: 'account' }] });
+  const byAccount = {};
+  entries.forEach((e) => {
+    const id = e.account_id;
+    if (!byAccount[id]) byAccount[id] = { account: e.account, debit: 0, credit: 0 };
+    byAccount[id].debit += Number(e.debit);
+    byAccount[id].credit += Number(e.credit);
+  });
+  const rows = Object.values(byAccount);
+
+  const company = await Company.findByPk(req.companyId);
+  generateTrialBalancePdf(res, rows, as_of, company);
 };
