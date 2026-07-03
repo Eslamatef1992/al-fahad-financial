@@ -32,6 +32,8 @@ app.use('/api/employees', require('./routes/employeeRoutes'));
 app.use('/api/vehicles', require('./routes/vehicleRoutes'));
 app.use('/api/cash-accounts', require('./routes/cashAccountRoutes'));
 app.use('/api/vouchers', require('./routes/voucherRoutes'));
+app.use('/api/invoices', require('./routes/invoiceRoutes'));
+app.use('/api/recurring-invoices', require('./routes/recurringInvoiceRoutes'));
 app.use('/api/ledger', require('./routes/ledgerRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));

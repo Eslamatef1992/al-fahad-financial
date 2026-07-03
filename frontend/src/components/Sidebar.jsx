@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, BookText, Receipt, ScrollText, Users, Truck, UsersRound,
   Landmark, Wallet, PieChart, Building2, ChevronsLeft, UserCog, ShieldCheck,
+  FileText, FileMinus, RefreshCw,
 } from 'lucide-react';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -12,6 +13,9 @@ import usePermissions from '@/hooks/usePermissions';
 const NAV = [
   { to: '/', icon: LayoutDashboard, key: 'dashboard', end: true },
   { to: '/chart-of-accounts', icon: BookText, key: 'chartOfAccounts' },
+  { to: '/invoices/sales', icon: FileText, key: 'salesInvoices' },
+  { to: '/invoices/purchase', icon: FileMinus, key: 'purchaseInvoices' },
+  { to: '/recurring-invoices', icon: RefreshCw, key: 'recurringInvoices' },
   { to: '/vouchers', icon: Receipt, key: 'vouchers' },
   { to: '/ledger', icon: ScrollText, key: 'ledger' },
   { to: '/clients', icon: Users, key: 'clients' },

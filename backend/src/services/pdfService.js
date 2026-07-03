@@ -182,4 +182,75 @@ function generateTrialBalancePdf(res, rows, asOf, company) {
   doc.end();
 }
 
-module.exports = { generateVoucherPdf, generateProfitAndLossPdf, generateBalanceSheetPdf, generateTrialBalancePdf };
+function generateInvoicePdf(res, invoice, company) {
+  const doc = newDoc(res, `${invoice.invoice_no}.pdf`);
+  const partyName = invoice.type === 'sales' ? invoice.client?.name_en : invoice.supplier?.name_en;
+  header(doc, company, invoice.invoice_no, `${invoice.type === 'sales' ? 'SALES INVOICE' : 'PURCHASE BILL'} · ${invoice.date}`);
+
+  doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
+  doc.text(`${invoice.type === 'sales' ? 'Bill To' : 'Vendor'}: ${partyName || '-'}`, 40, 120);
+  doc.text(`Status: ${invoice.status.toUpperCase().replace('_', ' ')}`, 40, 138);
+  doc.text(`Due Date: ${invoice.due_date || '-'}`, 40, 156);
+  if (invoice.reference_no) doc.text(`Reference: ${invoice.reference_no}`, 300, 120);
+
+  doc.y = 185;
+  table(doc, {
+    headers: [
+      { label: 'Description' }, { label: 'Qty', align: 'right' }, { label: 'Unit Price', align: 'right' },
+      { label: 'Tax %', align: 'right' }, { label: 'Total', align: 'right' },
+    ],
+    colWidths: [220, 50, 80, 60, 90],
+    rows: invoice.lines.map((l) => [
+      l.description || '-',
+      Number(l.quantity).toFixed(2),
+      Number(l.unit_price).toFixed(3),
+      Number(l.tax_rate).toFixed(1),
+      Number(l.line_total).toFixed(3),
+    ]),
+  });
+
+  doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
+  doc.text(`Subtotal: ${Number(invoice.subtotal).toFixed(3)}`, { align: 'right' });
+  doc.text(`Tax: ${Number(invoice.tax_total).toFixed(3)}`, { align: 'right' });
+  doc.font('Helvetica-Bold').fontSize(12).fillColor(NAVY).text(`Total: ${Number(invoice.total).toFixed(3)} ${invoice.currency}`, { align: 'right' });
+  doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
+  doc.text(`Paid: ${Number(invoice.paid_total).toFixed(3)}`, { align: 'right' });
+  doc.font('Helvetica-Bold').fillColor(Number(invoice.total) - Number(invoice.paid_total) > 0.001 ? '#dc2626' : '#059669')
+    .text(`Balance Due: ${(Number(invoice.total) - Number(invoice.paid_total)).toFixed(3)}`, { align: 'right' });
+
+  if (invoice.notes) {
+    doc.moveDown(1);
+    doc.font('Helvetica').fontSize(9).fillColor('#64748b').text(`Notes: ${invoice.notes}`);
+  }
+
+  footer(doc);
+  doc.end();
+}
+
+function generateAgingPdf(res, aging, company) {
+  const label = aging.type === 'sales' ? 'Accounts Receivable Aging' : 'Accounts Payable Aging';
+  const doc = newDoc(res, `${aging.type}-aging-${aging.as_of}.pdf`);
+  header(doc, company, label, `As of ${aging.as_of}`);
+
+  doc.y = 120;
+  table(doc, {
+    headers: [
+      { label: 'Invoice' }, { label: aging.type === 'sales' ? 'Client' : 'Supplier' }, { label: 'Due Date' },
+      { label: 'Outstanding', align: 'right' }, { label: 'Days Overdue', align: 'right' }, { label: 'Bucket' },
+    ],
+    colWidths: [80, 150, 70, 90, 80, 60],
+    rows: aging.rows.map((r) => [r.invoice_no, r.party || '-', r.due_date || '-', r.outstanding.toFixed(3), String(r.days_overdue), r.bucket]),
+  });
+
+  doc.moveDown(1);
+  doc.font('Helvetica-Bold').fontSize(10).fillColor(NAVY).text('Summary by Age Bucket');
+  Object.entries(aging.buckets).forEach(([bucket, amount]) => {
+    doc.font('Helvetica').fontSize(9).fillColor('#1e293b').text(`${bucket}: ${amount.toFixed(3)}`);
+  });
+  doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text(`Total Outstanding: ${aging.total_outstanding.toFixed(3)}`, { align: 'right' });
+
+  footer(doc);
+  doc.end();
+}
+
+module.exports = { generateVoucherPdf, generateProfitAndLossPdf, generateBalanceSheetPdf, generateTrialBalancePdf, generateInvoicePdf, generateAgingPdf };

@@ -1,6 +1,8 @@
+const cron = require('node-cron');
 const app = require('./app');
 const sequelize = require('./config/db');
 const models = require('./models'); // ensure associations are registered
+const { generateDueInvoices } = require('./services/recurringInvoiceService');
 
 const PORT = process.env.PORT || 5000;
 
@@ -22,6 +24,20 @@ async function start() {
     }
 
     app.listen(PORT, () => console.log(`Al Fahad Financial API running on port ${PORT}`));
+
+    // Daily in-process scheduler: generates any due recurring invoices (as
+    // drafts, for review) across all companies. Runs at 02:00 server time.
+    // Safe to run repeatedly — generateDueInvoices only acts on templates
+    // whose next_run_date has actually arrived, and advances the schedule
+    // after each generation so it won't double-generate.
+    cron.schedule('0 2 * * *', async () => {
+      try {
+        const generated = await generateDueInvoices();
+        if (generated.length) console.log(`Recurring invoices: generated ${generated.length} draft invoice(s).`);
+      } catch (err) {
+        console.error('Recurring invoice generation failed:', err.message);
+      }
+    });
   } catch (err) {
     console.error('Unable to start server:', err);
     process.exit(1);

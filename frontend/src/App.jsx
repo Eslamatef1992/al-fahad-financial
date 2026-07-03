@@ -22,9 +22,15 @@ import ReportsHubPage from '@/pages/reports/ReportsHubPage';
 import ProfitAndLossPage from '@/pages/reports/ProfitAndLossPage';
 import BalanceSheetPage from '@/pages/reports/BalanceSheetPage';
 import TrialBalancePage from '@/pages/reports/TrialBalancePage';
+import AgingPage from '@/pages/reports/AgingPage';
 import CompaniesPage from '@/pages/companies/CompaniesPage';
 import UsersPage from '@/pages/users/UsersPage';
 import AuditLogPage from '@/pages/auditLog/AuditLogPage';
+import SalesInvoicesPage from '@/pages/invoices/SalesInvoicesPage';
+import PurchaseInvoicesPage from '@/pages/invoices/PurchaseInvoicesPage';
+import InvoiceFormPage from '@/pages/invoices/InvoiceFormPage';
+import InvoiceDetailPage from '@/pages/invoices/InvoiceDetailPage';
+import RecurringInvoicesPage from '@/pages/recurringInvoices/RecurringInvoicesPage';
 
 export default function App() {
   const theme = useUiStore((s) => s.theme);
@@ -56,9 +62,15 @@ export default function App() {
           <Route path="/reports/profit-and-loss" element={<ProfitAndLossPage />} />
           <Route path="/reports/balance-sheet" element={<BalanceSheetPage />} />
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
+          <Route path="/reports/aging/:type" element={<AgingPage />} />
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/audit-log" element={<AuditLogPage />} />
+          <Route path="/invoices/sales" element={<SalesInvoicesPage />} />
+          <Route path="/invoices/purchase" element={<PurchaseInvoicesPage />} />
+          <Route path="/invoices/:type/new" element={<InvoiceFormPage />} />
+          <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+          <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
         </Route>
       </Route>
 

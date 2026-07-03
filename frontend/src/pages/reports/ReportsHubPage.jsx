@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { PieChart, Scale, ListTree, ScrollText, Receipt, ArrowRight } from 'lucide-react';
+import { PieChart, Scale, ListTree, ScrollText, Receipt, ArrowRight, FileText, FileMinus } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
 const REPORTS = [
@@ -9,6 +9,8 @@ const REPORTS = [
   { to: '/reports/trial-balance', icon: ListTree, title: 'Trial Balance', desc: 'Net debit/credit balance per account as of a date. Export to PDF or Excel.', tone: 'text-purple-600 bg-purple-50' },
   { to: '/ledger', icon: ScrollText, title: 'General Ledger', desc: 'Full transaction history per account with running balance. Export to Excel.', tone: 'text-navy-700 bg-navy-50' },
   { to: '/vouchers', icon: Receipt, title: 'Vouchers Register', desc: 'All receipt, payment and journal vouchers with status. Export to Excel; each voucher exports to PDF.', tone: 'text-gold-700 bg-gold-100' },
+  { to: '/reports/aging/sales', icon: FileText, title: 'AR Aging', desc: 'Outstanding client invoices bucketed by days overdue. Export to PDF.', tone: 'text-emerald-600 bg-emerald-50' },
+  { to: '/reports/aging/purchase', icon: FileMinus, title: 'AP Aging', desc: 'Outstanding supplier bills bucketed by days overdue. Export to PDF.', tone: 'text-orange-600 bg-orange-50' },
 ];
 
 export default function ReportsHubPage() {

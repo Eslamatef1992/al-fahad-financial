@@ -20,7 +20,10 @@
     "companies": "Companies",
     "logout": "Logout",
     "users": "Users & Access",
-    "auditLog": "Audit Log"
+    "auditLog": "Audit Log",
+    "salesInvoices": "Sales Invoices",
+    "purchaseInvoices": "Purchase Bills",
+    "recurringInvoices": "Recurring Invoices"
   },
   "common": {
     "search": "Search...",

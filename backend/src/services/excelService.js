@@ -121,4 +121,33 @@ async function exportVouchers(res, company, rows) {
   });
 }
 
-module.exports = { exportLedger, exportTrialBalance, exportVouchers };
+async function exportInvoices(res, company, rows, invoiceType) {
+  const label = invoiceType === 'sales' ? 'Sales Invoices' : 'Purchase Bills';
+  await streamWorkbook(res, `${invoiceType}-invoices.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet(label);
+    addTitleBlock(sheet, `${company?.name_en || ''} — ${label}`, `${rows.length} records`, 8);
+
+    sheet.columns = [
+      { header: 'Invoice No.', key: 'no', width: 16 },
+      { header: invoiceType === 'sales' ? 'Client' : 'Supplier', key: 'party', width: 28 },
+      { header: 'Date', key: 'date', width: 12 },
+      { header: 'Due Date', key: 'due', width: 12 },
+      { header: 'Subtotal', key: 'subtotal', width: 14 },
+      { header: 'Tax', key: 'tax', width: 12 },
+      { header: 'Total', key: 'total', width: 14 },
+      { header: 'Paid', key: 'paid', width: 14 },
+      { header: 'Status', key: 'status', width: 14 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((inv) => {
+      const party = invoiceType === 'sales' ? inv.client?.name_en : inv.supplier?.name_en;
+      sheet.addRow([inv.invoice_no, party || '', inv.date, inv.due_date || '', Number(inv.subtotal), Number(inv.tax_total), Number(inv.total), Number(inv.paid_total), inv.status]);
+    });
+    [5, 6, 7, 8].forEach((col) => { sheet.getColumn(col).numFmt = '#,##0.000'; });
+  });
+}
+
+module.exports = { exportLedger, exportTrialBalance, exportVouchers, exportInvoices };

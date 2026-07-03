@@ -18,6 +18,11 @@ const Voucher = require('./Voucher')(sequelize, DataTypes);
 const VoucherLine = require('./VoucherLine')(sequelize, DataTypes);
 const LedgerEntry = require('./LedgerEntry')(sequelize, DataTypes);
 const AuditLog = require('./AuditLog')(sequelize, DataTypes);
+const Invoice = require('./Invoice')(sequelize, DataTypes);
+const InvoiceLine = require('./InvoiceLine')(sequelize, DataTypes);
+const InvoicePayment = require('./InvoicePayment')(sequelize, DataTypes);
+const RecurringInvoice = require('./RecurringInvoice')(sequelize, DataTypes);
+const RecurringInvoiceLine = require('./RecurringInvoiceLine')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -28,7 +33,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -78,12 +83,39 @@ Account.hasMany(LedgerEntry, { foreignKey: 'account_id' });
 AuditLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 AuditLog.belongsTo(Company, { foreignKey: 'company_id', as: 'company' });
 
+// ---- Invoicing associations ----
+Invoice.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
+Invoice.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
+Invoice.belongsTo(CostCenter, { foreignKey: 'cost_center_id', as: 'costCenter' });
+Invoice.belongsTo(Account, { foreignKey: 'tax_account_id', as: 'taxAccount' });
+Invoice.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+
+Invoice.hasMany(InvoiceLine, { foreignKey: 'invoice_id', as: 'lines', onDelete: 'CASCADE' });
+InvoiceLine.belongsTo(Invoice, { foreignKey: 'invoice_id' });
+InvoiceLine.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
+
+Invoice.hasMany(InvoicePayment, { foreignKey: 'invoice_id', as: 'payments', onDelete: 'CASCADE' });
+InvoicePayment.belongsTo(Invoice, { foreignKey: 'invoice_id' });
+InvoicePayment.belongsTo(Voucher, { foreignKey: 'voucher_id', as: 'voucher' });
+
+RecurringInvoice.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
+RecurringInvoice.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
+RecurringInvoice.belongsTo(CostCenter, { foreignKey: 'cost_center_id', as: 'costCenter' });
+RecurringInvoice.hasMany(RecurringInvoiceLine, { foreignKey: 'recurring_invoice_id', as: 'lines', onDelete: 'CASCADE' });
+RecurringInvoiceLine.belongsTo(RecurringInvoice, { foreignKey: 'recurring_invoice_id' });
+RecurringInvoiceLine.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
+
 module.exports = {
   sequelize,
   Company,
   User,
   UserCompany,
   AuditLog,
+  Invoice,
+  InvoiceLine,
+  InvoicePayment,
+  RecurringInvoice,
+  RecurringInvoiceLine,
   Account,
   CostCenter,
   Client,

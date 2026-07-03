@@ -20,7 +20,10 @@
     "companies": "الشركات",
     "logout": "تسجيل الخروج",
     "users": "المستخدمون والصلاحيات",
-    "auditLog": "سجل النشاطات"
+    "auditLog": "سجل النشاطات",
+    "salesInvoices": "فواتير المبيعات",
+    "purchaseInvoices": "فواتير المشتريات",
+    "recurringInvoices": "الفواتير الدورية"
   },
   "common": {
     "search": "بحث...",
