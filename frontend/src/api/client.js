@@ -25,7 +25,14 @@ api.interceptors.response.use(
     // pages keep whatever safe default state they already had and the user gets a
     // clear "please retry" toast instead of a blank screen.
     if (typeof res.data === 'string' && res.data.trim().startsWith('<')) {
-      const fakeErr = new Error('The server returned an unexpected response (it may still be starting up). Please try again in a few seconds.');
+      // NOTE: a fulfilled interceptor's own Promise.reject(...) does NOT flow into the
+      // rejected-handler paired below (that one only sees errors thrown *before* this
+      // step, e.g. network failures) — it goes straight to the caller's .catch(). So
+      // this branch must show its own toast, or the request fails completely silently
+      // (which is exactly what made login look like "nothing happens" on a cold start).
+      const message = 'The server returned an unexpected response (it may still be starting up). Please try again in a few seconds.';
+      toast.error(message);
+      const fakeErr = new Error(message);
       fakeErr.isHtmlResponse = true;
       return Promise.reject(fakeErr);
     }
