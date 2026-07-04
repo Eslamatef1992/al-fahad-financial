@@ -1,16 +1,25 @@
 const fs = require('fs');
 const path = require('path');
-const { Vehicle, Employee, VehicleDocument, VehicleMaintenance } = require('../models');
+const { Op } = require('sequelize');
+const { sequelize, Vehicle, Employee, VehicleDocument, VehicleMaintenance, Account } = require('../models');
 const { toPublicPath } = require('../middleware/upload');
+const { createLinkedAccount, syncLinkedAccount } = require('../utils/linkedAccount');
 
 const include = [
   { model: Employee, as: 'driver', attributes: ['id', 'name_en', 'name_ar', 'phone', 'license_no', 'license_expiry'] },
   { model: VehicleDocument, as: 'documents' },
   { model: VehicleMaintenance, as: 'maintenanceRecords' },
+  { model: Account, as: 'account' },
 ];
 
 exports.list = async (req, res) => {
-  const vehicles = await Vehicle.findAll({ where: { company_id: req.companyId }, include, order: [['createdAt', 'DESC']] });
+  const { status } = req.query;
+  const where = { company_id: req.companyId };
+  // Deactivated vehicles are hidden by default so "delete" actually disappears from the list.
+  if (status === 'all') { /* show every status */ }
+  else if (status) where.status = status;
+  else where.status = { [Op.ne]: 'inactive' };
+  const vehicles = await Vehicle.findAll({ where, include, order: [['createdAt', 'DESC']] });
   res.json(vehicles);
 };
 
@@ -20,16 +29,51 @@ exports.get = async (req, res) => {
   res.json(vehicle);
 };
 
+// Creating a vehicle can optionally auto-create its ledger sub-account nested directly
+// under a chosen control account (e.g. a "Vehicles" asset group), using the vehicle's own code.
 exports.create = async (req, res) => {
-  const vehicle = await Vehicle.create({ ...req.body, company_id: req.companyId });
-  res.status(201).json(vehicle);
+  const { parent_account_id, ...body } = req.body;
+  const created = await sequelize.transaction(async (t) => {
+    let account_id = null;
+    if (parent_account_id) {
+      const account = await createLinkedAccount({
+        companyId: req.companyId, parentAccountId: parent_account_id,
+        code: body.code, name_en: body.plate_no || body.code, name_ar: body.plate_no || body.code,
+        opening_balance: body.purchase_cost,
+      }, t);
+      account_id = account.id;
+    }
+    return Vehicle.create({ ...body, account_id, company_id: req.companyId }, { transaction: t });
+  });
+  const withAccount = await Vehicle.findOne({ where: { id: created.id }, include });
+  res.status(201).json(withAccount);
 };
 
 exports.update = async (req, res) => {
+  const { parent_account_id, ...body } = req.body;
   const vehicle = await Vehicle.findOne({ where: { id: req.params.id, company_id: req.companyId } });
   if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
-  await vehicle.update(req.body);
-  res.json(vehicle);
+
+  await sequelize.transaction(async (t) => {
+    let account_id = vehicle.account_id;
+    if (!account_id && parent_account_id) {
+      const account = await createLinkedAccount({
+        companyId: req.companyId, parentAccountId: parent_account_id,
+        code: body.code, name_en: body.plate_no || body.code, name_ar: body.plate_no || body.code,
+        opening_balance: body.purchase_cost,
+      }, t);
+      account_id = account.id;
+    } else if (account_id) {
+      await syncLinkedAccount(account_id, {
+        code: body.code, name_en: body.plate_no, name_ar: body.plate_no,
+        opening_balance: body.purchase_cost, parent_id: parent_account_id,
+      }, t);
+    }
+    await vehicle.update({ ...body, account_id }, { transaction: t });
+  });
+
+  const updated = await Vehicle.findOne({ where: { id: vehicle.id }, include });
+  res.json(updated);
 };
 
 exports.remove = async (req, res) => {

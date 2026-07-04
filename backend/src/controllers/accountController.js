@@ -21,7 +21,12 @@ exports.tree = async (req, res) => {
 };
 
 exports.list = async (req, res) => {
-  const accounts = await Account.findAll({ where: { company_id: req.companyId }, order: [['code', 'ASC']] });
+  const { status } = req.query;
+  const where = { company_id: req.companyId };
+  // Default to active accounts only (so deactivated accounts can't be selected for new
+  // postings / as a parent). Pass ?status=all to include inactive ones (e.g. management UI).
+  if (status !== 'all') where.is_active = status === 'inactive' ? false : true;
+  const accounts = await Account.findAll({ where, order: [['code', 'ASC']] });
   res.json(accounts);
 };
 

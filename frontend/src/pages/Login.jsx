@@ -46,7 +46,7 @@ export default function Login() {
         className="relative z-10 w-full max-w-sm"
       >
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gold-500 text-navy-950 flex items-center justify-center font-extrabold text-xl mx-auto mb-4">AF</div>
+          <img src="/Logo.jpeg" alt={t('app.name')} className="w-16 h-16 rounded-2xl object-cover mx-auto mb-4 shadow-lg" />
           <h1 className="text-white font-bold text-2xl">{t('app.name')}</h1>
           <p className="text-slate-400 text-sm mt-1">{t('app.tagline')}</p>
         </div>

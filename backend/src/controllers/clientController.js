@@ -1,3 +1,58 @@
-const { Client, Account } = require('../models');
+const { sequelize, Client, Account } = require('../models');
 const crudFactory = require('../utils/crudFactory');
-module.exports = crudFactory(Client, { include: [{ model: Account, as: 'account' }], searchFields: ['name_en', 'name_ar', 'code', 'phone', 'email'] });
+const { createLinkedAccount, syncLinkedAccount } = require('../utils/linkedAccount');
+
+const base = crudFactory(Client, { include: [{ model: Account, as: 'account' }], searchFields: ['name_en', 'name_ar', 'code', 'phone', 'email'] });
+
+exports.list = base.list;
+exports.get = base.get;
+exports.remove = base.remove;
+
+// Creating a client can optionally auto-create its ledger sub-account nested directly
+// under a chosen control account (e.g. Accounts Receivable), using the client's own code.
+exports.create = async (req, res) => {
+  const { parent_account_id, ...body } = req.body;
+  const created = await sequelize.transaction(async (t) => {
+    let account_id = null;
+    if (parent_account_id) {
+      const account = await createLinkedAccount({
+        companyId: req.companyId,
+        parentAccountId: parent_account_id,
+        code: body.code,
+        name_en: body.name_en,
+        name_ar: body.name_ar,
+        opening_balance: body.opening_balance,
+      }, t);
+      account_id = account.id;
+    }
+    return Client.create({ ...body, account_id, company_id: req.companyId }, { transaction: t });
+  });
+  const withAccount = await Client.findOne({ where: { id: created.id }, include: [{ model: Account, as: 'account' }] });
+  res.status(201).json(withAccount);
+};
+
+exports.update = async (req, res) => {
+  const { parent_account_id, ...body } = req.body;
+  const item = await Client.findOne({ where: { id: req.params.id, company_id: req.companyId } });
+  if (!item) return res.status(404).json({ message: 'Not found' });
+
+  await sequelize.transaction(async (t) => {
+    let account_id = item.account_id;
+    if (!account_id && parent_account_id) {
+      const account = await createLinkedAccount({
+        companyId: req.companyId, parentAccountId: parent_account_id,
+        code: body.code, name_en: body.name_en, name_ar: body.name_ar, opening_balance: body.opening_balance,
+      }, t);
+      account_id = account.id;
+    } else if (account_id) {
+      await syncLinkedAccount(account_id, {
+        code: body.code, name_en: body.name_en, name_ar: body.name_ar,
+        opening_balance: body.opening_balance, parent_id: parent_account_id,
+      }, t);
+    }
+    await item.update({ ...body, account_id }, { transaction: t });
+  });
+
+  const updated = await Client.findOne({ where: { id: item.id }, include: [{ model: Account, as: 'account' }] });
+  res.json(updated);
+};

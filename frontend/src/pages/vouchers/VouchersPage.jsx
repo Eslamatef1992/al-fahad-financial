@@ -23,12 +23,12 @@ export default function VouchersPage() {
   useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
 
   const columns = [
-    { key: 'voucher_no', label: 'Voucher No.' },
-    { key: 'voucher_type', label: 'Type', render: (r) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${TYPE_COLOR[r.voucher_type]}`}>{r.voucher_type}</span> },
+    { key: 'voucher_no', label: t('vouchers.voucherNo') },
+    { key: 'voucher_type', label: t('vouchers.voucherType'), render: (r) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${TYPE_COLOR[r.voucher_type]}`}>{t(`vouchers.${r.voucher_type}`)}</span> },
     { key: 'date', label: t('common.date') },
     { key: 'description', label: t('common.description') },
     { key: 'total_debit', label: t('common.total'), render: (r) => Number(r.total_debit).toFixed(3) },
-    { key: 'status', label: t('common.status'), render: (r) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${STATUS_COLOR[r.status]}`}>{r.status}</span> },
+    { key: 'status', label: t('common.status'), render: (r) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${STATUS_COLOR[r.status]}`}>{t(`vouchers.status.${r.status}`)}</span> },
   ];
 
   return (
@@ -36,7 +36,7 @@ export default function VouchersPage() {
       <PageHeader title={t('nav.vouchers')} actions={
         <div className="flex items-center gap-2">
           <button onClick={() => downloadFile('/vouchers/excel', {}, 'vouchers.xlsx')} className="btn-ghost"><Download size={16} /> Excel</button>
-          {canCreateEdit && <button onClick={() => navigate('/vouchers/new')} className="btn-primary"><Plus size={16} /> New Voucher</button>}
+          {canCreateEdit && <button onClick={() => navigate('/vouchers/new')} className="btn-primary"><Plus size={16} /> {t('vouchers.newVoucher')}</button>}
         </div>
       } />
       <DataTable columns={columns} data={items} loading={loading} onRowClick={(row) => navigate(`/vouchers/${row.id}`)} />

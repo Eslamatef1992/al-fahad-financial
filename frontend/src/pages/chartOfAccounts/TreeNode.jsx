@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Plus, Pencil, Trash2, FolderTree, FileText } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ChevronRight, Plus, Pencil, Trash2, Power, FolderTree, FileText } from 'lucide-react';
 
 const TYPE_COLORS = {
   asset: 'bg-blue-50 text-blue-600', liability: 'bg-orange-50 text-orange-600',
@@ -8,7 +9,8 @@ const TYPE_COLORS = {
   expense: 'bg-red-50 text-red-600',
 };
 
-export default function TreeNode({ node, depth = 0, onAddChild, onEdit, onDelete, readOnly = false }) {
+export default function TreeNode({ node, depth = 0, onAddChild, onEdit, onDelete, onToggleActive, readOnly = false }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(depth < 1);
   const hasChildren = node.children?.length > 0;
 
@@ -27,13 +29,22 @@ export default function TreeNode({ node, depth = 0, onAddChild, onEdit, onDelete
         <span className="text-xs font-mono text-slate-400 w-16 shrink-0">{node.code}</span>
         <span className="text-sm font-medium truncate flex-1">{node.name_en} <span className="text-slate-400">/ {node.name_ar}</span></span>
         <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${TYPE_COLORS[node.type]}`}>{node.type}</span>
-        {!node.is_active && <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 shrink-0">inactive</span>}
+        {!node.is_active && <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 shrink-0">{t('common.inactive')}</span>}
 
         {!readOnly && (
           <div className="hidden group-hover:flex items-center gap-1 shrink-0">
-            <button onClick={() => onAddChild(node)} title="Add sub-account" className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-navy-700 text-slate-500"><Plus size={14} /></button>
-            <button onClick={() => onEdit(node)} className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-navy-700 text-slate-500"><Pencil size={14} /></button>
-            <button onClick={() => onDelete(node)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-red-500"><Trash2 size={14} /></button>
+            <button onClick={() => onAddChild(node)} title={t('accounts.addSubAccount')} className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-navy-700 text-slate-500"><Plus size={14} /></button>
+            <button onClick={() => onEdit(node)} title={t('common.edit')} className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-navy-700 text-slate-500"><Pencil size={14} /></button>
+            {onToggleActive && (
+              <button
+                onClick={() => onToggleActive(node)}
+                title={node.is_active ? t('common.deactivate') : t('common.activate')}
+                className={`p-1.5 rounded-lg ${node.is_active ? 'hover:bg-slate-200 dark:hover:bg-navy-700 text-slate-500' : 'hover:bg-emerald-50 dark:hover:bg-emerald-950 text-emerald-500'}`}
+              >
+                <Power size={14} />
+              </button>
+            )}
+            <button onClick={() => onDelete(node)} title={t('common.delete')} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-red-500"><Trash2 size={14} /></button>
           </div>
         )}
       </div>
@@ -41,7 +52,7 @@ export default function TreeNode({ node, depth = 0, onAddChild, onEdit, onDelete
         {expanded && hasChildren && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             {node.children.map((child) => (
-              <TreeNode key={child.id} node={child} depth={depth + 1} onAddChild={onAddChild} onEdit={onEdit} onDelete={onDelete} readOnly={readOnly} />
+              <TreeNode key={child.id} node={child} depth={depth + 1} onAddChild={onAddChild} onEdit={onEdit} onDelete={onDelete} onToggleActive={onToggleActive} readOnly={readOnly} />
             ))}
           </motion.div>
         )}

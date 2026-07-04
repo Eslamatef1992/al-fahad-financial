@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Search, Pencil, Trash2 } from 'lucide-react';
+import { Search, Pencil, Trash2, Power } from 'lucide-react';
 
-export default function DataTable({ columns, data, loading, onEdit, onDelete, onRowClick, searchable = true }) {
+export default function DataTable({ columns, data, loading, onEdit, onDelete, onToggleActive, isInactive, onRowClick, searchable = true }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
 
@@ -39,7 +39,7 @@ export default function DataTable({ columns, data, loading, onEdit, onDelete, on
                   {c.label}
                 </th>
               ))}
-              {(onEdit || onDelete) && <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.actions')}</th>}
+              {(onEdit || onDelete || onToggleActive) && <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.actions')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -61,12 +61,21 @@ export default function DataTable({ columns, data, loading, onEdit, onDelete, on
                     {c.render ? c.render(row) : (c.accessor ? c.accessor(row) : row[c.key])}
                   </td>
                 ))}
-                {(onEdit || onDelete) && (
+                {(onEdit || onDelete || onToggleActive) && (
                   <td className="px-4 py-3 text-end whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <div className="inline-flex items-center gap-1">
                       {onEdit && (
                         <button onClick={() => onEdit(row)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 text-slate-500">
                           <Pencil size={15} />
+                        </button>
+                      )}
+                      {onToggleActive && (
+                        <button
+                          onClick={() => onToggleActive(row)}
+                          title={isInactive?.(row) ? t('common.activate') : t('common.deactivate')}
+                          className={`p-2 rounded-lg ${isInactive?.(row) ? 'hover:bg-emerald-50 dark:hover:bg-emerald-950 text-emerald-500' : 'hover:bg-red-50 dark:hover:bg-red-950 text-red-500'}`}
+                        >
+                          <Power size={15} />
                         </button>
                       )}
                       {onDelete && (

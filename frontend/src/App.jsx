@@ -49,6 +49,7 @@ export default function App() {
           <Route path="/chart-of-accounts" element={<ChartOfAccountsPage />} />
           <Route path="/vouchers" element={<VouchersPage />} />
           <Route path="/vouchers/new" element={<VoucherFormPage />} />
+          <Route path="/vouchers/:id/edit" element={<VoucherFormPage />} />
           <Route path="/vouchers/:id" element={<VoucherDetailPage />} />
           <Route path="/ledger" element={<LedgerPage />} />
           <Route path="/clients" element={<ClientsPage />} />

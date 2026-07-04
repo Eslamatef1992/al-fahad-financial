@@ -3,8 +3,13 @@
 function crudFactory(Model, { include = [], searchFields = [] } = {}) {
   return {
     list: async (req, res) => {
-      const { q } = req.query;
+      const { q, status } = req.query;
       const where = { company_id: req.companyId };
+      // Deactivated (soft-deleted) records are hidden by default so a "delete" actually
+      // disappears from the list. Pass ?status=all or ?status=inactive to see them again.
+      if (Object.prototype.hasOwnProperty.call(Model.rawAttributes, 'is_active') && status !== 'all') {
+        where.is_active = status === 'inactive' ? false : true;
+      }
       const items = await Model.findAll({ where, include, order: [['createdAt', 'DESC']] });
       if (q && searchFields.length) {
         const needle = q.toLowerCase();

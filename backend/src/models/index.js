@@ -47,11 +47,12 @@ Account.belongsTo(Account, { as: 'parent', foreignKey: 'parent_id' });
 CostCenter.hasMany(CostCenter, { as: 'children', foreignKey: 'parent_id' });
 CostCenter.belongsTo(CostCenter, { as: 'parent', foreignKey: 'parent_id' });
 
-// Clients / Suppliers link to a control account in chart of accounts
+// Clients / Suppliers / Vehicles link to a control account in chart of accounts
 Client.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 Supplier.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 Employee.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 CashAccount.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
+Vehicle.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 
 // Vehicle assigned to a driver (Employee)
 Vehicle.belongsTo(Employee, { foreignKey: 'assigned_driver_id', as: 'driver' });
