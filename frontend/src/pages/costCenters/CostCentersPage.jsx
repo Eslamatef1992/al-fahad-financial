@@ -7,10 +7,11 @@ import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import SlideOver from '@/components/SlideOver';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import AccountPicker from '@/components/AccountPicker';
 import usePermissions from '@/hooks/usePermissions';
 import CostCenterTreeNode from './CostCenterTreeNode';
 
-const empty = { code: '', name_en: '', name_ar: '', parent_id: null };
+const empty = { code: '', name_en: '', name_ar: '', parent_id: null, parent_account_id: null };
 
 export default function CostCentersPage() {
   const { t } = useTranslation();
@@ -28,7 +29,7 @@ export default function CostCentersPage() {
   useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
 
   const openNew = (parent = null) => { setEditing(null); setForm({ ...empty, parent_id: parent?.id || null }); setOpen(true); };
-  const openEdit = (node) => { setEditing(node); setForm(node); setOpen(true); };
+  const openEdit = (node) => { setEditing(node); setForm({ ...empty, ...node, parent_account_id: node.account?.parent_id || null }); setOpen(true); };
 
   const submit = async (e) => {
     e.preventDefault(); setSaving(true);
@@ -53,6 +54,7 @@ export default function CostCentersPage() {
         <div><label className="label">{t('common.code')}</label><input required className="input" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
         <div><label className="label">{t('common.nameEn')}</label><input required className="input" value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} /></div>
         <div><label className="label">{t('common.nameAr')}</label><input required dir="rtl" className="input" value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} /></div>
+        <AccountPicker value={form.parent_account_id} onChange={(v) => setForm({ ...form, parent_account_id: v })} />
       </SlideOver>
       <ConfirmDialog open={!!toDelete} onCancel={() => setToDelete(null)} onConfirm={remove} />
     </div>

@@ -15,6 +15,7 @@ export default function CostCenterTreeNode({ node, depth = 0, onAddChild, onEdit
         <Landmark size={14} className="text-navy-500 shrink-0" />
         <span className="text-xs font-mono text-slate-400 w-16 shrink-0">{node.code}</span>
         <span className="text-sm font-medium truncate flex-1">{node.name_en} <span className="text-slate-400">/ {node.name_ar}</span></span>
+        {node.account && <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 shrink-0" title="Linked chart of accounts entry">{node.account.code}</span>}
         {!node.is_active && <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 shrink-0">inactive</span>}
         {!readOnly && (
           <div className="hidden group-hover:flex items-center gap-1 shrink-0">
