@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, CheckCircle2, XCircle, Download, Pencil } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Pencil, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api, { downloadFile } from '@/api/client';
+import api, { downloadFile, printFile } from '@/api/client';
 import PageHeader from '@/components/PageHeader';
 import usePermissions from '@/hooks/usePermissions';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -16,12 +16,19 @@ export default function VoucherDetailPage() {
   const { t } = useTranslation();
   const { canCreateEdit, canDelete } = usePermissions();
   const [voucher, setVoucher] = useState(null);
-  const [confirmAction, setConfirmAction] = useState(null); // 'post' | 'cancel'
+  const [confirmAction, setConfirmAction] = useState(null); // 'post' | 'cancel' | 'delete'
 
   const load = () => api.get(`/vouchers/${id}`).then((r) => setVoucher(r.data));
   useEffect(load, [id]);
 
   const act = async () => {
+    if (confirmAction === 'delete') {
+      await api.delete(`/vouchers/${id}`);
+      toast.success(t('vouchers.deletedSuccess'));
+      setConfirmAction(null);
+      navigate('/vouchers');
+      return;
+    }
     await api.post(`/vouchers/${id}/${confirmAction}`);
     toast.success(confirmAction === 'post' ? t('vouchers.postedSuccess') : t('vouchers.cancelledSuccess'));
     setConfirmAction(null);
@@ -29,6 +36,10 @@ export default function VoucherDetailPage() {
   };
 
   if (!voucher) return <p className="text-slate-400">{t('common.loading')}</p>;
+
+  const confirmMessage = confirmAction === 'post' ? t('vouchers.postConfirm')
+    : confirmAction === 'cancel' ? t('vouchers.cancelConfirm')
+    : t('vouchers.deleteConfirm');
 
   return (
     <div>
@@ -38,11 +49,17 @@ export default function VoucherDetailPage() {
         subtitle={`${voucher.voucher_type} · ${voucher.date}`}
         actions={
           <div className="flex items-center gap-2">
+            <button onClick={() => printFile(`/vouchers/${id}/pdf`, {})} className="btn-ghost">
+              <Printer size={16} /> {t('common.print')}
+            </button>
             <button onClick={() => downloadFile(`/vouchers/${id}/pdf`, {}, `${voucher.voucher_no}.pdf`)} className="btn-ghost">
               <Download size={16} /> {t('vouchers.downloadPdf')}
             </button>
             {voucher.status === 'draft' && canCreateEdit && (
               <button onClick={() => navigate(`/vouchers/${id}/edit`)} className="btn-ghost"><Pencil size={16} /> {t('common.edit')}</button>
+            )}
+            {voucher.status === 'draft' && canCreateEdit && (
+              <button onClick={() => setConfirmAction('delete')} className="btn-ghost !text-red-500 hover:!bg-red-50"><Trash2 size={16} /> {t('vouchers.deleteVoucher')}</button>
             )}
             {voucher.status === 'draft' && canCreateEdit ? (
               <button onClick={() => setConfirmAction('post')} className="btn-primary"><CheckCircle2 size={16} /> {t('vouchers.postToLedger')}</button>
@@ -88,7 +105,7 @@ export default function VoucherDetailPage() {
         open={!!confirmAction}
         onCancel={() => setConfirmAction(null)}
         onConfirm={act}
-        message={confirmAction === 'post' ? t('vouchers.postConfirm') : t('vouchers.cancelConfirm')}
+        message={confirmMessage}
       />
     </div>
   );

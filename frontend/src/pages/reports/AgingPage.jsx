@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Download } from 'lucide-react';
-import api, { downloadFile } from '@/api/client';
+import { Download, Printer } from 'lucide-react';
+import api, { downloadFile, printFile } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 
@@ -27,6 +27,7 @@ export default function AgingPage() {
       <PageHeader title={label} subtitle="Outstanding balances bucketed by days overdue" actions={
         <div className="flex items-center gap-2">
           <button onClick={load} className="btn-primary">Refresh</button>
+          <button onClick={() => printFile('/invoices/aging/pdf', { type })} className="btn-ghost"><Printer size={16} /> Print</button>
           <button onClick={() => downloadFile('/invoices/aging/pdf', { type }, `${type}-aging.pdf`)} className="btn-ghost"><Download size={16} /> PDF</button>
         </div>
       } />

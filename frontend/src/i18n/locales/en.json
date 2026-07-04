@@ -64,7 +64,8 @@
     "deactivate": "Deactivate",
     "activated": "Activated",
     "deactivated": "Deactivated",
-    "paymentTermsDays": "Payment Terms (days)"
+    "paymentTermsDays": "Payment Terms (days)",
+    "print": "Print"
   },
   "auth": {
     "login": "Sign In",
@@ -139,11 +140,15 @@
     "saveChanges": "Save Changes",
     "postToLedger": "Post to Ledger",
     "cancelVoucher": "Cancel Voucher",
+    "deleteVoucher": "Delete Draft",
     "downloadPdf": "Download PDF",
+    "print": "Print",
     "postConfirm": "Post this voucher to the general ledger? This cannot be edited afterward.",
     "cancelConfirm": "Cancel this posted voucher? A reversing entry will be created.",
+    "deleteConfirm": "Delete this draft voucher permanently? This cannot be undone.",
     "postedSuccess": "Voucher posted to ledger",
     "cancelledSuccess": "Voucher cancelled",
+    "deletedSuccess": "Voucher deleted",
     "mustBeBalanced": "Voucher must be balanced (total debit = total credit)",
     "createdDraft": "Voucher created as draft",
     "updatedDraft": "Voucher updated",

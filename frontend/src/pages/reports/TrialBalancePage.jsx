@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Download } from 'lucide-react';
-import api, { downloadFile } from '@/api/client';
+import { Download, Printer } from 'lucide-react';
+import api, { downloadFile, printFile } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 
@@ -29,6 +29,7 @@ export default function TrialBalancePage() {
       <div className="card p-4 mb-5 flex flex-wrap items-end gap-3">
         <div><label className="label">As of</label><input type="date" className="input" value={asOf} onChange={(e) => setAsOf(e.target.value)} /></div>
         <button onClick={load} className="btn-primary">Generate</button>
+        <button onClick={() => printFile('/ledger/trial-balance/pdf', { as_of: asOf })} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
         <button onClick={() => downloadFile('/ledger/trial-balance/pdf', { as_of: asOf }, 'trial-balance.pdf')} className="btn-ghost"><Download size={16} /> PDF</button>
         <button onClick={() => downloadFile('/ledger/trial-balance/excel', { as_of: asOf }, 'trial-balance.xlsx')} className="btn-ghost"><Download size={16} /> Excel</button>
       </div>

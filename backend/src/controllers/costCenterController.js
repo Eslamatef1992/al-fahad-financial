@@ -1,5 +1,6 @@
 const { sequelize, CostCenter, Account } = require('../models');
 const { createLinkedAccount, syncLinkedAccount } = require('../utils/linkedAccount');
+const { nextCode } = require('../utils/codeGenerator');
 
 const include = [{ model: Account, as: 'account' }];
 
@@ -19,29 +20,32 @@ exports.list = async (req, res) => {
   res.json(await CostCenter.findAll({ where: { company_id: req.companyId }, include, order: [['code', 'ASC']] }));
 };
 
-// Creating a cost center can optionally auto-create its ledger sub-account nested
-// directly under a chosen control account, using the cost center's own code — same
-// pattern as Clients/Suppliers/Vehicles/Employees. This is independent of `parent_id`,
-// which is the cost center's own tree hierarchy (unrelated to the chart of accounts).
+// Creating a cost center always gets a system-generated code (CC-00001, CC-00002, ...) —
+// any client-supplied code is ignored. It can optionally also auto-create its ledger
+// sub-account nested directly under a chosen control account, using that generated
+// code — same pattern as Clients/Suppliers/Vehicles/Employees. This is independent of
+// `parent_id`, which is the cost center's own tree hierarchy (unrelated to the chart
+// of accounts).
 exports.create = async (req, res) => {
-  const { parent_account_id, ...body } = req.body;
+  const { parent_account_id, code, ...body } = req.body;
   const created = await sequelize.transaction(async (t) => {
+    const finalCode = await nextCode(CostCenter, req.companyId, 'CC');
     let account_id = null;
     if (parent_account_id) {
       const account = await createLinkedAccount({
         companyId: req.companyId, parentAccountId: parent_account_id,
-        code: body.code, name_en: body.name_en, name_ar: body.name_ar, opening_balance: 0,
+        code: finalCode, name_en: body.name_en, name_ar: body.name_ar, opening_balance: 0,
       }, t);
       account_id = account.id;
     }
-    return CostCenter.create({ ...body, account_id, company_id: req.companyId }, { transaction: t });
+    return CostCenter.create({ ...body, code: finalCode, account_id, company_id: req.companyId }, { transaction: t });
   });
   const withAccount = await CostCenter.findOne({ where: { id: created.id }, include });
   res.status(201).json(withAccount);
 };
 
 exports.update = async (req, res) => {
-  const { parent_account_id, ...body } = req.body;
+  const { parent_account_id, code, ...body } = req.body; // code is immutable after creation
   const item = await CostCenter.findOne({ where: { id: req.params.id, company_id: req.companyId } });
   if (!item) return res.status(404).json({ message: 'Cost center not found' });
 
@@ -50,12 +54,12 @@ exports.update = async (req, res) => {
     if (!account_id && parent_account_id) {
       const account = await createLinkedAccount({
         companyId: req.companyId, parentAccountId: parent_account_id,
-        code: body.code, name_en: body.name_en, name_ar: body.name_ar, opening_balance: 0,
+        code: item.code, name_en: body.name_en, name_ar: body.name_ar, opening_balance: 0,
       }, t);
       account_id = account.id;
     } else if (account_id) {
       await syncLinkedAccount(account_id, {
-        code: body.code, name_en: body.name_en, name_ar: body.name_ar, parent_id: parent_account_id,
+        name_en: body.name_en, name_ar: body.name_ar, parent_id: parent_account_id,
       }, t);
     }
     await item.update({ ...body, account_id }, { transaction: t });

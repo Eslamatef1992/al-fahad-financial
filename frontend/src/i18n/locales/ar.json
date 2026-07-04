@@ -64,7 +64,8 @@
     "deactivate": "إيقاف",
     "activated": "تم التفعيل",
     "deactivated": "تم الإيقاف",
-    "paymentTermsDays": "شروط الدفع (أيام)"
+    "paymentTermsDays": "شروط الدفع (أيام)",
+    "print": "طباعة"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -139,11 +140,15 @@
     "saveChanges": "حفظ التعديلات",
     "postToLedger": "ترحيل إلى دفتر الأستاذ",
     "cancelVoucher": "إلغاء السند",
+    "deleteVoucher": "حذف المسودة",
     "downloadPdf": "تنزيل PDF",
+    "print": "طباعة",
     "postConfirm": "هل تريد ترحيل هذا السند إلى دفتر الأستاذ العام؟ لا يمكن تعديله بعد ذلك.",
     "cancelConfirm": "هل تريد إلغاء هذا السند المرحّل؟ سيتم إنشاء قيد عكسي.",
+    "deleteConfirm": "هل تريد حذف هذه المسودة نهائياً؟ لا يمكن التراجع عن هذا الإجراء.",
     "postedSuccess": "تم ترحيل السند إلى دفتر الأستاذ",
     "cancelledSuccess": "تم إلغاء السند",
+    "deletedSuccess": "تم حذف السند",
     "mustBeBalanced": "يجب أن يكون السند متوازناً (إجمالي المدين = إجمالي الدائن)",
     "createdDraft": "تم إنشاء السند كمسودة",
     "updatedDraft": "تم تحديث السند",

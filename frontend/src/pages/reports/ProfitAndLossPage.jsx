@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Download } from 'lucide-react';
-import api, { downloadFile } from '@/api/client';
+import { Download, Printer } from 'lucide-react';
+import api, { downloadFile, printFile } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 
@@ -39,6 +39,9 @@ export default function ProfitAndLossPage() {
         <div><label className="label">{t('common.from')}</label><input type="date" className="input" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></div>
         <div><label className="label">{t('common.to')}</label><input type="date" className="input" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></div>
         <button onClick={load} className="btn-primary">Generate</button>
+        <button onClick={() => printFile('/reports/profit-and-loss/pdf', range)} className="btn-ghost">
+          <Printer size={16} /> {t('common.print')}
+        </button>
         <button onClick={() => downloadFile('/reports/profit-and-loss/pdf', range, 'profit-and-loss.pdf')} className="btn-ghost">
           <Download size={16} /> PDF
         </button>

@@ -69,6 +69,17 @@ exports.pdf = async (req, res) => {
   generateVoucherPdf(res, voucher, company);
 };
 
+// Draft vouchers (never posted, so no ledger entries exist yet) can be deleted outright.
+// Posted vouchers must go through cancel() instead, which preserves history via a
+// reversing entry rather than removing anything.
+exports.remove = async (req, res) => {
+  const voucher = await Voucher.findOne({ where: { id: req.params.id, company_id: req.companyId } });
+  if (!voucher) return res.status(404).json({ message: 'Voucher not found' });
+  if (voucher.status !== 'draft') return res.status(400).json({ message: 'Only draft vouchers can be deleted — cancel a posted voucher instead' });
+  await voucher.destroy();
+  res.json({ message: 'Voucher deleted' });
+};
+
 exports.post = async (req, res) => {
   const voucher = await voucherService.postVoucher(req.companyId, req.params.id);
   res.json(voucher);

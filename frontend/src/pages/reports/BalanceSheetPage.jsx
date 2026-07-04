@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Download } from 'lucide-react';
-import api, { downloadFile } from '@/api/client';
+import { Download, Printer } from 'lucide-react';
+import api, { downloadFile, printFile } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 
@@ -33,6 +33,9 @@ export default function BalanceSheetPage() {
       <div className="card p-4 mb-5 flex flex-wrap items-end gap-3">
         <div><label className="label">As of</label><input type="date" className="input" value={asOf} onChange={(e) => setAsOf(e.target.value)} /></div>
         <button onClick={load} className="btn-primary">Generate</button>
+        <button onClick={() => printFile('/reports/balance-sheet/pdf', { as_of: asOf })} className="btn-ghost">
+          <Printer size={16} /> {t('common.print')}
+        </button>
         <button onClick={() => downloadFile('/reports/balance-sheet/pdf', { as_of: asOf }, 'balance-sheet.pdf')} className="btn-ghost">
           <Download size={16} /> PDF
         </button>

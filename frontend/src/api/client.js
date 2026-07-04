@@ -76,4 +76,25 @@ export async function downloadFile(url, params, fallbackName) {
   window.URL.revokeObjectURL(blobUrl);
 }
 
+// Opens a generated PDF (vouchers, invoices, reports) in a new tab and nudges the
+// browser's print dialog open — reuses the same authenticated PDF endpoints as
+// "Download", just for printing instead of saving to disk. The tab is opened
+// synchronously (before the await) so browsers don't treat it as a blocked popup;
+// its location is filled in once the PDF has actually been fetched.
+export async function printFile(url, params) {
+  const win = window.open('', '_blank');
+  try {
+    const res = await api.get(url, { params, responseType: 'blob' });
+    const blobUrl = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+    if (win) {
+      win.location.href = blobUrl;
+      setTimeout(() => { try { win.print(); } catch (e) { /* user can still print manually from the tab */ } }, 600);
+    }
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+  } catch (e) {
+    win?.close();
+    throw e;
+  }
+}
+
 export default api;

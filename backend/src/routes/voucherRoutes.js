@@ -10,6 +10,7 @@ router.get('/:id', ctrl.get);
 router.get('/:id/pdf', ctrl.pdf);
 router.post('/', requireMinRole('accountant'), ctrl.create);
 router.put('/:id', requireMinRole('accountant'), ctrl.update);
+router.delete('/:id', requireMinRole('accountant'), ctrl.remove);
 router.post('/:id/post', requireMinRole('accountant'), ctrl.post);
 router.post('/:id/cancel', requireMinRole('admin'), ctrl.cancel);
 
