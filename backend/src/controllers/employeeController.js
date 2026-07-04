@@ -1,6 +1,7 @@
 const { sequelize, Employee, Vehicle, Account } = require('../models');
 const crudFactory = require('../utils/crudFactory');
 const { createLinkedAccount, syncLinkedAccount } = require('../utils/linkedAccount');
+const { nextCode } = require('../utils/codeGenerator');
 
 const include = [{ model: Vehicle, as: 'assignedVehicles' }, { model: Account, as: 'account' }];
 const base = crudFactory(Employee, { include, searchFields: ['name_en', 'name_ar', 'code', 'phone', 'email', 'position'] });
@@ -12,8 +13,7 @@ exports.remove = base.remove;
 // Employee codes are always system-generated (EMP-00001, EMP-00002, ...) so there's
 // never a manual numbering scheme to get wrong or collide on.
 async function nextEmployeeCode(companyId) {
-  const count = await Employee.count({ where: { company_id: companyId } });
-  return `EMP-${String(count + 1).padStart(5, '0')}`;
+  return nextCode(Employee, companyId, 'EMP');
 }
 
 // Creating an employee can optionally auto-create its ledger sub-account nested directly

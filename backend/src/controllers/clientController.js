@@ -1,6 +1,7 @@
 const { sequelize, Client, Account } = require('../models');
 const crudFactory = require('../utils/crudFactory');
 const { createLinkedAccount, syncLinkedAccount } = require('../utils/linkedAccount');
+const { nextCode } = require('../utils/codeGenerator');
 
 const base = crudFactory(Client, { include: [{ model: Account, as: 'account' }], searchFields: ['name_en', 'name_ar', 'code', 'phone', 'email'] });
 
@@ -8,31 +9,35 @@ exports.list = base.list;
 exports.get = base.get;
 exports.remove = base.remove;
 
-// Creating a client can optionally auto-create its ledger sub-account nested directly
-// under a chosen control account (e.g. Accounts Receivable), using the client's own code.
+// Creating a client always gets a system-generated code (CLI-00001, CLI-00002, ...) —
+// any client-supplied code is ignored, same reasoning as Employees: no manual numbering
+// scheme to get wrong or collide on. It can optionally also auto-create its ledger
+// sub-account nested directly under a chosen control account (e.g. Accounts Receivable),
+// using that generated code.
 exports.create = async (req, res) => {
-  const { parent_account_id, ...body } = req.body;
+  const { parent_account_id, code, ...body } = req.body;
   const created = await sequelize.transaction(async (t) => {
+    const finalCode = await nextCode(Client, req.companyId, 'CLI');
     let account_id = null;
     if (parent_account_id) {
       const account = await createLinkedAccount({
         companyId: req.companyId,
         parentAccountId: parent_account_id,
-        code: body.code,
+        code: finalCode,
         name_en: body.name_en,
         name_ar: body.name_ar,
         opening_balance: body.opening_balance,
       }, t);
       account_id = account.id;
     }
-    return Client.create({ ...body, account_id, company_id: req.companyId }, { transaction: t });
+    return Client.create({ ...body, code: finalCode, account_id, company_id: req.companyId }, { transaction: t });
   });
   const withAccount = await Client.findOne({ where: { id: created.id }, include: [{ model: Account, as: 'account' }] });
   res.status(201).json(withAccount);
 };
 
 exports.update = async (req, res) => {
-  const { parent_account_id, ...body } = req.body;
+  const { parent_account_id, code, ...body } = req.body; // code is immutable after creation
   const item = await Client.findOne({ where: { id: req.params.id, company_id: req.companyId } });
   if (!item) return res.status(404).json({ message: 'Not found' });
 
@@ -41,12 +46,12 @@ exports.update = async (req, res) => {
     if (!account_id && parent_account_id) {
       const account = await createLinkedAccount({
         companyId: req.companyId, parentAccountId: parent_account_id,
-        code: body.code, name_en: body.name_en, name_ar: body.name_ar, opening_balance: body.opening_balance,
+        code: item.code, name_en: body.name_en, name_ar: body.name_ar, opening_balance: body.opening_balance,
       }, t);
       account_id = account.id;
     } else if (account_id) {
       await syncLinkedAccount(account_id, {
-        code: body.code, name_en: body.name_en, name_ar: body.name_ar,
+        name_en: body.name_en, name_ar: body.name_ar,
         opening_balance: body.opening_balance, parent_id: parent_account_id,
       }, t);
     }

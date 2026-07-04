@@ -83,7 +83,10 @@ export default function VehiclesPage() {
 
       <SlideOver open={open} onClose={() => setOpen(false)} title={t('vehicles.addVehicle')} onSubmit={submit} submitting={saving} wide>
         <div className="grid grid-cols-3 gap-3">
-          <div><label className="label">{t('common.code')}</label><input required className="input" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
+          <div>
+            <label className="label">{t('common.code')}</label>
+            <input disabled className="input opacity-60" value="Auto-generated on save" />
+          </div>
           <div><label className="label">{t('vehicles.plateNo')}</label><input required className="input" value={form.plate_no} onChange={(e) => setForm({ ...form, plate_no: e.target.value })} /></div>
           <div><label className="label">{t('vehicles.vehicleType')}</label><input className="input" placeholder="Sedan, Truck, Van..." value={form.vehicle_type} onChange={(e) => setForm({ ...form, vehicle_type: e.target.value })} /></div>
         </div>

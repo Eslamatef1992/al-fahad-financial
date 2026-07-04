@@ -4,6 +4,7 @@ const { Op } = require('sequelize');
 const { sequelize, Vehicle, Employee, VehicleDocument, VehicleMaintenance, Account } = require('../models');
 const { toPublicPath } = require('../middleware/upload');
 const { createLinkedAccount, syncLinkedAccount } = require('../utils/linkedAccount');
+const { nextCode } = require('../utils/codeGenerator');
 
 const include = [
   { model: Employee, as: 'driver', attributes: ['id', 'name_en', 'name_ar', 'phone', 'license_no', 'license_expiry'] },
@@ -29,28 +30,31 @@ exports.get = async (req, res) => {
   res.json(vehicle);
 };
 
-// Creating a vehicle can optionally auto-create its ledger sub-account nested directly
-// under a chosen control account (e.g. a "Vehicles" asset group), using the vehicle's own code.
+// Creating a vehicle always gets a system-generated code (VEH-00001, VEH-00002, ...) —
+// any vehicle-supplied code is ignored. It can optionally also auto-create its ledger
+// sub-account nested directly under a chosen control account (e.g. a "Vehicles" asset
+// group), using that generated code.
 exports.create = async (req, res) => {
-  const { parent_account_id, ...body } = req.body;
+  const { parent_account_id, code, ...body } = req.body;
   const created = await sequelize.transaction(async (t) => {
+    const finalCode = await nextCode(Vehicle, req.companyId, 'VEH');
     let account_id = null;
     if (parent_account_id) {
       const account = await createLinkedAccount({
         companyId: req.companyId, parentAccountId: parent_account_id,
-        code: body.code, name_en: body.plate_no || body.code, name_ar: body.plate_no || body.code,
+        code: finalCode, name_en: body.plate_no || finalCode, name_ar: body.plate_no || finalCode,
         opening_balance: body.purchase_cost,
       }, t);
       account_id = account.id;
     }
-    return Vehicle.create({ ...body, account_id, company_id: req.companyId }, { transaction: t });
+    return Vehicle.create({ ...body, code: finalCode, account_id, company_id: req.companyId }, { transaction: t });
   });
   const withAccount = await Vehicle.findOne({ where: { id: created.id }, include });
   res.status(201).json(withAccount);
 };
 
 exports.update = async (req, res) => {
-  const { parent_account_id, ...body } = req.body;
+  const { parent_account_id, code, ...body } = req.body; // code is immutable after creation
   const vehicle = await Vehicle.findOne({ where: { id: req.params.id, company_id: req.companyId } });
   if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
 
@@ -59,13 +63,13 @@ exports.update = async (req, res) => {
     if (!account_id && parent_account_id) {
       const account = await createLinkedAccount({
         companyId: req.companyId, parentAccountId: parent_account_id,
-        code: body.code, name_en: body.plate_no || body.code, name_ar: body.plate_no || body.code,
+        code: vehicle.code, name_en: body.plate_no || vehicle.code, name_ar: body.plate_no || vehicle.code,
         opening_balance: body.purchase_cost,
       }, t);
       account_id = account.id;
     } else if (account_id) {
       await syncLinkedAccount(account_id, {
-        code: body.code, name_en: body.plate_no, name_ar: body.plate_no,
+        name_en: body.plate_no, name_ar: body.plate_no,
         opening_balance: body.purchase_cost, parent_id: parent_account_id,
       }, t);
     }

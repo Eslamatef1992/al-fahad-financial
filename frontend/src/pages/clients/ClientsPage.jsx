@@ -80,7 +80,10 @@ export default function ClientsPage() {
       />
       <SlideOver open={open} onClose={() => setOpen(false)} title={editing ? t('common.edit') : t('common.add')} onSubmit={submit} submitting={saving}>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className="label">{t('common.code')}</label><input required className="input" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
+          <div>
+            <label className="label">{t('common.code')}</label>
+            <input disabled className="input opacity-60" value={editing ? form.code : 'Auto-generated on save'} />
+          </div>
           <div><label className="label">{t('common.taxNo')}</label><input className="input" value={form.tax_no || ''} onChange={(e) => setForm({ ...form, tax_no: e.target.value })} /></div>
         </div>
         <div><label className="label">{t('common.nameEn')}</label><input required className="input" value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} /></div>
