@@ -1,13 +1,128 @@
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
+const reshaper = require('arabic-reshaper');
 
-const NAVY = '#1f2d4e';
+// ---------------------------------------------------------------------------
+// Palette
+// ---------------------------------------------------------------------------
+const NAVY = '#1b2a4b';
+const NAVY_DARK = '#141f38';
 const GOLD = '#c9a227';
+const GOLD_LIGHT = '#e8d38a';
 const GRAY = '#64748b';
+const BORDER = '#e2e8f0';
+const ROW_ALT = '#f6f8fb';
+const TEXT_DARK = '#1e293b';
+const SUCCESS = '#0f9d63';
+const DANGER = '#dc2626';
 
+const STATUS_COLORS = {
+  draft: ['#f1f5f9', '#64748b'],
+  posted: ['#e6f6ee', SUCCESS],
+  paid: ['#e6f6ee', SUCCESS],
+  cancelled: ['#fdeaea', DANGER],
+  void: ['#fdeaea', DANGER],
+  partial: ['#fef3e2', '#c07f0a'],
+  sent: ['#eaf1fd', '#2563eb'],
+  overdue: ['#fdeaea', DANGER],
+};
+
+// ---------------------------------------------------------------------------
+// Arabic font registration + bidi-aware text drawing
+// ---------------------------------------------------------------------------
+const ARABIC_RE = /[؀-ۿݐ-ݿ]/;
+
+// Registered fonts live on the PDFDocument instance itself, not globally — each
+// generated PDF is a fresh `doc`, so the Arabic fonts must be (re-)registered
+// on every one of them, tracked via a flag stashed on that instance.
+function registerArabicFonts(doc) {
+  if (doc._arabicFontsRegistered) return true;
+  try {
+    const base = path.join(path.dirname(require.resolve('@fontsource/noto-naskh-arabic/package.json')), 'files');
+    doc.registerFont('Arabic', path.join(base, 'noto-naskh-arabic-arabic-400-normal.woff'));
+    doc.registerFont('Arabic-Bold', path.join(base, 'noto-naskh-arabic-arabic-700-normal.woff'));
+    doc._arabicFontsRegistered = true;
+  } catch (e) {
+    doc._arabicFontsRegistered = false;
+  }
+  return doc._arabicFontsRegistered;
+}
+
+// Splits a string into runs of contiguous Arabic vs non-Arabic characters
+// (spaces are kept attached to whichever run they trail) so each run can be
+// shaped/measured with the correct font.
+function splitRuns(str) {
+  const runs = [];
+  let cur = '';
+  let curIsArabic = null;
+  for (const ch of str) {
+    const isAr = ARABIC_RE.test(ch);
+    if (curIsArabic === null) { curIsArabic = isAr; cur = ch; continue; }
+    if (isAr === curIsArabic || ch === ' ') cur += ch;
+    else { runs.push({ text: cur, arabic: curIsArabic }); cur = ch; curIsArabic = isAr; }
+  }
+  if (cur) runs.push({ text: cur, arabic: curIsArabic });
+  return runs;
+}
+
+function reshapeArabicRun(text) {
+  return [...reshaper.convertArabic(text)].reverse().join('');
+}
+
+// Truncates plain (non-Arabic) text with an ellipsis so it never overflows
+// past `maxWidth` into a neighboring table cell.
+function truncateToWidth(doc, text, maxWidth, font) {
+  doc.font(font);
+  if (doc.widthOfString(text) <= maxWidth) return text;
+  let out = text;
+  while (out.length > 1 && doc.widthOfString(out + '…') > maxWidth) out = out.slice(0, -1);
+  return out + '…';
+}
+
+// Draws text that may contain Arabic, shaping + reordering Arabic runs so
+// they render as joined, correctly-ordered glyphs instead of raw isolated
+// Unicode codepoints (which PDFKit/Helvetica cannot shape on its own).
+// Falls back to plain Helvetica for pure Latin/number strings.
+function drawBidi(doc, str, x, y, opts = {}) {
+  if (str === null || str === undefined || str === '') return;
+  str = String(str);
+  const { width, align = 'left', fontSize, color, bold } = opts;
+  if (fontSize) doc.fontSize(fontSize);
+  if (color) doc.fillColor(color);
+
+  const hasArabic = ARABIC_RE.test(str);
+  if (!hasArabic || !registerArabicFonts(doc)) {
+    const font = bold ? 'Helvetica-Bold' : 'Helvetica';
+    const display = width ? truncateToWidth(doc, str, width, font) : str;
+    doc.font(font).text(display, x, y, { width, align, lineBreak: false });
+    return;
+  }
+
+  const runs = splitRuns(str).map((r) => ({
+    text: r.arabic ? reshapeArabicRun(r.text) : r.text,
+    font: r.arabic ? (bold ? 'Arabic-Bold' : 'Arabic') : (bold ? 'Helvetica-Bold' : 'Helvetica'),
+  }));
+  const visualRuns = [...runs].reverse();
+  const widths = visualRuns.map((r) => { doc.font(r.font); return doc.widthOfString(r.text); });
+  const totalWidth = widths.reduce((a, b) => a + b, 0);
+  const boxWidth = width || totalWidth;
+  let startX = x;
+  if (align === 'right') startX = x + boxWidth - totalWidth;
+  else if (align === 'center') startX = x + (boxWidth - totalWidth) / 2;
+
+  let curX = startX;
+  visualRuns.forEach((r, i) => {
+    doc.font(r.font).text(r.text, curX, y, { lineBreak: false });
+    curX += widths[i];
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Document scaffolding
+// ---------------------------------------------------------------------------
 function newDoc(res, filename) {
-  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   doc.pipe(res);
@@ -23,74 +138,217 @@ function resolveLogoPath(company) {
   return fs.existsSync(filePath) ? filePath : null;
 }
 
+// Finds the largest font size (down to minSize) at which `text` fits within
+// maxWidth on a single line, so headings never get auto-wrapped by PDFKit.
+function fitFontSize(doc, text, maxWidth, font, maxSize, minSize = 10) {
+  let size = maxSize;
+  doc.font(font);
+  while (size > minSize && doc.fontSize(size).widthOfString(text) > maxWidth) size -= 0.5;
+  return size;
+}
+
 function header(doc, company, title, subtitle) {
-  doc.rect(0, 0, doc.page.width, 90).fill(NAVY);
+  const w = doc.page.width;
+  const bandHeight = 96;
+
+  // Base navy band + darker diagonal accent slab for visual depth
+  doc.rect(0, 0, w, bandHeight).fill(NAVY);
+  doc.save();
+  doc.moveTo(w * 0.62, 0).lineTo(w, 0).lineTo(w, bandHeight).lineTo(w * 0.74, bandHeight).closePath().fill(NAVY_DARK);
+  doc.restore();
+  // Gold accent rule under the band
+  doc.rect(0, bandHeight, w, 3).fill(GOLD);
 
   const logoPath = resolveLogoPath(company);
   let textStartX = 40;
+  const logoBoxY = 20, logoBoxSize = 56;
   if (logoPath) {
     try {
-      doc.image(logoPath, 40, 20, { fit: [50, 50] });
-      textStartX = 100;
+      doc.roundedRect(40, logoBoxY, logoBoxSize, logoBoxSize, 8).fill('#ffffff');
+      doc.image(logoPath, 46, logoBoxY + 6, { fit: [logoBoxSize - 12, logoBoxSize - 12], align: 'center', valign: 'center' });
+      textStartX = 40 + logoBoxSize + 14;
     } catch (e) { /* corrupt/unsupported image — fall back to text-only header */ }
+  } else {
+    // Initial-letter badge as a placeholder mark
+    const initial = (company?.name_en || 'A').trim().charAt(0).toUpperCase();
+    doc.roundedRect(40, logoBoxY, logoBoxSize, logoBoxSize, 8).fill(GOLD);
+    doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(24).text(initial, 40, logoBoxY + 15, { width: logoBoxSize, align: 'center' });
+    textStartX = 40 + logoBoxSize + 14;
   }
 
-  doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold').text(company?.name_en || 'Al Fahad Group', textStartX, 28);
-  doc.fontSize(10).font('Helvetica').fillColor(GOLD).text(company?.name_ar || '', textStartX, 50, { align: 'left' });
-  doc.fontSize(14).font('Helvetica-Bold').fillColor('#ffffff').text(title, 40, 28, { align: 'right', width: doc.page.width - 80 });
-  if (subtitle) doc.fontSize(10).font('Helvetica').fillColor('#d7deec').text(subtitle, 40, 50, { align: 'right', width: doc.page.width - 80 });
-  doc.moveDown(4);
+  const rightBoundary = w - 40;
+  // Reserve space for the title pill first so the company name never runs
+  // underneath it, then auto-shrink the name to fit on a single line.
+  doc.font('Helvetica-Bold').fontSize(13);
+  const titleWidth = doc.widthOfString(title) + 28;
+  const pillX = rightBoundary - titleWidth;
+  const leftBlockWidth = pillX - 12 - textStartX;
+
+  const companyName = company?.name_en || 'Al Fahad Group';
+  const nameSize = fitFontSize(doc, companyName, leftBlockWidth, 'Helvetica-Bold', 16, 10);
+  doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(nameSize).text(companyName, textStartX, 30, { lineBreak: false });
+  drawBidi(doc, company?.name_ar || '', textStartX, 52, { fontSize: 10, color: GOLD_LIGHT, width: leftBlockWidth });
+
+  // Title pill, top right
+  doc.roundedRect(pillX, 26, titleWidth, 24, 12).fill(GOLD);
+  doc.font('Helvetica-Bold').fontSize(13).fillColor(NAVY_DARK).text(title, pillX, 33, { width: titleWidth, align: 'center', lineBreak: false });
+
+  if (subtitle) {
+    drawBidi(doc, subtitle, 40, 58, { fontSize: 9.5, color: '#c7d0e4', width: rightBoundary - 40, align: 'right' });
+  }
+
   doc.fillColor('#000000');
-  doc.y = 110;
+  doc.y = bandHeight + 24;
 }
 
-function footer(doc) {
+function footer(doc, company) {
   const range = doc.bufferedPageRange();
-  for (let i = range.start; i < range.start + range.count; i++) {
+  const total = range.count;
+  for (let i = range.start; i < range.start + total; i++) {
     doc.switchToPage(i);
-    doc.fontSize(8).fillColor(GRAY).text(
-      `Generated ${new Date().toISOString().slice(0, 19).replace('T', ' ')} — Al Fahad Group Financial System`,
-      40, doc.page.height - 40, { align: 'center', width: doc.page.width - 80 }
+    const w = doc.page.width;
+    // Text drawn at/beyond the page's bottom margin boundary makes PDFKit
+    // silently auto-append a new page (continueOnNewPage) — keep everything
+    // safely above `page.height - margins.bottom`.
+    const maxY = doc.page.height - doc.page.margins.bottom;
+    const lineY = maxY - 22;
+    const textY = maxY - 14;
+    doc.moveTo(40, lineY).lineTo(w - 40, lineY).lineWidth(0.5).strokeColor(BORDER).stroke();
+    doc.fontSize(8).fillColor(GRAY).font('Helvetica');
+    doc.text(company?.name_en || 'Al Fahad Group', 40, textY, { width: 200, align: 'left', lineBreak: false });
+    doc.text(
+      `Generated ${new Date().toISOString().slice(0, 19).replace('T', ' ')} UTC`,
+      40, textY, { width: w - 80, align: 'center', lineBreak: false }
     );
+    doc.text(`Page ${i - range.start + 1} of ${total}`, 40, textY, { width: w - 80, align: 'right', lineBreak: false });
   }
+}
+
+function statusBadge(doc, status, x, y) {
+  if (!status) return;
+  const key = String(status).toLowerCase();
+  const [bg, fg] = STATUS_COLORS[key] || ['#f1f5f9', GRAY];
+  const label = String(status).toUpperCase().replace(/_/g, ' ');
+  doc.font('Helvetica-Bold').fontSize(8.5);
+  const w = doc.widthOfString(label) + 16;
+  doc.roundedRect(x, y, w, 16, 8).fill(bg);
+  doc.fillColor(fg).text(label, x, y + 4, { width: w, align: 'center' });
+  doc.fillColor(TEXT_DARK);
+  return w;
+}
+
+// A bordered "meta info" card showing label/value pairs in a 2-column grid —
+// used for the document summary block under the header (status, dates, refs).
+function metaCard(doc, items, opts = {}) {
+  const startX = opts.x ?? 40;
+  const width = opts.width ?? doc.page.width - 80;
+  const colWidth = width / 2;
+  const rowHeight = 34;
+  const rows = Math.ceil(items.length / 2);
+  const cardHeight = rows * rowHeight + 14;
+  const y0 = doc.y;
+
+  doc.roundedRect(startX, y0, width, cardHeight, 6).fillAndStroke('#fafbfd', BORDER);
+
+  items.forEach((item, idx) => {
+    const col = idx % 2;
+    const row = Math.floor(idx / 2);
+    const cx = startX + 14 + col * colWidth;
+    const labelY = y0 + 9 + row * rowHeight;
+    const valueY = labelY + 12;
+    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(GRAY)
+      .text(item.label.toUpperCase(), cx, labelY, { width: colWidth - 28, lineBreak: false });
+    if (item.badge) {
+      statusBadge(doc, item.value, cx, valueY - 2);
+    } else {
+      drawBidi(doc, item.value ?? '-', cx, valueY, { fontSize: 9.5, color: TEXT_DARK, bold: true, width: colWidth - 28 });
+    }
+  });
+
+  doc.y = y0 + cardHeight + 18;
 }
 
 function table(doc, { headers, rows, colWidths, startX = 40 }) {
-  const rowHeight = 22;
-  let y = doc.y + 10;
+  const rowHeight = 24;
+  const totalWidth = colWidths.reduce((a, b) => a + b, 0);
+  let y = doc.y;
 
-  doc.font('Helvetica-Bold').fontSize(9).fillColor('#ffffff');
-  doc.rect(startX, y, colWidths.reduce((a, b) => a + b, 0), rowHeight).fill(NAVY);
+  doc.roundedRect(startX, y, totalWidth, rowHeight, 4).fill(NAVY);
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#ffffff');
   let x = startX;
   headers.forEach((h, i) => {
-    doc.fillColor('#ffffff').text(h.label, x + 6, y + 6, { width: colWidths[i] - 12, align: h.align || 'left' });
+    doc.text(h.label.toUpperCase(), x + 8, y + 8, { width: colWidths[i] - 16, align: h.align || 'left', lineBreak: false });
     x += colWidths[i];
   });
   y += rowHeight;
 
+  if (rows.length === 0) {
+    doc.rect(startX, y, totalWidth, rowHeight).fill(ROW_ALT);
+    doc.font('Helvetica').fontSize(9).fillColor(GRAY)
+      .text('No records', startX + 8, y + 7, { width: totalWidth - 16, align: 'center', lineBreak: false });
+    doc.moveTo(startX, y + rowHeight).lineTo(startX + totalWidth, y + rowHeight).lineWidth(0.5).strokeColor(BORDER).stroke();
+    y += rowHeight;
+  }
+
   doc.font('Helvetica').fontSize(9);
   rows.forEach((row, rIdx) => {
-    if (y > doc.page.height - 80) { doc.addPage(); y = 40; }
-    if (rIdx % 2 === 0) doc.rect(startX, y, colWidths.reduce((a, b) => a + b, 0), rowHeight).fill('#f8fafc');
+    if (y > doc.page.height - 90) {
+      doc.addPage();
+      y = 40;
+    }
+    if (rIdx % 2 === 1) doc.rect(startX, y, totalWidth, rowHeight).fill(ROW_ALT);
     x = startX;
     row.forEach((cell, i) => {
-      doc.fillColor('#1e293b').text(String(cell ?? ''), x + 6, y + 6, { width: colWidths[i] - 12, align: headers[i]?.align || 'left' });
+      drawBidi(doc, cell ?? '-', x + 8, y + 7, { fontSize: 9, color: TEXT_DARK, width: colWidths[i] - 16, align: headers[i]?.align || 'left' });
       x += colWidths[i];
     });
+    doc.moveTo(startX, y + rowHeight).lineTo(startX + totalWidth, y + rowHeight).lineWidth(0.5).strokeColor(BORDER).stroke();
     y += rowHeight;
   });
-  doc.y = y + 10;
+
+  doc.y = y + 14;
 }
 
+// Right-aligned bordered box used for grand totals / net figures.
+function totalsBox(doc, lines, opts = {}) {
+  const width = opts.width ?? 240;
+  const startX = doc.page.width - 40 - width;
+  const rowH = 20;
+  const y0 = doc.y + 4;
+  const height = lines.length * rowH + 14;
+
+  doc.roundedRect(startX, y0, width, height, 6).fillAndStroke('#fafbfd', BORDER);
+  lines.forEach((line, i) => {
+    const ly = y0 + 8 + i * rowH;
+    const isLast = i === lines.length - 1;
+    doc.font(isLast ? 'Helvetica-Bold' : 'Helvetica').fontSize(isLast ? 11 : 9.5)
+      .fillColor(line.color || (isLast ? NAVY : TEXT_DARK));
+    doc.text(line.label, startX + 12, ly, { width: width - 100, align: 'left' });
+    doc.text(line.value, startX + 12, ly, { width: width - 24, align: 'right' });
+  });
+  doc.y = y0 + height + 10;
+}
+
+function sectionTitle(doc, text) {
+  doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text(text, 40, doc.y);
+  doc.moveTo(40, doc.y + 2).lineTo(40 + doc.widthOfString(text) + 6, doc.y + 2).lineWidth(1.5).strokeColor(GOLD).stroke();
+  doc.moveDown(0.6);
+}
+
+// ---------------------------------------------------------------------------
+// Documents
+// ---------------------------------------------------------------------------
 function generateVoucherPdf(res, voucher, company) {
   const doc = newDoc(res, `${voucher.voucher_no}.pdf`);
-  header(doc, company, voucher.voucher_no, `${voucher.voucher_type.toUpperCase()} VOUCHER · ${voucher.date}`);
+  header(doc, company, voucher.voucher_no, `${voucher.voucher_type.toUpperCase()} VOUCHER`);
 
-  doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
-  doc.text(`Status: ${voucher.status.toUpperCase()}`, 40, 120);
-  doc.text(`Description: ${voucher.description || '-'}`, 40, 138);
+  metaCard(doc, [
+    { label: 'Status', value: voucher.status, badge: true },
+    { label: 'Date', value: voucher.date },
+    { label: 'Description', value: voucher.description || '-' },
+    { label: 'Currency', value: voucher.currency },
+  ]);
 
-  doc.y = 165;
   table(doc, {
     headers: [
       { label: 'Account' }, { label: 'Cost Center' }, { label: 'Description' },
@@ -106,40 +364,45 @@ function generateVoucherPdf(res, voucher, company) {
     ]),
   });
 
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY)
-    .text(`Total: ${Number(voucher.total_debit).toFixed(3)} ${voucher.currency}`, 40, doc.y + 5, { align: 'right', width: doc.page.width - 80 });
+  totalsBox(doc, [
+    { label: 'Total Debit', value: `${Number(voucher.total_debit).toFixed(3)} ${voucher.currency}` },
+    { label: 'Total Credit', value: `${Number(voucher.total_credit ?? voucher.total_debit).toFixed(3)} ${voucher.currency}`, color: NAVY },
+  ]);
 
-  footer(doc);
+  footer(doc, company);
   doc.end();
 }
 
 function generateProfitAndLossPdf(res, data, company) {
   const doc = newDoc(res, `profit-and-loss-${data.period.from}-to-${data.period.to}.pdf`);
-  header(doc, company, 'Profit & Loss Statement', `${data.period.from} to ${data.period.to}`);
+  header(doc, company, 'Profit & Loss', `Statement period ${data.period.from} to ${data.period.to}`);
 
-  doc.y = 120;
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text('Revenue');
+  metaCard(doc, [
+    { label: 'From', value: data.period.from },
+    { label: 'To', value: data.period.to },
+  ]);
+
+  sectionTitle(doc, 'Revenue');
   table(doc, {
     headers: [{ label: 'Account' }, { label: 'Amount', align: 'right' }],
     colWidths: [380, 100],
     rows: data.revenue.map((r) => [`${r.code} - ${r.name_en}`, r.amount.toFixed(3)]),
   });
-  doc.font('Helvetica-Bold').fontSize(10).text(`Total Revenue: ${data.total_revenue.toFixed(3)}`, { align: 'right' });
 
-  doc.moveDown(1);
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text('Expenses');
+  sectionTitle(doc, 'Expenses');
   table(doc, {
     headers: [{ label: 'Account' }, { label: 'Amount', align: 'right' }],
     colWidths: [380, 100],
     rows: data.expense.map((r) => [`${r.code} - ${r.name_en}`, r.amount.toFixed(3)]),
   });
-  doc.font('Helvetica-Bold').fontSize(10).text(`Total Expenses: ${data.total_expense.toFixed(3)}`, { align: 'right' });
 
-  doc.moveDown(1.5);
-  doc.font('Helvetica-Bold').fontSize(13).fillColor(data.net_profit >= 0 ? '#059669' : '#dc2626')
-    .text(`Net Profit: ${data.net_profit.toFixed(3)}`, { align: 'right' });
+  totalsBox(doc, [
+    { label: 'Total Revenue', value: data.total_revenue.toFixed(3) },
+    { label: 'Total Expenses', value: data.total_expense.toFixed(3) },
+    { label: 'Net Profit', value: data.net_profit.toFixed(3), color: data.net_profit >= 0 ? SUCCESS : DANGER },
+  ], { width: 260 });
 
-  footer(doc);
+  footer(doc, company);
   doc.end();
 }
 
@@ -147,38 +410,40 @@ function generateBalanceSheetPdf(res, data, company) {
   const doc = newDoc(res, `balance-sheet-${data.as_of}.pdf`);
   header(doc, company, 'Balance Sheet', `As of ${data.as_of}`);
 
-  doc.y = 120;
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text('Assets');
+  metaCard(doc, [
+    { label: 'As of', value: data.as_of },
+    { label: 'Status', value: data.is_balanced ? 'Balanced' : 'Out of Balance', badge: true },
+  ]);
+
+  sectionTitle(doc, 'Assets');
   table(doc, {
     headers: [{ label: 'Account' }, { label: 'Amount', align: 'right' }],
     colWidths: [380, 100],
     rows: data.assets.map((r) => [`${r.code} - ${r.name_en}`, r.amount.toFixed(3)]),
   });
-  doc.font('Helvetica-Bold').fontSize(10).text(`Total Assets: ${data.total_assets.toFixed(3)}`, { align: 'right' });
+  totalsBox(doc, [{ label: 'Total Assets', value: data.total_assets.toFixed(3) }], { width: 220 });
 
-  doc.moveDown(1);
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text('Liabilities');
+  sectionTitle(doc, 'Liabilities');
   table(doc, {
     headers: [{ label: 'Account' }, { label: 'Amount', align: 'right' }],
     colWidths: [380, 100],
     rows: data.liabilities.map((r) => [`${r.code} - ${r.name_en}`, r.amount.toFixed(3)]),
   });
-  doc.font('Helvetica-Bold').fontSize(10).text(`Total Liabilities: ${data.total_liabilities.toFixed(3)}`, { align: 'right' });
+  totalsBox(doc, [{ label: 'Total Liabilities', value: data.total_liabilities.toFixed(3) }], { width: 220 });
 
-  doc.moveDown(1);
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text('Equity');
+  sectionTitle(doc, 'Equity');
   table(doc, {
     headers: [{ label: 'Account' }, { label: 'Amount', align: 'right' }],
     colWidths: [380, 100],
     rows: [...data.equity.map((r) => [`${r.code} - ${r.name_en}`, r.amount.toFixed(3)]), ['Retained Earnings', data.retained_earnings.toFixed(3)]],
   });
-  doc.font('Helvetica-Bold').fontSize(10).text(`Total Equity: ${data.total_equity.toFixed(3)}`, { align: 'right' });
 
-  doc.moveDown(1.5);
-  doc.font('Helvetica-Bold').fontSize(12).fillColor(data.is_balanced ? '#059669' : '#dc2626')
-    .text(data.is_balanced ? 'Balanced' : 'Out of balance — review entries', { align: 'right' });
+  totalsBox(doc, [
+    { label: 'Total Equity', value: data.total_equity.toFixed(3) },
+    { label: data.is_balanced ? 'Balanced' : 'Out of Balance', value: '', color: data.is_balanced ? SUCCESS : DANGER },
+  ], { width: 260 });
 
-  footer(doc);
+  footer(doc, company);
   doc.end();
 }
 
@@ -186,7 +451,8 @@ function generateTrialBalancePdf(res, rows, asOf, company) {
   const doc = newDoc(res, `trial-balance${asOf ? '-' + asOf : ''}.pdf`);
   header(doc, company, 'Trial Balance', asOf ? `As of ${asOf}` : 'All dates');
 
-  doc.y = 120;
+  metaCard(doc, [{ label: 'As of', value: asOf || 'All dates' }, { label: 'Accounts', value: String(rows.length) }]);
+
   const totalDebit = rows.reduce((s, r) => s + Number(r.debit), 0);
   const totalCredit = rows.reduce((s, r) => s + Number(r.credit), 0);
 
@@ -196,10 +462,12 @@ function generateTrialBalancePdf(res, rows, asOf, company) {
     rows: rows.map((r) => [r.account?.code, r.account?.name_en, Number(r.debit).toFixed(3), Number(r.credit).toFixed(3)]),
   });
 
-  doc.font('Helvetica-Bold').fontSize(10).fillColor('#1e293b')
-    .text(`Totals:   Debit ${totalDebit.toFixed(3)}    Credit ${totalCredit.toFixed(3)}`, { align: 'right' });
+  totalsBox(doc, [
+    { label: 'Total Debit', value: totalDebit.toFixed(3) },
+    { label: 'Total Credit', value: totalCredit.toFixed(3), color: NAVY },
+  ]);
 
-  footer(doc);
+  footer(doc, company);
   doc.end();
 }
 
@@ -208,13 +476,13 @@ function generateInvoicePdf(res, invoice, company) {
   const partyName = invoice.type === 'sales' ? invoice.client?.name_en : invoice.supplier?.name_en;
   header(doc, company, invoice.invoice_no, `${invoice.type === 'sales' ? 'SALES INVOICE' : 'PURCHASE BILL'} · ${invoice.date}`);
 
-  doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
-  doc.text(`${invoice.type === 'sales' ? 'Bill To' : 'Vendor'}: ${partyName || '-'}`, 40, 120);
-  doc.text(`Status: ${invoice.status.toUpperCase().replace('_', ' ')}`, 40, 138);
-  doc.text(`Due Date: ${invoice.due_date || '-'}`, 40, 156);
-  if (invoice.reference_no) doc.text(`Reference: ${invoice.reference_no}`, 300, 120);
+  metaCard(doc, [
+    { label: invoice.type === 'sales' ? 'Bill To' : 'Vendor', value: partyName || '-' },
+    { label: 'Status', value: invoice.status, badge: true },
+    { label: 'Due Date', value: invoice.due_date || '-' },
+    { label: 'Reference', value: invoice.reference_no || '-' },
+  ]);
 
-  doc.y = 185;
   table(doc, {
     headers: [
       { label: 'Description' }, { label: 'Qty', align: 'right' }, { label: 'Unit Price', align: 'right' },
@@ -230,21 +498,21 @@ function generateInvoicePdf(res, invoice, company) {
     ]),
   });
 
-  doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
-  doc.text(`Subtotal: ${Number(invoice.subtotal).toFixed(3)}`, { align: 'right' });
-  doc.text(`Tax: ${Number(invoice.tax_total).toFixed(3)}`, { align: 'right' });
-  doc.font('Helvetica-Bold').fontSize(12).fillColor(NAVY).text(`Total: ${Number(invoice.total).toFixed(3)} ${invoice.currency}`, { align: 'right' });
-  doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
-  doc.text(`Paid: ${Number(invoice.paid_total).toFixed(3)}`, { align: 'right' });
-  doc.font('Helvetica-Bold').fillColor(Number(invoice.total) - Number(invoice.paid_total) > 0.001 ? '#dc2626' : '#059669')
-    .text(`Balance Due: ${(Number(invoice.total) - Number(invoice.paid_total)).toFixed(3)}`, { align: 'right' });
+  const balanceDue = Number(invoice.total) - Number(invoice.paid_total);
+  totalsBox(doc, [
+    { label: 'Subtotal', value: Number(invoice.subtotal).toFixed(3) },
+    { label: 'Tax', value: Number(invoice.tax_total).toFixed(3) },
+    { label: 'Total', value: `${Number(invoice.total).toFixed(3)} ${invoice.currency}` },
+    { label: 'Paid', value: Number(invoice.paid_total).toFixed(3) },
+    { label: 'Balance Due', value: balanceDue.toFixed(3), color: balanceDue > 0.001 ? DANGER : SUCCESS },
+  ], { width: 260 });
 
   if (invoice.notes) {
+    drawBidi(doc, `Notes: ${invoice.notes}`, 40, doc.y, { fontSize: 9, color: GRAY, width: doc.page.width - 80 });
     doc.moveDown(1);
-    doc.font('Helvetica').fontSize(9).fillColor('#64748b').text(`Notes: ${invoice.notes}`);
   }
 
-  footer(doc);
+  footer(doc, company);
   doc.end();
 }
 
@@ -253,7 +521,11 @@ function generateAgingPdf(res, aging, company) {
   const doc = newDoc(res, `${aging.type}-aging-${aging.as_of}.pdf`);
   header(doc, company, label, `As of ${aging.as_of}`);
 
-  doc.y = 120;
+  metaCard(doc, [
+    { label: 'As of', value: aging.as_of },
+    { label: 'Total Outstanding', value: aging.total_outstanding.toFixed(3) },
+  ]);
+
   table(doc, {
     headers: [
       { label: 'Invoice' }, { label: aging.type === 'sales' ? 'Client' : 'Supplier' }, { label: 'Due Date' },
@@ -263,14 +535,13 @@ function generateAgingPdf(res, aging, company) {
     rows: aging.rows.map((r) => [r.invoice_no, r.party || '-', r.due_date || '-', r.outstanding.toFixed(3), String(r.days_overdue), r.bucket]),
   });
 
-  doc.moveDown(1);
-  doc.font('Helvetica-Bold').fontSize(10).fillColor(NAVY).text('Summary by Age Bucket');
-  Object.entries(aging.buckets).forEach(([bucket, amount]) => {
-    doc.font('Helvetica').fontSize(9).fillColor('#1e293b').text(`${bucket}: ${amount.toFixed(3)}`);
-  });
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text(`Total Outstanding: ${aging.total_outstanding.toFixed(3)}`, { align: 'right' });
+  sectionTitle(doc, 'Summary by Age Bucket');
+  totalsBox(doc, [
+    ...Object.entries(aging.buckets).map(([bucket, amount]) => ({ label: bucket, value: amount.toFixed(3) })),
+    { label: 'Total Outstanding', value: aging.total_outstanding.toFixed(3), color: NAVY },
+  ], { width: 260 });
 
-  footer(doc);
+  footer(doc, company);
   doc.end();
 }
 
