@@ -1,3 +1,61 @@
-const { Employee, Vehicle } = require('../models');
+const { sequelize, Employee, Vehicle, Account } = require('../models');
 const crudFactory = require('../utils/crudFactory');
-module.exports = crudFactory(Employee, { include: [{ model: Vehicle, as: 'assignedVehicles' }], searchFields: ['name_en', 'name_ar', 'code', 'phone', 'email', 'position'] });
+const { createLinkedAccount, syncLinkedAccount } = require('../utils/linkedAccount');
+
+const include = [{ model: Vehicle, as: 'assignedVehicles' }, { model: Account, as: 'account' }];
+const base = crudFactory(Employee, { include, searchFields: ['name_en', 'name_ar', 'code', 'phone', 'email', 'position'] });
+
+exports.list = base.list;
+exports.get = base.get;
+exports.remove = base.remove;
+
+// Employee codes are always system-generated (EMP-00001, EMP-00002, ...) so there's
+// never a manual numbering scheme to get wrong or collide on.
+async function nextEmployeeCode(companyId) {
+  const count = await Employee.count({ where: { company_id: companyId } });
+  return `EMP-${String(count + 1).padStart(5, '0')}`;
+}
+
+// Creating an employee can optionally auto-create its ledger sub-account nested directly
+// under a chosen control account (e.g. a "Staff Advances/Payroll" group), using the
+// employee's auto-generated code — same pattern as Clients/Suppliers/Vehicles.
+exports.create = async (req, res) => {
+  const { parent_account_id, code, ...body } = req.body; // client-supplied code is ignored; always auto-generated
+  const created = await sequelize.transaction(async (t) => {
+    const finalCode = await nextEmployeeCode(req.companyId);
+    let account_id = null;
+    if (parent_account_id) {
+      const account = await createLinkedAccount({
+        companyId: req.companyId, parentAccountId: parent_account_id,
+        code: finalCode, name_en: body.name_en, name_ar: body.name_ar, opening_balance: 0,
+      }, t);
+      account_id = account.id;
+    }
+    return Employee.create({ ...body, code: finalCode, account_id, company_id: req.companyId }, { transaction: t });
+  });
+  const withAccount = await Employee.findOne({ where: { id: created.id }, include });
+  res.status(201).json(withAccount);
+};
+
+exports.update = async (req, res) => {
+  const { parent_account_id, code, ...body } = req.body; // code is immutable after creation
+  const employee = await Employee.findOne({ where: { id: req.params.id, company_id: req.companyId } });
+  if (!employee) return res.status(404).json({ message: 'Employee not found' });
+
+  await sequelize.transaction(async (t) => {
+    let account_id = employee.account_id;
+    if (!account_id && parent_account_id) {
+      const account = await createLinkedAccount({
+        companyId: req.companyId, parentAccountId: parent_account_id,
+        code: employee.code, name_en: body.name_en, name_ar: body.name_ar, opening_balance: 0,
+      }, t);
+      account_id = account.id;
+    } else if (account_id) {
+      await syncLinkedAccount(account_id, { name_en: body.name_en, name_ar: body.name_ar, parent_id: parent_account_id }, t);
+    }
+    await employee.update({ ...body, account_id }, { transaction: t });
+  });
+
+  const updated = await Employee.findOne({ where: { id: employee.id }, include });
+  res.json(updated);
+};

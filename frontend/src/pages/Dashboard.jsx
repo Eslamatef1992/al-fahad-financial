@@ -49,7 +49,7 @@ export default function Dashboard() {
       <PageHeader title={t('nav.dashboard')} subtitle={activeCompany ? (activeCompany.name_en) : ''} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard label={t('nav.profitAndLoss')} value={pnl ? pnl.net_profit.toFixed(3) : '—'} icon={pnl?.net_profit >= 0 ? TrendingUp : TrendingDown} tone={pnl?.net_profit >= 0 ? 'green' : 'red'} delay={0} />
+        <StatCard label={t('nav.profitAndLoss')} value={typeof pnl?.net_profit === 'number' ? pnl.net_profit.toFixed(3) : '—'} icon={pnl?.net_profit >= 0 ? TrendingUp : TrendingDown} tone={pnl?.net_profit >= 0 ? 'green' : 'red'} delay={0} />
         <StatCard label={t('nav.clients')} value={counts.clients} icon={Users} tone="navy" delay={0.05} />
         <StatCard label={t('nav.vehicles')} value={counts.vehicles} icon={Truck} tone="gold" delay={0.1} />
         <StatCard label={t('nav.vouchers')} value={counts.vouchers} icon={Receipt} tone="navy" delay={0.15} />
@@ -59,26 +59,30 @@ export default function Dashboard() {
         <h3 className="font-bold text-navy-900 dark:text-white mb-4 flex items-center gap-2">
           <Wallet size={18} className="text-gold-500" /> Voucher Activity (last 6 months)
         </h3>
-        <ResponsiveContainer width="100%" height={280}>
-          <AreaChart data={trend}>
-            <defs>
-              <linearGradient id="debitColor" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#2a3c68" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#2a3c68" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="creditColor" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#c9a227" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#c9a227" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-            <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
-            <Area type="monotone" dataKey="debit" stroke="#2a3c68" fill="url(#debitColor)" strokeWidth={2} />
-            <Area type="monotone" dataKey="credit" stroke="#c9a227" fill="url(#creditColor)" strokeWidth={2} />
-          </AreaChart>
-        </ResponsiveContainer>
+        {trend.length > 0 ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={trend}>
+              <defs>
+                <linearGradient id="debitColor" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#2a3c68" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#2a3c68" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="creditColor" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#c9a227" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#c9a227" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Area type="monotone" dataKey="debit" stroke="#2a3c68" fill="url(#debitColor)" strokeWidth={2} />
+              <Area type="monotone" dataKey="credit" stroke="#c9a227" fill="url(#creditColor)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-center text-slate-400 py-16">{t('common.noData')}</p>
+        )}
       </div>
     </div>
   );

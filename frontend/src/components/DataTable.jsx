@@ -8,9 +8,12 @@ export default function DataTable({ columns, data, loading, onEdit, onDelete, on
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
-    if (!query) return data;
+    // `data` can transiently be non-array (e.g. an in-flight request state, or an
+    // API error payload that isn't the expected list) — never let that reach .map().
+    const safeData = Array.isArray(data) ? data : [];
+    if (!query) return safeData;
     const needle = query.toLowerCase();
-    return data.filter((row) =>
+    return safeData.filter((row) =>
       columns.some((c) => String(c.accessor ? c.accessor(row) : row[c.key] ?? '').toLowerCase().includes(needle))
     );
   }, [data, query, columns]);

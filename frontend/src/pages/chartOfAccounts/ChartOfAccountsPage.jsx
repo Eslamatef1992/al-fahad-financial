@@ -74,7 +74,7 @@ export default function ChartOfAccountsPage() {
       <div className="card p-3">
         {loading ? (
           <p className="text-center text-slate-400 py-10">{t('common.loading')}</p>
-        ) : tree.length === 0 ? (
+        ) : !Array.isArray(tree) || tree.length === 0 ? (
           <p className="text-center text-slate-400 py-10">{t('common.noData')}</p>
         ) : (
           tree.map((node) => (

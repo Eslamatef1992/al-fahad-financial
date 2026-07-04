@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus } from 'lucide-react';
+import { Plus, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '@/api/client';
+import api, { fileUrl } from '@/api/client';
 import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
@@ -19,6 +19,7 @@ export default function CompaniesPage() {
   const [open, setOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -33,22 +34,50 @@ export default function CompaniesPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      if (editing) await api.put(`/companies/${editing.id}`, form);
-      else await api.post('/companies', form);
+      if (editing) {
+        const { data } = await api.put(`/companies/${editing.id}`, form);
+        setEditing(data);
+      } else {
+        const { data } = await api.post('/companies', form);
+        // Keep the panel open, switched into edit mode, so the logo can be uploaded
+        // right away instead of forcing a second trip back into this company later.
+        setEditing(data);
+        setForm(data);
+      }
       toast.success(t('common.save'));
-      setOpen(false);
       load();
     } finally { setSaving(false); }
   };
 
+  const uploadLogo = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !editing) return;
+    setUploadingLogo(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const { data } = await api.post(`/companies/${editing.id}/logo`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setEditing(data);
+      setForm(data);
+      toast.success('Logo updated — it will now appear on invoices, vouchers, and reports for this company');
+      load();
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
+  };
+
   const remove = async () => {
     await api.delete(`/companies/${toDelete.id}`);
-    toast.success('Deactivated');
+    toast.success(t('common.deactivated'));
     setToDelete(null);
     load();
   };
 
   const columns = [
+    { key: 'logo_url', label: 'Logo', render: (r) => r.logo_url ? (
+      <img src={fileUrl(r.logo_url)} alt="" className="w-8 h-8 rounded-lg object-cover" />
+    ) : <span className="text-slate-300">—</span> },
     { key: 'code', label: t('common.code') },
     { key: 'name_en', label: t('common.nameEn') },
     { key: 'name_ar', label: t('common.nameAr') },
@@ -73,6 +102,25 @@ export default function CompaniesPage() {
         <div><label className="label">{t('common.nameAr')}</label><input required dir="rtl" className="input" value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} /></div>
         <div><label className="label">Industry</label><input className="input" value={form.industry || ''} onChange={(e) => setForm({ ...form, industry: e.target.value })} /></div>
         <div><label className="label">Base Currency</label><input className="input" value={form.base_currency || 'KWD'} onChange={(e) => setForm({ ...form, base_currency: e.target.value })} /></div>
+
+        <div className="pt-2 border-t border-slate-100 dark:border-navy-800">
+          <label className="label">Logo</label>
+          {editing ? (
+            <div className="flex items-center gap-3">
+              {form.logo_url ? (
+                <img src={fileUrl(form.logo_url)} alt="" className="w-14 h-14 rounded-xl object-cover border border-slate-200 dark:border-navy-700" />
+              ) : (
+                <div className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-navy-800 flex items-center justify-center text-slate-400 text-xs">None</div>
+              )}
+              <label className="btn-ghost cursor-pointer !py-1.5">
+                <Upload size={14} /> {uploadingLogo ? 'Uploading...' : (form.logo_url ? 'Replace' : 'Upload')}
+                <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" className="hidden" disabled={uploadingLogo} onChange={uploadLogo} />
+              </label>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400">Save the company first, then upload its logo — it will appear on that company's invoices, vouchers, and reports.</p>
+          )}
+        </div>
       </SlideOver>
 
       <ConfirmDialog open={!!toDelete} onCancel={() => setToDelete(null)} onConfirm={remove} />

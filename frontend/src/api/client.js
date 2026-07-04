@@ -14,7 +14,23 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // The Render backend can occasionally answer a request with an HTML page instead
+    // of JSON — e.g. its own error page, a proxy timeout page, or (on the free tier)
+    // a "waking up" holding page served while the server cold-starts after idling.
+    // Axios only auto-parses JSON when the content-type says so, so in that case
+    // res.data comes through as a raw HTML string. Pages then call .map()/.filter()
+    // on that string assuming it's the array they asked for, which crashes the whole
+    // page. Treat that case as a failed request instead of a successful one, so
+    // pages keep whatever safe default state they already had and the user gets a
+    // clear "please retry" toast instead of a blank screen.
+    if (typeof res.data === 'string' && res.data.trim().startsWith('<')) {
+      const fakeErr = new Error('The server returned an unexpected response (it may still be starting up). Please try again in a few seconds.');
+      fakeErr.isHtmlResponse = true;
+      return Promise.reject(fakeErr);
+    }
+    return res;
+  },
   (err) => {
     const message = err.response?.data?.message || err.message || 'Request failed';
     if (err.response?.status === 401) {

@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const PDFDocument = require('pdfkit');
 
 const NAVY = '#1f2d4e';
@@ -12,10 +14,29 @@ function newDoc(res, filename) {
   return doc;
 }
 
+// Resolves a company's stored logo_url (e.g. /uploads/<companyId>/logo/foo.png) to the
+// actual file on disk, so it can be stamped directly into generated PDFs. Returns null
+// if there's no logo or the file is missing, so callers can fall back to text-only.
+function resolveLogoPath(company) {
+  if (!company?.logo_url) return null;
+  const filePath = path.join(__dirname, '..', company.logo_url.replace(/^\/uploads\//, 'uploads/'));
+  return fs.existsSync(filePath) ? filePath : null;
+}
+
 function header(doc, company, title, subtitle) {
   doc.rect(0, 0, doc.page.width, 90).fill(NAVY);
-  doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold').text(company?.name_en || 'Al Fahad Group', 40, 28);
-  doc.fontSize(10).font('Helvetica').fillColor(GOLD).text(company?.name_ar || '', 40, 50, { align: 'left' });
+
+  const logoPath = resolveLogoPath(company);
+  let textStartX = 40;
+  if (logoPath) {
+    try {
+      doc.image(logoPath, 40, 20, { fit: [50, 50] });
+      textStartX = 100;
+    } catch (e) { /* corrupt/unsupported image — fall back to text-only header */ }
+  }
+
+  doc.fillColor('#ffffff').fontSize(18).font('Helvetica-Bold').text(company?.name_en || 'Al Fahad Group', textStartX, 28);
+  doc.fontSize(10).font('Helvetica').fillColor(GOLD).text(company?.name_ar || '', textStartX, 50, { align: 'left' });
   doc.fontSize(14).font('Helvetica-Bold').fillColor('#ffffff').text(title, 40, 28, { align: 'right', width: doc.page.width - 80 });
   if (subtitle) doc.fontSize(10).font('Helvetica').fillColor('#d7deec').text(subtitle, 40, 50, { align: 'right', width: doc.page.width - 80 });
   doc.moveDown(4);

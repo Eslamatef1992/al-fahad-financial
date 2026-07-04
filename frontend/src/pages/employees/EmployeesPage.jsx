@@ -8,11 +8,13 @@ import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import AccountPicker from '@/components/AccountPicker';
 import usePermissions from '@/hooks/usePermissions';
 
 const empty = {
-  code: '', name_en: '', name_ar: '', national_id: '', nationality: '', phone: '', email: '',
+  name_en: '', name_ar: '', national_id: '', nationality: '', phone: '', email: '',
   position: '', department: '', hire_date: '', salary: 0, is_driver: false, license_no: '', license_type: '', license_expiry: '',
+  parent_account_id: null,
 };
 
 export default function EmployeesPage() {
@@ -31,7 +33,7 @@ export default function EmployeesPage() {
   useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
 
   const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
-  const openEdit = (row) => { setEditing(row); setForm({ ...empty, ...row }); setOpen(true); };
+  const openEdit = (row) => { setEditing(row); setForm({ ...empty, ...row, parent_account_id: row.account?.parent_id || null }); setOpen(true); };
 
   const submit = async (e) => {
     e.preventDefault(); setSaving(true);
@@ -49,6 +51,7 @@ export default function EmployeesPage() {
     { key: 'position', label: 'Position' },
     { key: 'department', label: 'Department' },
     { key: 'phone', label: t('common.phone') },
+    { key: 'account', label: t('accounts.parentAccount'), render: (r) => r.account ? `${r.account.code} - ${r.account.name_en}` : '—' },
     { key: 'is_driver', label: 'Driver', render: (r) => r.is_driver ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gold-100 text-gold-700">Driver</span> : '—' },
   ];
 
@@ -58,7 +61,10 @@ export default function EmployeesPage() {
       <DataTable columns={columns} data={items} loading={loading} onEdit={canCreateEdit ? openEdit : undefined} onDelete={canDelete ? setToDelete : undefined} />
       <SlideOver open={open} onClose={() => setOpen(false)} title={editing ? t('common.edit') : t('common.add')} onSubmit={submit} submitting={saving} wide>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className="label">{t('common.code')}</label><input required className="input" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></div>
+          <div>
+            <label className="label">{t('common.code')}</label>
+            <input disabled className="input opacity-60" value={editing ? form.code : 'Auto-generated on save'} />
+          </div>
           <div><label className="label">National ID</label><input className="input" value={form.national_id || ''} onChange={(e) => setForm({ ...form, national_id: e.target.value })} /></div>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -90,6 +96,8 @@ export default function EmployeesPage() {
             <div><label className="label">License Expiry</label><input type="date" className="input" value={form.license_expiry || ''} onChange={(e) => setForm({ ...form, license_expiry: e.target.value })} /></div>
           </div>
         )}
+
+        <AccountPicker value={form.parent_account_id} onChange={(v) => setForm({ ...form, parent_account_id: v })} />
       </SlideOver>
       <ConfirmDialog open={!!toDelete} onCancel={() => setToDelete(null)} onConfirm={remove} />
     </div>
