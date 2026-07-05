@@ -16,6 +16,7 @@ const empty = {
   vehicle_type: '', ownership_type: 'owned', registration_no: '', registration_expiry: '',
   insurance_company: '', insurance_policy_no: '', insurance_type: '', insurance_expiry: '',
   purchase_date: '', purchase_cost: 0, fuel_type: '', current_odometer: 0, status: 'active', notes: '', parent_account_id: null,
+  secondary_parent_account_id: null,
 };
 
 export default function VehiclesPage() {
@@ -62,6 +63,7 @@ export default function VehiclesPage() {
     { key: 'vehicle_type', label: t('vehicles.vehicleType') },
     { key: 'driver', label: t('vehicles.driver'), render: (r) => r.driver ? r.driver.name_en : <span className="text-slate-400">{t('vehicles.unassigned')}</span> },
     { key: 'account', label: t('accounts.parentAccount'), render: (r) => r.account ? `${r.account.code} - ${r.account.name_en}` : '—' },
+    { key: 'secondaryAccount', label: t('vehicles.secondaryAccount'), render: (r) => r.secondaryAccount ? `${r.secondaryAccount.code} - ${r.secondaryAccount.name_en}` : '—' },
     { key: 'status', label: t('common.status'), render: (r) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${statusColor[r.status]}`}>{statusLabel[r.status]}</span> },
   ];
 
@@ -129,6 +131,11 @@ export default function VehiclesPage() {
         </div>
         <div><label className="label">{t('common.notes')}</label><textarea className="input" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
         <AccountPicker value={form.parent_account_id} onChange={(v) => setForm({ ...form, parent_account_id: v })} />
+        <AccountPicker
+          value={form.secondary_parent_account_id}
+          onChange={(v) => setForm({ ...form, secondary_parent_account_id: v })}
+          label={t('vehicles.secondaryParentAccount')}
+        />
         <p className="text-xs text-slate-400">{t('vehicles.assignNote')}</p>
       </SlideOver>
     </div>

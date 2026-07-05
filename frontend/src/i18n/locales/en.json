@@ -131,7 +131,9 @@
     "purchaseDate": "Purchase Date",
     "purchaseCost": "Purchase Cost",
     "odometer": "Odometer",
-    "assignNote": "You can assign a driver and attach documents/maintenance records from the vehicle's detail page after saving."
+    "assignNote": "You can assign a driver and attach documents/maintenance records from the vehicle's detail page after saving.",
+    "secondaryAccount": "Secondary Account",
+    "secondaryParentAccount": "Secondary Parent Account (Control Account)"
   },
   "vouchers": {
     "voucherNo": "Voucher No.",

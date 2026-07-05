@@ -59,6 +59,11 @@ Employee.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 Employee.belongsTo(Account, { foreignKey: 'deduction_account_id', as: 'deductionAccount' });
 CashAccount.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 Vehicle.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
+// Vehicles can additionally link a second control account under a separately chosen
+// parent (the admin picks whichever parent it should sit under at creation time) —
+// same "separate account per purpose" pattern as Employee's deduction_account_id, so
+// Chart of Accounts balances never double-count across two branches.
+Vehicle.belongsTo(Account, { foreignKey: 'secondary_account_id', as: 'secondaryAccount' });
 CostCenter.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 
 // Vehicle assigned to a driver (Employee)
