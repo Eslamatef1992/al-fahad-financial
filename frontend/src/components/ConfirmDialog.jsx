@@ -8,8 +8,9 @@ export default function ConfirmDialog({ open, onCancel, onConfirm, message }) {
     <AnimatePresence>
       {open && (
         <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onCancel} className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40" />
+          <motion.div key="backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onCancel} className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40" />
           <motion.div
+            key="panel"
             initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
             className="fixed z-50 inset-0 flex items-center justify-center p-4"
           >

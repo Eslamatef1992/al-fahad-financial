@@ -9,11 +9,13 @@ export default function SlideOver({ open, onClose, title, children, onSubmit, su
       {open && (
         <>
           <motion.div
+            key="backdrop"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
             className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40"
           />
           <motion.div
+            key="panel"
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 280 }}
             className={`fixed inset-y-0 end-0 z-50 w-full ${wide ? 'max-w-2xl' : 'max-w-md'} bg-white dark:bg-navy-900 shadow-2xl flex flex-col`}
