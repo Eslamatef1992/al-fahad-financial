@@ -1,7 +1,9 @@
-const { sequelize, Employee, Vehicle, Account } = require('../models');
+const { sequelize, Employee, Vehicle, Account, Company } = require('../models');
 const crudFactory = require('../utils/crudFactory');
 const { createLinkedAccount, syncLinkedAccount } = require('../utils/linkedAccount');
 const { nextCode } = require('../utils/codeGenerator');
+const { exportEmployees } = require('../services/excelService');
+const { generateEmployeesPdf } = require('../services/pdfService');
 
 const include = [{ model: Vehicle, as: 'assignedVehicles' }, { model: Account, as: 'account' }, { model: Account, as: 'deductionAccount' }];
 const base = crudFactory(Employee, { include, searchFields: ['name_en', 'name_ar', 'code', 'phone', 'email', 'position'] });
@@ -9,6 +11,18 @@ const base = crudFactory(Employee, { include, searchFields: ['name_en', 'name_ar
 exports.list = base.list;
 exports.get = base.get;
 exports.remove = base.remove;
+
+exports.exportExcel = async (req, res) => {
+  const employees = await Employee.findAll({ where: { company_id: req.companyId, is_active: true }, order: [['code', 'ASC']] });
+  const company = await Company.findByPk(req.companyId);
+  await exportEmployees(res, company, employees);
+};
+
+exports.pdf = async (req, res) => {
+  const employees = await Employee.findAll({ where: { company_id: req.companyId, is_active: true }, order: [['code', 'ASC']] });
+  const company = await Company.findByPk(req.companyId);
+  generateEmployeesPdf(res, employees, company);
+};
 
 // Employee codes are always system-generated (EMP-00001, EMP-00002, ...) so there's
 // never a manual numbering scheme to get wrong or collide on.

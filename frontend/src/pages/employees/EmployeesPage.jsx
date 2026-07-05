@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, CalendarPlus } from 'lucide-react';
+import { Plus, CalendarPlus, Printer, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '@/api/client';
+import api, { downloadFile, printFile } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
@@ -78,7 +78,13 @@ export default function EmployeesPage() {
 
   return (
     <div>
-      <PageHeader title={t('nav.employees')} actions={canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>} />
+      <PageHeader title={t('nav.employees')} actions={
+        <div className="flex items-center gap-2">
+          <button onClick={() => printFile('/employees/pdf', {})} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
+          <button onClick={() => downloadFile('/employees/excel', {}, 'employees.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
+          {canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>}
+        </div>
+      } />
       <DataTable
         columns={columns}
         data={items}

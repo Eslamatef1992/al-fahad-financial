@@ -150,4 +150,44 @@ async function exportInvoices(res, company, rows, invoiceType) {
   });
 }
 
-module.exports = { exportLedger, exportTrialBalance, exportVouchers, exportInvoices };
+async function exportEmployees(res, company, rows) {
+  await streamWorkbook(res, `employees.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Employees');
+    addTitleBlock(sheet, `${company?.name_en || ''} — Employees`, `${rows.length} records`, 9);
+
+    sheet.columns = [
+      { header: 'Code', key: 'code', width: 12 },
+      { header: 'Name', key: 'name', width: 26 },
+      { header: 'Position', key: 'position', width: 18 },
+      { header: 'Department', key: 'department', width: 18 },
+      { header: 'Phone', key: 'phone', width: 16 },
+      { header: 'Salary', key: 'salary', width: 14 },
+      { header: 'Vacation (days)', key: 'vacation', width: 16 },
+      { header: 'Sick Leave (days)', key: 'sick', width: 16 },
+      { header: 'Deduction', key: 'deduction', width: 14 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((e) => {
+      sheet.addRow([
+        e.code,
+        e.name_en,
+        e.position || '',
+        e.department || '',
+        e.phone || '',
+        Number(e.salary) || 0,
+        Number(e.vacation_balance) || 0,
+        Number(e.sick_leave_balance) || 0,
+        Number(e.deduction) || 0,
+      ]);
+    });
+    sheet.getColumn(6).numFmt = '#,##0.000';
+    sheet.getColumn(7).numFmt = '#,##0.00';
+    sheet.getColumn(8).numFmt = '#,##0.00';
+    sheet.getColumn(9).numFmt = '#,##0.000';
+  });
+}
+
+module.exports = { exportLedger, exportTrialBalance, exportVouchers, exportInvoices, exportEmployees };

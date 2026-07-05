@@ -274,10 +274,24 @@ function table(doc, { headers, rows, colWidths, startX = 40 }) {
   let y = doc.y;
 
   doc.roundedRect(startX, y, totalWidth, rowHeight, 4).fill(NAVY);
-  doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#ffffff');
+  doc.fillColor('#ffffff');
   let x = startX;
   headers.forEach((h, i) => {
-    doc.text(h.label.toUpperCase(), x + 8, y + 8, { width: colWidths[i] - 16, align: h.align || 'left', lineBreak: false });
+    // Narrow columns (e.g. "DEDUCTION", "SICK LEAVE") can be wider than the column at
+    // 8.5pt bold — PDFKit wraps to a second line whenever a `width` option is passed to
+    // .text(), even with lineBreak:false. So: shrink the font to fit on one line, then
+    // draw WITHOUT a width option at all (computing the align offset by hand instead,
+    // the same trick drawBidi uses) — that's what actually keeps it on one line.
+    const label = h.label.toUpperCase();
+    const boxWidth = colWidths[i] - 16;
+    const size = fitFontSize(doc, label, boxWidth, 'Helvetica-Bold', 8.5, 6);
+    doc.font('Helvetica-Bold').fontSize(size);
+    const textWidth = doc.widthOfString(label);
+    const align = h.align || 'left';
+    let textX = x + 8;
+    if (align === 'right') textX = x + 8 + boxWidth - textWidth;
+    else if (align === 'center') textX = x + 8 + (boxWidth - textWidth) / 2;
+    doc.text(label, textX, y + (rowHeight - size) / 2 - 1, { lineBreak: false });
     x += colWidths[i];
   });
   y += rowHeight;
@@ -471,6 +485,28 @@ function generateTrialBalancePdf(res, rows, asOf, company) {
   doc.end();
 }
 
+function generateEmployeesPdf(res, rows, company) {
+  const doc = newDoc(res, 'employees.pdf');
+  header(doc, company, 'Employees', `${rows.length} records`);
+
+  metaCard(doc, [{ label: 'Total Employees', value: String(rows.length) }]);
+
+  table(doc, {
+    headers: [
+      { label: 'Code' }, { label: 'Name' }, { label: 'Position' }, { label: 'Department' },
+      { label: 'Salary', align: 'right' }, { label: 'Vacation', align: 'right' }, { label: 'Sick Leave', align: 'right' }, { label: 'Deduction', align: 'right' },
+    ],
+    colWidths: [65, 100, 65, 60, 62, 48, 50, 55],
+    rows: rows.map((e) => [
+      e.code, e.name_en, e.position || '-', e.department || '-',
+      Number(e.salary || 0).toFixed(3), Number(e.vacation_balance || 0).toFixed(2), Number(e.sick_leave_balance || 0).toFixed(2), Number(e.deduction || 0).toFixed(3),
+    ]),
+  });
+
+  footer(doc, company);
+  doc.end();
+}
+
 function generateInvoicePdf(res, invoice, company) {
   const doc = newDoc(res, `${invoice.invoice_no}.pdf`);
   const partyName = invoice.type === 'sales' ? invoice.client?.name_en : invoice.supplier?.name_en;
@@ -545,4 +581,4 @@ function generateAgingPdf(res, aging, company) {
   doc.end();
 }
 
-module.exports = { generateVoucherPdf, generateProfitAndLossPdf, generateBalanceSheetPdf, generateTrialBalancePdf, generateInvoicePdf, generateAgingPdf };
+module.exports = { generateVoucherPdf, generateProfitAndLossPdf, generateBalanceSheetPdf, generateTrialBalancePdf, generateInvoicePdf, generateAgingPdf, generateEmployeesPdf };
