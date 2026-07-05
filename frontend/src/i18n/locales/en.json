@@ -192,7 +192,9 @@
     "driverCheckboxLabel": "This employee is a driver (can be assigned to a vehicle)",
     "licenseNo": "License No.",
     "licenseType": "License Type",
-    "licenseExpiry": "License Expiry"
+    "licenseExpiry": "License Expiry",
+    "deductionAccount": "Deduction Account",
+    "deductionParentAccount": "Deduction Parent Account (Control Account)"
   },
   "invoices": {
     "invoiceNo": "Invoice No.",

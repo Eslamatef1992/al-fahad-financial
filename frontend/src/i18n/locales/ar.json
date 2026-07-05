@@ -192,7 +192,9 @@
     "driverCheckboxLabel": "هذا الموظف سائق (يمكن تعيينه لمركبة)",
     "licenseNo": "رقم الرخصة",
     "licenseType": "نوع الرخصة",
-    "licenseExpiry": "تاريخ انتهاء الرخصة"
+    "licenseExpiry": "تاريخ انتهاء الرخصة",
+    "deductionAccount": "حساب الخصومات",
+    "deductionParentAccount": "الحساب الأب لحساب الخصومات (حساب ضبط)"
   },
   "invoices": {
     "invoiceNo": "رقم الفاتورة",

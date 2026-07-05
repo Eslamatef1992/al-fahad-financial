@@ -15,7 +15,7 @@ const empty = {
   name_en: '', name_ar: '', national_id: '', nationality: '', phone: '', email: '',
   position: '', department: '', hire_date: '', salary: 0, vacation_balance: 0, sick_leave_balance: 0, deduction: 0,
   is_driver: false, license_no: '', license_type: '', license_expiry: '',
-  parent_account_id: null,
+  parent_account_id: null, deduction_parent_account_id: null,
 };
 
 function money(v) { return Number(v ?? 0).toFixed(3); }
@@ -37,7 +37,7 @@ export default function EmployeesPage() {
   useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
 
   const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
-  const openEdit = (row) => { setEditing(row); setForm({ ...empty, ...row, parent_account_id: row.account?.parent_id || null }); setOpen(true); };
+  const openEdit = (row) => { setEditing(row); setForm({ ...empty, ...row, parent_account_id: row.account?.parent_id || null, deduction_parent_account_id: row.deductionAccount?.parent_id || null }); setOpen(true); };
 
   const submit = async (e) => {
     e.preventDefault(); setSaving(true);
@@ -60,6 +60,7 @@ export default function EmployeesPage() {
     { key: 'sick_leave_balance', label: t('employees.sickLeaveDays'), render: (r) => days(r.sick_leave_balance) },
     { key: 'deduction', label: t('employees.deduction'), render: (r) => money(r.deduction) },
     { key: 'account', label: t('accounts.parentAccount'), render: (r) => r.account ? `${r.account.code} - ${r.account.name_en}` : '—' },
+    { key: 'deductionAccount', label: t('employees.deductionAccount'), render: (r) => r.deductionAccount ? `${r.deductionAccount.code} - ${r.deductionAccount.name_en}` : '—' },
     { key: 'is_driver', label: t('employees.driver'), render: (r) => r.is_driver ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gold-100 text-gold-700">{t('employees.driver')}</span> : '—' },
   ];
 
@@ -111,6 +112,11 @@ export default function EmployeesPage() {
         )}
 
         <AccountPicker value={form.parent_account_id} onChange={(v) => setForm({ ...form, parent_account_id: v })} />
+        <AccountPicker
+          value={form.deduction_parent_account_id}
+          onChange={(v) => setForm({ ...form, deduction_parent_account_id: v })}
+          label={t('employees.deductionParentAccount')}
+        />
       </SlideOver>
       <ConfirmDialog open={!!toDelete} onCancel={() => setToDelete(null)} onConfirm={remove} />
     </div>

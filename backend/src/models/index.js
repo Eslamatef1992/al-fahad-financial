@@ -51,6 +51,11 @@ CostCenter.belongsTo(CostCenter, { as: 'parent', foreignKey: 'parent_id' });
 Client.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 Supplier.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 Employee.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
+// Employees can additionally link a second control account specifically for payroll
+// deductions (e.g. nested under a separate "Other Payables"/"Deductions" parent), distinct
+// from the primary account_id link above — each account keeps a single parent, so balances
+// never double-count across two branches of the Chart of Accounts.
+Employee.belongsTo(Account, { foreignKey: 'deduction_account_id', as: 'deductionAccount' });
 CashAccount.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 Vehicle.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 CostCenter.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
