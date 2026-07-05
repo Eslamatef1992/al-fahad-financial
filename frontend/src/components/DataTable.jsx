@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Search, Pencil, Trash2, Power } from 'lucide-react';
+import { Search, Pencil, Trash2, Power, ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function DataTable({ columns, data, loading, onEdit, onDelete, onToggleActive, isInactive, onRowClick, searchable = true, extraActions }) {
+export default function DataTable({ columns, data, loading, onEdit, onDelete, onToggleActive, isInactive, onRowClick, searchable = true, extraActions, pageSize }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     // `data` can transiently be non-array (e.g. an in-flight request state, or an
@@ -17,6 +18,16 @@ export default function DataTable({ columns, data, loading, onEdit, onDelete, on
       columns.some((c) => String(c.accessor ? c.accessor(row) : row[c.key] ?? '').toLowerCase().includes(needle))
     );
   }, [data, query, columns]);
+
+  // Re-land on page 1 whenever the filtered set changes shape (new search term, reloaded
+  // data, switched company, etc.) so the user never lands on a now-empty trailing page.
+  useEffect(() => { setPage(1); }, [query, data]);
+
+  const pageCount = pageSize ? Math.max(1, Math.ceil(filtered.length / pageSize)) : 1;
+  const safePage = Math.min(page, pageCount);
+  const paged = pageSize ? filtered.slice((safePage - 1) * pageSize, safePage * pageSize) : filtered;
+  const rangeFrom = filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const rangeTo = Math.min(safePage * pageSize, filtered.length);
 
   return (
     <div className="card overflow-hidden">
@@ -52,7 +63,7 @@ export default function DataTable({ columns, data, loading, onEdit, onDelete, on
             {!loading && filtered.length === 0 && (
               <tr><td colSpan={columns.length + 1} className="px-4 py-10 text-center text-slate-400">{t('common.noData')}</td></tr>
             )}
-            {!loading && filtered.map((row, i) => (
+            {!loading && paged.map((row, i) => (
               <motion.tr
                 key={row.id || i}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
@@ -95,6 +106,28 @@ export default function DataTable({ columns, data, loading, onEdit, onDelete, on
           </tbody>
         </table>
       </div>
+      {pageSize && filtered.length > 0 && (
+        <div className="flex items-center justify-between p-3 border-t border-slate-100 dark:border-navy-800 text-sm text-slate-500">
+          <span>{t('common.showingRange', { from: rangeFrom, to: rangeTo, total: filtered.length })}</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="font-medium">{t('common.pageOf', { page: safePage, count: pageCount })}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              disabled={safePage >= pageCount}
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

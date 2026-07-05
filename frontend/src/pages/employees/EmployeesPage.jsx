@@ -34,9 +34,14 @@ export default function EmployeesPage() {
   const [toDelete, setToDelete] = useState(null);
   const [saving, setSaving] = useState(false);
   const [leaveEmployee, setLeaveEmployee] = useState(null);
+  const [positionFilter, setPositionFilter] = useState('');
 
   const load = () => { setLoading(true); api.get('/employees').then((r) => setItems(r.data)).finally(() => setLoading(false)); };
   useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
+
+  // Distinct, sorted positions actually present in the data, for the filter dropdown.
+  const positions = [...new Set(items.map((e) => e.position).filter(Boolean))].sort();
+  const filteredItems = positionFilter ? items.filter((e) => e.position === positionFilter) : items;
 
   // Keeps the leave dialog's displayed balances in sync with the latest fetch after
   // logging/undoing an entry (it changes the employee's balance on the backend).
@@ -80,6 +85,10 @@ export default function EmployeesPage() {
     <div>
       <PageHeader title={t('nav.employees')} actions={
         <div className="flex items-center gap-2">
+          <select className="input !py-2" value={positionFilter} onChange={(e) => setPositionFilter(e.target.value)}>
+            <option value="">{t('employees.allPositions')}</option>
+            {positions.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
           <button onClick={() => printFile('/employees/pdf', {})} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
           <button onClick={() => downloadFile('/employees/excel', {}, 'employees.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
           {canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>}
@@ -87,8 +96,9 @@ export default function EmployeesPage() {
       } />
       <DataTable
         columns={columns}
-        data={items}
+        data={filteredItems}
         loading={loading}
+        pageSize={25}
         onEdit={canCreateEdit ? openEdit : undefined}
         onDelete={canDelete ? setToDelete : undefined}
         extraActions={canCreateEdit ? (row) => (

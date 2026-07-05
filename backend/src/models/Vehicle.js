@@ -6,6 +6,7 @@ module.exports = (sequelize, DataTypes) => {
     assigned_driver_id: { type: DataTypes.UUID, allowNull: true },
     account_id: { type: DataTypes.UUID, allowNull: true },
     secondary_account_id: { type: DataTypes.UUID, allowNull: true },
+    tertiary_account_id: { type: DataTypes.UUID, allowNull: true },
     code: { type: DataTypes.STRING(30), allowNull: false },
     plate_no: { type: DataTypes.STRING(30), allowNull: false },
     make: { type: DataTypes.STRING(60) },

@@ -64,6 +64,8 @@ Vehicle.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 // same "separate account per purpose" pattern as Employee's deduction_account_id, so
 // Chart of Accounts balances never double-count across two branches.
 Vehicle.belongsTo(Account, { foreignKey: 'secondary_account_id', as: 'secondaryAccount' });
+// Third linked account, same free-choice pattern as the secondary one.
+Vehicle.belongsTo(Account, { foreignKey: 'tertiary_account_id', as: 'tertiaryAccount' });
 CostCenter.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 
 // Vehicle assigned to a driver (Employee)

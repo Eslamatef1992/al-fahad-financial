@@ -81,7 +81,9 @@
     "referenceNo": "Reference No.",
     "lineItems": "Line Items",
     "addLine": "Add Line",
-    "dueDate": "Due Date"
+    "dueDate": "Due Date",
+    "showingRange": "Showing {{from}}-{{to}} of {{total}}",
+    "pageOf": "Page {{page}} of {{count}}"
   },
   "auth": {
     "login": "Sign In",
@@ -133,7 +135,9 @@
     "odometer": "Odometer",
     "assignNote": "You can assign a driver and attach documents/maintenance records from the vehicle's detail page after saving.",
     "secondaryAccount": "Secondary Account",
-    "secondaryParentAccount": "Secondary Parent Account (Control Account)"
+    "secondaryParentAccount": "Secondary Parent Account (Control Account)",
+    "tertiaryAccount": "Third Account",
+    "tertiaryParentAccount": "Third Parent Account (Control Account)"
   },
   "vouchers": {
     "voucherNo": "Voucher No.",
@@ -197,6 +201,7 @@
     "licenseExpiry": "License Expiry",
     "deductionAccount": "Deduction Account",
     "deductionParentAccount": "Deduction Parent Account (Control Account)",
+    "allPositions": "All positions",
     "logLeave": "Log Vacation/Sick Leave",
     "logLeaveTitle": "Log Leave — {{name}}",
     "leaveType": "Leave Type",

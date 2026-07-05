@@ -81,7 +81,9 @@
     "referenceNo": "رقم المرجع",
     "lineItems": "بنود الفاتورة",
     "addLine": "إضافة بند",
-    "dueDate": "تاريخ الاستحقاق"
+    "dueDate": "تاريخ الاستحقاق",
+    "showingRange": "عرض {{from}}-{{to}} من {{total}}",
+    "pageOf": "صفحة {{page}} من {{count}}"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -133,7 +135,9 @@
     "odometer": "عداد المسافة",
     "assignNote": "يمكنك تعيين سائق وإرفاق المستندات وسجلات الصيانة من صفحة تفاصيل المركبة بعد الحفظ.",
     "secondaryAccount": "الحساب الثانوي",
-    "secondaryParentAccount": "الحساب الأب الثانوي (حساب ضبط)"
+    "secondaryParentAccount": "الحساب الأب الثانوي (حساب ضبط)",
+    "tertiaryAccount": "الحساب الثالث",
+    "tertiaryParentAccount": "الحساب الأب الثالث (حساب ضبط)"
   },
   "vouchers": {
     "voucherNo": "رقم السند",
@@ -197,6 +201,7 @@
     "licenseExpiry": "تاريخ انتهاء الرخصة",
     "deductionAccount": "حساب الخصومات",
     "deductionParentAccount": "الحساب الأب لحساب الخصومات (حساب ضبط)",
+    "allPositions": "كل الوظائف",
     "logLeave": "تسجيل إجازة (سنوية/مرضية)",
     "logLeaveTitle": "تسجيل إجازة — {{name}}",
     "leaveType": "نوع الإجازة",

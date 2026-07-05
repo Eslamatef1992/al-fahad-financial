@@ -12,6 +12,7 @@ const include = [
   { model: VehicleMaintenance, as: 'maintenanceRecords' },
   { model: Account, as: 'account' },
   { model: Account, as: 'secondaryAccount' },
+  { model: Account, as: 'tertiaryAccount' },
 ];
 
 exports.list = async (req, res) => {
@@ -32,16 +33,18 @@ exports.get = async (req, res) => {
 };
 
 // Creating a vehicle always gets a system-generated code (VEH-00001, VEH-00002, ...) —
-// any vehicle-supplied code is ignored. It can optionally also auto-create up to two
+// any vehicle-supplied code is ignored. It can optionally also auto-create up to three
 // ledger sub-accounts:
 // - `account_id` nested under `parent_account_id` (e.g. a "Vehicles" asset group)
-// - `secondary_account_id` nested under `secondary_parent_account_id` — the admin picks
-//   whichever second parent it should sit under (maintenance costs, financing/loan
-//   payable, etc.); it's a separate real account with its own single parent, so Chart
-//   of Accounts balances never double-count across two branches like they would if the
-//   same account were nested under two parents at once.
+// - `secondary_account_id` nested under `secondary_parent_account_id`
+// - `tertiary_account_id` nested under `tertiary_parent_account_id`
+// For the second and third, the admin picks whichever parent it should sit under
+// (maintenance costs, financing/loan payable, etc. — a free choice, not a fixed
+// category); each is a separate real account with its own single parent, so Chart of
+// Accounts balances never double-count across branches like they would if the same
+// account were nested under more than one parent at once.
 exports.create = async (req, res) => {
-  const { parent_account_id, secondary_parent_account_id, code, ...body } = req.body;
+  const { parent_account_id, secondary_parent_account_id, tertiary_parent_account_id, code, ...body } = req.body;
   const created = await sequelize.transaction(async (t) => {
     const finalCode = await nextCode(Vehicle, req.companyId, 'VEH');
     let account_id = null;
@@ -62,14 +65,23 @@ exports.create = async (req, res) => {
       }, t);
       secondary_account_id = secondaryAccount.id;
     }
-    return Vehicle.create({ ...body, code: finalCode, account_id, secondary_account_id, company_id: req.companyId }, { transaction: t });
+    let tertiary_account_id = null;
+    if (tertiary_parent_account_id) {
+      const tertiaryAccount = await createLinkedAccount({
+        companyId: req.companyId, parentAccountId: tertiary_parent_account_id,
+        code: `${finalCode}-3`, name_en: body.plate_no || finalCode, name_ar: body.plate_no || finalCode,
+        opening_balance: 0,
+      }, t);
+      tertiary_account_id = tertiaryAccount.id;
+    }
+    return Vehicle.create({ ...body, code: finalCode, account_id, secondary_account_id, tertiary_account_id, company_id: req.companyId }, { transaction: t });
   });
   const withAccount = await Vehicle.findOne({ where: { id: created.id }, include });
   res.status(201).json(withAccount);
 };
 
 exports.update = async (req, res) => {
-  const { parent_account_id, secondary_parent_account_id, code, ...body } = req.body; // code is immutable after creation
+  const { parent_account_id, secondary_parent_account_id, tertiary_parent_account_id, code, ...body } = req.body; // code is immutable after creation
   const vehicle = await Vehicle.findOne({ where: { id: req.params.id, company_id: req.companyId } });
   if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
 
@@ -103,7 +115,21 @@ exports.update = async (req, res) => {
       }, t);
     }
 
-    await vehicle.update({ ...body, account_id, secondary_account_id }, { transaction: t });
+    let tertiary_account_id = vehicle.tertiary_account_id;
+    if (!tertiary_account_id && tertiary_parent_account_id) {
+      const tertiaryAccount = await createLinkedAccount({
+        companyId: req.companyId, parentAccountId: tertiary_parent_account_id,
+        code: `${vehicle.code}-3`, name_en: body.plate_no || vehicle.code, name_ar: body.plate_no || vehicle.code,
+        opening_balance: 0,
+      }, t);
+      tertiary_account_id = tertiaryAccount.id;
+    } else if (tertiary_account_id) {
+      await syncLinkedAccount(tertiary_account_id, {
+        name_en: body.plate_no, name_ar: body.plate_no, parent_id: tertiary_parent_account_id,
+      }, t);
+    }
+
+    await vehicle.update({ ...body, account_id, secondary_account_id, tertiary_account_id }, { transaction: t });
   });
 
   const updated = await Vehicle.findOne({ where: { id: vehicle.id }, include });

@@ -16,7 +16,7 @@ const empty = {
   vehicle_type: '', ownership_type: 'owned', registration_no: '', registration_expiry: '',
   insurance_company: '', insurance_policy_no: '', insurance_type: '', insurance_expiry: '',
   purchase_date: '', purchase_cost: 0, fuel_type: '', current_odometer: 0, status: 'active', notes: '', parent_account_id: null,
-  secondary_parent_account_id: null,
+  secondary_parent_account_id: null, tertiary_parent_account_id: null,
 };
 
 export default function VehiclesPage() {
@@ -64,6 +64,7 @@ export default function VehiclesPage() {
     { key: 'driver', label: t('vehicles.driver'), render: (r) => r.driver ? r.driver.name_en : <span className="text-slate-400">{t('vehicles.unassigned')}</span> },
     { key: 'account', label: t('accounts.parentAccount'), render: (r) => r.account ? `${r.account.code} - ${r.account.name_en}` : '—' },
     { key: 'secondaryAccount', label: t('vehicles.secondaryAccount'), render: (r) => r.secondaryAccount ? `${r.secondaryAccount.code} - ${r.secondaryAccount.name_en}` : '—' },
+    { key: 'tertiaryAccount', label: t('vehicles.tertiaryAccount'), render: (r) => r.tertiaryAccount ? `${r.tertiaryAccount.code} - ${r.tertiaryAccount.name_en}` : '—' },
     { key: 'status', label: t('common.status'), render: (r) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${statusColor[r.status]}`}>{statusLabel[r.status]}</span> },
   ];
 
@@ -135,6 +136,11 @@ export default function VehiclesPage() {
           value={form.secondary_parent_account_id}
           onChange={(v) => setForm({ ...form, secondary_parent_account_id: v })}
           label={t('vehicles.secondaryParentAccount')}
+        />
+        <AccountPicker
+          value={form.tertiary_parent_account_id}
+          onChange={(v) => setForm({ ...form, tertiary_parent_account_id: v })}
+          label={t('vehicles.tertiaryParentAccount')}
         />
         <p className="text-xs text-slate-400">{t('vehicles.assignNote')}</p>
       </SlideOver>
