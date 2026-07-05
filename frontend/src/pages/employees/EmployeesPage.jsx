@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus } from 'lucide-react';
+import { Plus, CalendarPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
@@ -9,6 +9,7 @@ import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import AccountPicker from '@/components/AccountPicker';
+import EmployeeLeaveDialog from './EmployeeLeaveDialog';
 import usePermissions from '@/hooks/usePermissions';
 
 const empty = {
@@ -32,9 +33,20 @@ export default function EmployeesPage() {
   const [form, setForm] = useState(empty);
   const [toDelete, setToDelete] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [leaveEmployee, setLeaveEmployee] = useState(null);
 
   const load = () => { setLoading(true); api.get('/employees').then((r) => setItems(r.data)).finally(() => setLoading(false)); };
   useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
+
+  // Keeps the leave dialog's displayed balances in sync with the latest fetch after
+  // logging/undoing an entry (it changes the employee's balance on the backend).
+  useEffect(() => {
+    if (leaveEmployee) {
+      const fresh = items.find((i) => i.id === leaveEmployee.id);
+      if (fresh) setLeaveEmployee(fresh);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
 
   const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
   const openEdit = (row) => { setEditing(row); setForm({ ...empty, ...row, parent_account_id: row.account?.parent_id || null, deduction_parent_account_id: row.deductionAccount?.parent_id || null }); setOpen(true); };
@@ -67,7 +79,22 @@ export default function EmployeesPage() {
   return (
     <div>
       <PageHeader title={t('nav.employees')} actions={canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>} />
-      <DataTable columns={columns} data={items} loading={loading} onEdit={canCreateEdit ? openEdit : undefined} onDelete={canDelete ? setToDelete : undefined} />
+      <DataTable
+        columns={columns}
+        data={items}
+        loading={loading}
+        onEdit={canCreateEdit ? openEdit : undefined}
+        onDelete={canDelete ? setToDelete : undefined}
+        extraActions={canCreateEdit ? (row) => (
+          <button
+            onClick={() => setLeaveEmployee(row)}
+            title={t('employees.logLeave')}
+            className="p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-blue-600"
+          >
+            <CalendarPlus size={15} />
+          </button>
+        ) : undefined}
+      />
       <SlideOver open={open} onClose={() => setOpen(false)} title={editing ? t('common.edit') : t('common.add')} onSubmit={submit} submitting={saving} wide>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -119,6 +146,7 @@ export default function EmployeesPage() {
         />
       </SlideOver>
       <ConfirmDialog open={!!toDelete} onCancel={() => setToDelete(null)} onConfirm={remove} />
+      <EmployeeLeaveDialog employee={leaveEmployee} open={!!leaveEmployee} onClose={() => setLeaveEmployee(null)} onChanged={load} />
     </div>
   );
 }

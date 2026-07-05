@@ -194,7 +194,14 @@
     "licenseType": "License Type",
     "licenseExpiry": "License Expiry",
     "deductionAccount": "Deduction Account",
-    "deductionParentAccount": "Deduction Parent Account (Control Account)"
+    "deductionParentAccount": "Deduction Parent Account (Control Account)",
+    "logLeave": "Log Vacation/Sick Leave",
+    "logLeaveTitle": "Log Leave — {{name}}",
+    "leaveType": "Leave Type",
+    "leaveDays": "Days",
+    "leaveHistory": "Leave History",
+    "leaveLogged": "Leave logged",
+    "leaveRemoved": "Leave entry removed, balance restored"
   },
   "invoices": {
     "invoiceNo": "Invoice No.",

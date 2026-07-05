@@ -23,6 +23,7 @@ const InvoiceLine = require('./InvoiceLine')(sequelize, DataTypes);
 const InvoicePayment = require('./InvoicePayment')(sequelize, DataTypes);
 const RecurringInvoice = require('./RecurringInvoice')(sequelize, DataTypes);
 const RecurringInvoiceLine = require('./RecurringInvoiceLine')(sequelize, DataTypes);
+const EmployeeLeave = require('./EmployeeLeave')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -33,7 +34,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -63,6 +64,11 @@ CostCenter.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 // Vehicle assigned to a driver (Employee)
 Vehicle.belongsTo(Employee, { foreignKey: 'assigned_driver_id', as: 'driver' });
 Employee.hasMany(Vehicle, { foreignKey: 'assigned_driver_id', as: 'assignedVehicles' });
+
+// Employee vacation/sick-leave log — each entry deducts from the employee's running balance
+Employee.hasMany(EmployeeLeave, { foreignKey: 'employee_id', as: 'leaves', onDelete: 'CASCADE' });
+EmployeeLeave.belongsTo(Employee, { foreignKey: 'employee_id', as: 'employee' });
+EmployeeLeave.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 
 Vehicle.hasMany(VehicleDocument, { foreignKey: 'vehicle_id', as: 'documents', onDelete: 'CASCADE' });
 VehicleDocument.belongsTo(Vehicle, { foreignKey: 'vehicle_id' });
@@ -128,6 +134,7 @@ module.exports = {
   Client,
   Supplier,
   Employee,
+  EmployeeLeave,
   Vehicle,
   VehicleDocument,
   VehicleMaintenance,

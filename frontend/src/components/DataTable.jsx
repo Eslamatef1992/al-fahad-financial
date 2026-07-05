@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Search, Pencil, Trash2, Power } from 'lucide-react';
 
-export default function DataTable({ columns, data, loading, onEdit, onDelete, onToggleActive, isInactive, onRowClick, searchable = true }) {
+export default function DataTable({ columns, data, loading, onEdit, onDelete, onToggleActive, isInactive, onRowClick, searchable = true, extraActions }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
 
@@ -42,7 +42,7 @@ export default function DataTable({ columns, data, loading, onEdit, onDelete, on
                   {c.label}
                 </th>
               ))}
-              {(onEdit || onDelete || onToggleActive) && <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.actions')}</th>}
+              {(onEdit || onDelete || onToggleActive || extraActions) && <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.actions')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -64,9 +64,10 @@ export default function DataTable({ columns, data, loading, onEdit, onDelete, on
                     {c.render ? c.render(row) : (c.accessor ? c.accessor(row) : row[c.key])}
                   </td>
                 ))}
-                {(onEdit || onDelete || onToggleActive) && (
+                {(onEdit || onDelete || onToggleActive || extraActions) && (
                   <td className="px-4 py-3 text-end whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <div className="inline-flex items-center gap-1">
+                      {extraActions?.(row)}
                       {onEdit && (
                         <button onClick={() => onEdit(row)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 text-slate-500">
                           <Pencil size={15} />

@@ -194,7 +194,14 @@
     "licenseType": "نوع الرخصة",
     "licenseExpiry": "تاريخ انتهاء الرخصة",
     "deductionAccount": "حساب الخصومات",
-    "deductionParentAccount": "الحساب الأب لحساب الخصومات (حساب ضبط)"
+    "deductionParentAccount": "الحساب الأب لحساب الخصومات (حساب ضبط)",
+    "logLeave": "تسجيل إجازة (سنوية/مرضية)",
+    "logLeaveTitle": "تسجيل إجازة — {{name}}",
+    "leaveType": "نوع الإجازة",
+    "leaveDays": "عدد الأيام",
+    "leaveHistory": "سجل الإجازات",
+    "leaveLogged": "تم تسجيل الإجازة",
+    "leaveRemoved": "تم حذف الإجازة واستعادة الرصيد"
   },
   "invoices": {
     "invoiceNo": "رقم الفاتورة",

@@ -29,6 +29,7 @@ app.use('/api/cost-centers', require('./routes/costCenterRoutes'));
 app.use('/api/clients', require('./routes/clientRoutes'));
 app.use('/api/suppliers', require('./routes/supplierRoutes'));
 app.use('/api/employees', require('./routes/employeeRoutes'));
+app.use('/api/employee-leaves', require('./routes/employeeLeaveRoutes'));
 app.use('/api/vehicles', require('./routes/vehicleRoutes'));
 app.use('/api/cash-accounts', require('./routes/cashAccountRoutes'));
 app.use('/api/vouchers', require('./routes/voucherRoutes'));
