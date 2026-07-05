@@ -13,9 +13,13 @@ import usePermissions from '@/hooks/usePermissions';
 
 const empty = {
   name_en: '', name_ar: '', national_id: '', nationality: '', phone: '', email: '',
-  position: '', department: '', hire_date: '', salary: 0, is_driver: false, license_no: '', license_type: '', license_expiry: '',
+  position: '', department: '', hire_date: '', salary: 0, vacation_balance: 0, sick_leave_balance: 0, deduction: 0,
+  is_driver: false, license_no: '', license_type: '', license_expiry: '',
   parent_account_id: null,
 };
+
+function money(v) { return Number(v ?? 0).toFixed(3); }
+function days(v) { return Number(v ?? 0).toFixed(2); }
 
 export default function EmployeesPage() {
   const { t } = useTranslation();
@@ -51,6 +55,10 @@ export default function EmployeesPage() {
     { key: 'position', label: 'Position' },
     { key: 'department', label: 'Department' },
     { key: 'phone', label: t('common.phone') },
+    { key: 'salary', label: 'Salary', render: (r) => money(r.salary) },
+    { key: 'vacation_balance', label: 'Vacation (days)', render: (r) => days(r.vacation_balance) },
+    { key: 'sick_leave_balance', label: 'Sick Leave (days)', render: (r) => days(r.sick_leave_balance) },
+    { key: 'deduction', label: 'Deduction', render: (r) => money(r.deduction) },
     { key: 'account', label: t('accounts.parentAccount'), render: (r) => r.account ? `${r.account.code} - ${r.account.name_en}` : '—' },
     { key: 'is_driver', label: 'Driver', render: (r) => r.is_driver ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gold-100 text-gold-700">Driver</span> : '—' },
   ];
@@ -82,6 +90,11 @@ export default function EmployeesPage() {
         <div className="grid grid-cols-2 gap-3">
           <div><label className="label">Hire Date</label><input type="date" className="input" value={form.hire_date || ''} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} /></div>
           <div><label className="label">Salary</label><input type="number" step="0.001" className="input" value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} /></div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div><label className="label">Vacation Balance (days)</label><input type="number" step="0.5" className="input" value={form.vacation_balance} onChange={(e) => setForm({ ...form, vacation_balance: e.target.value })} /></div>
+          <div><label className="label">Sick Leave Balance (days)</label><input type="number" step="0.5" className="input" value={form.sick_leave_balance} onChange={(e) => setForm({ ...form, sick_leave_balance: e.target.value })} /></div>
+          <div><label className="label">Deduction</label><input type="number" step="0.001" className="input" value={form.deduction} onChange={(e) => setForm({ ...form, deduction: e.target.value })} /></div>
         </div>
 
         <label className="flex items-center gap-2 text-sm font-medium py-1">
