@@ -1,23 +1,25 @@
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { PieChart, Scale, ListTree, ScrollText, Receipt, ArrowRight, FileText, FileMinus } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
 const REPORTS = [
-  { to: '/reports/profit-and-loss', icon: PieChart, title: 'Profit & Loss', desc: 'Revenue vs. expenses over a date range, with net profit. Export to PDF.', tone: 'text-emerald-600 bg-emerald-50' },
-  { to: '/reports/balance-sheet', icon: Scale, title: 'Balance Sheet', desc: 'Assets, liabilities and equity as of a date, with a balance check. Export to PDF.', tone: 'text-blue-600 bg-blue-50' },
-  { to: '/reports/trial-balance', icon: ListTree, title: 'Trial Balance', desc: 'Net debit/credit balance per account as of a date. Export to PDF or Excel.', tone: 'text-purple-600 bg-purple-50' },
-  { to: '/ledger', icon: ScrollText, title: 'General Ledger', desc: 'Full transaction history per account with running balance. Export to Excel.', tone: 'text-navy-700 bg-navy-50' },
-  { to: '/vouchers', icon: Receipt, title: 'Vouchers Register', desc: 'All receipt, payment and journal vouchers with status. Export to Excel; each voucher exports to PDF.', tone: 'text-gold-700 bg-gold-100' },
-  { to: '/reports/aging/sales', icon: FileText, title: 'AR Aging', desc: 'Outstanding client invoices bucketed by days overdue. Export to PDF.', tone: 'text-emerald-600 bg-emerald-50' },
-  { to: '/reports/aging/purchase', icon: FileMinus, title: 'AP Aging', desc: 'Outstanding supplier bills bucketed by days overdue. Export to PDF.', tone: 'text-orange-600 bg-orange-50' },
+  { to: '/reports/profit-and-loss', icon: PieChart, key: 'profitAndLoss', tone: 'text-emerald-600 bg-emerald-50' },
+  { to: '/reports/balance-sheet', icon: Scale, key: 'balanceSheet', tone: 'text-blue-600 bg-blue-50' },
+  { to: '/reports/trial-balance', icon: ListTree, key: 'trialBalance', tone: 'text-purple-600 bg-purple-50' },
+  { to: '/ledger', icon: ScrollText, key: 'generalLedger', tone: 'text-navy-700 bg-navy-50' },
+  { to: '/vouchers', icon: Receipt, key: 'vouchersRegister', tone: 'text-gold-700 bg-gold-100' },
+  { to: '/reports/aging/sales', icon: FileText, key: 'arAging', tone: 'text-emerald-600 bg-emerald-50' },
+  { to: '/reports/aging/purchase', icon: FileMinus, key: 'apAging', tone: 'text-orange-600 bg-orange-50' },
 ];
 
 export default function ReportsHubPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   return (
     <div>
-      <PageHeader title="Reports" subtitle="Every report in the system, each with PDF or Excel export" />
+      <PageHeader title={t('nav.reports')} subtitle={t('reports.subtitle')} />
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {REPORTS.map((r, i) => (
           <motion.button
@@ -31,11 +33,11 @@ export default function ReportsHubPage() {
               <r.icon size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-navy-900 dark:text-white">{r.title}</h3>
-              <p className="text-sm text-slate-500 mt-1">{r.desc}</p>
+              <h3 className="font-bold text-navy-900 dark:text-white">{t(`reports.${r.key}.title`)}</h3>
+              <p className="text-sm text-slate-500 mt-1">{t(`reports.${r.key}.desc`)}</p>
             </div>
             <span className="mt-auto flex items-center gap-1 text-sm font-semibold text-gold-600">
-              Open report <ArrowRight size={14} />
+              {t('reports.openReport')} <ArrowRight size={14} />
             </span>
           </motion.button>
         ))}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Plus, Download } from 'lucide-react';
 import api, { downloadFile } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
@@ -14,6 +15,7 @@ const STATUS_COLOR = {
 };
 
 export default function InvoicesListPage({ type }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const { canCreateEdit } = usePermissions();
@@ -21,8 +23,8 @@ export default function InvoicesListPage({ type }) {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
 
-  const label = type === 'sales' ? 'Sales Invoices' : 'Purchase Bills';
-  const partyLabel = type === 'sales' ? 'Client' : 'Supplier';
+  const label = type === 'sales' ? t('nav.salesInvoices') : t('nav.purchaseInvoices');
+  const partyLabel = type === 'sales' ? t('common.client') : t('common.supplier');
 
   const load = () => {
     setLoading(true);
@@ -33,13 +35,13 @@ export default function InvoicesListPage({ type }) {
   useEffect(() => { if (activeCompany) load(); }, [activeCompany, statusFilter]);
 
   const columns = [
-    { key: 'invoice_no', label: type === 'sales' ? 'Invoice No.' : 'Bill No.' },
+    { key: 'invoice_no', label: type === 'sales' ? t('invoices.invoiceNo') : t('invoices.billNo') },
     { key: 'party', label: partyLabel, render: (r) => (type === 'sales' ? r.client?.name_en : r.supplier?.name_en) || '—' },
-    { key: 'date', label: 'Date' },
-    { key: 'due_date', label: 'Due Date', render: (r) => r.due_date || '—' },
-    { key: 'total', label: 'Total', render: (r) => Number(r.total).toFixed(3) },
-    { key: 'balance', label: 'Balance Due', render: (r) => (Number(r.total) - Number(r.paid_total)).toFixed(3) },
-    { key: 'status', label: 'Status', render: (r) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${STATUS_COLOR[r.status]}`}>{r.status.replace('_', ' ')}</span> },
+    { key: 'date', label: t('common.date') },
+    { key: 'due_date', label: t('common.dueDate'), render: (r) => r.due_date || '—' },
+    { key: 'total', label: t('common.total'), render: (r) => Number(r.total).toFixed(3) },
+    { key: 'balance', label: t('common.balanceDue'), render: (r) => (Number(r.total) - Number(r.paid_total)).toFixed(3) },
+    { key: 'status', label: t('common.status'), render: (r) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${STATUS_COLOR[r.status]}`}>{t(`invoices.status.${r.status}`)}</span> },
   ];
 
   return (
@@ -47,15 +49,15 @@ export default function InvoicesListPage({ type }) {
       <PageHeader title={label} actions={
         <div className="flex items-center gap-2">
           <select className="input !py-2" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="">All statuses</option>
-            <option value="draft">Draft</option>
-            <option value="posted">Posted</option>
-            <option value="partially_paid">Partially Paid</option>
-            <option value="paid">Paid</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="">{t('invoices.allStatuses')}</option>
+            <option value="draft">{t('invoices.status.draft')}</option>
+            <option value="posted">{t('invoices.status.posted')}</option>
+            <option value="partially_paid">{t('invoices.status.partially_paid')}</option>
+            <option value="paid">{t('invoices.status.paid')}</option>
+            <option value="cancelled">{t('invoices.status.cancelled')}</option>
           </select>
-          <button onClick={() => downloadFile('/invoices/excel', { type }, `${type}-invoices.xlsx`)} className="btn-ghost"><Download size={16} /> Excel</button>
-          {canCreateEdit && <button onClick={() => navigate(`/invoices/${type}/new`)} className="btn-primary"><Plus size={16} /> New {type === 'sales' ? 'Invoice' : 'Bill'}</button>}
+          <button onClick={() => downloadFile('/invoices/excel', { type }, `${type}-invoices.xlsx`)} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
+          {canCreateEdit && <button onClick={() => navigate(`/invoices/${type}/new`)} className="btn-primary"><Plus size={16} /> {type === 'sales' ? t('invoices.newInvoice') : t('invoices.newBill')}</button>}
         </div>
       } />
       <DataTable columns={columns} data={items} loading={loading} onRowClick={(row) => navigate(`/invoices/${row.id}`)} />

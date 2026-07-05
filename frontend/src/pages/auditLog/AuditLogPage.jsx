@@ -30,35 +30,35 @@ export default function AuditLogPage() {
 
   return (
     <div>
-      <PageHeader title="Audit Log" subtitle="Who did what, and when — every create, edit, delete, post and cancel action" />
+      <PageHeader title={t('nav.auditLog')} subtitle={t('auditLog.subtitle')} />
 
       <div className="card p-4 mb-5 flex flex-wrap items-end gap-3">
         <div><label className="label">{t('common.from')}</label><input type="date" className="input" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} /></div>
         <div><label className="label">{t('common.to')}</label><input type="date" className="input" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} /></div>
         <div>
-          <label className="label">Action</label>
+          <label className="label">{t('auditLog.action')}</label>
           <select className="input" value={filters.action} onChange={(e) => setFilters({ ...filters, action: e.target.value })}>
             <option value="">{t('common.all')}</option>
-            <option value="create">Create</option>
-            <option value="update">Update</option>
-            <option value="delete">Delete</option>
-            <option value="post">Post</option>
-            <option value="cancel">Cancel</option>
+            <option value="create">{t('auditLog.actions.create')}</option>
+            <option value="update">{t('auditLog.actions.update')}</option>
+            <option value="delete">{t('auditLog.actions.delete')}</option>
+            <option value="post">{t('auditLog.actions.post')}</option>
+            <option value="cancel">{t('auditLog.actions.cancel')}</option>
           </select>
         </div>
-        <button onClick={load} className="btn-primary">Apply Filters</button>
+        <button onClick={load} className="btn-primary">{t('common.applyFilters')}</button>
       </div>
 
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 dark:border-navy-800">
-              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">When</th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">User</th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">Action</th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">Resource</th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">Path</th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">IP</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('auditLog.when')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('auditLog.user')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('auditLog.action')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('auditLog.resource')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('auditLog.path')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('auditLog.ip')}</th>
             </tr>
           </thead>
           <tbody>
@@ -68,7 +68,7 @@ export default function AuditLogPage() {
               <tr key={l.id} className="border-b border-slate-50 dark:border-navy-800/60 last:border-0">
                 <td className="px-4 py-3 whitespace-nowrap text-slate-500">{new Date(l.createdAt).toLocaleString()}</td>
                 <td className="px-4 py-3">{l.user ? `${l.user.name}` : '—'}</td>
-                <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${ACTION_COLOR[l.action] || 'bg-slate-100 text-slate-500'}`}>{l.action}</span></td>
+                <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${ACTION_COLOR[l.action] || 'bg-slate-100 text-slate-500'}`}>{t(`auditLog.actions.${l.action}`, { defaultValue: l.action })}</span></td>
                 <td className="px-4 py-3 capitalize">{l.resource_type}</td>
                 <td className="px-4 py-3 text-slate-400 font-mono text-xs">{l.path}</td>
                 <td className="px-4 py-3 text-slate-400 text-xs">{l.ip_address}</td>
@@ -77,7 +77,7 @@ export default function AuditLogPage() {
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-slate-400 mt-3 flex items-center gap-1.5"><ShieldCheck size={13} /> Showing the most recent 500 actions for the active company.</p>
+      <p className="text-xs text-slate-400 mt-3 flex items-center gap-1.5"><ShieldCheck size={13} /> {t('auditLog.footnote')}</p>
     </div>
   );
 }

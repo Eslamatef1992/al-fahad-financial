@@ -31,7 +31,7 @@ export default function LedgerPage() {
 
       <div className="card p-4 mb-5 flex flex-wrap items-end gap-3">
         <div className="min-w-[220px]">
-          <label className="label">Account</label>
+          <label className="label">{t('vouchers.account')}</label>
           <select className="input" value={filters.account_id} onChange={(e) => setFilters({ ...filters, account_id: e.target.value })}>
             <option value="">{t('common.all')}</option>
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.code} - {a.name_en}</option>)}
@@ -39,12 +39,12 @@ export default function LedgerPage() {
         </div>
         <div><label className="label">{t('common.from')}</label><input type="date" className="input" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} /></div>
         <div><label className="label">{t('common.to')}</label><input type="date" className="input" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} /></div>
-        <button onClick={search} className="btn-primary">Apply Filters</button>
+        <button onClick={search} className="btn-primary">{t('common.applyFilters')}</button>
         <button
           onClick={() => downloadFile('/ledger/excel', filters, 'general-ledger.xlsx')}
           className="btn-ghost"
         >
-          <Download size={16} /> Excel
+          <Download size={16} /> {t('common.excel')}
         </button>
       </div>
 
@@ -53,12 +53,12 @@ export default function LedgerPage() {
           <thead>
             <tr className="border-b border-slate-100 dark:border-navy-800">
               <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('common.date')}</th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">Account</th>
-              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">Voucher</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('vouchers.account')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('ledger.voucher')}</th>
               <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('common.description')}</th>
-              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">Debit</th>
-              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">Credit</th>
-              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">Balance</th>
+              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('vouchers.debit')}</th>
+              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('vouchers.credit')}</th>
+              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.balance')}</th>
             </tr>
           </thead>
           <tbody>

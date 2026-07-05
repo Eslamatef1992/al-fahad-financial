@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { downloadFile, printFile } from '@/api/client';
@@ -15,6 +16,7 @@ const STATUS_COLOR = {
 };
 
 export default function InvoiceDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { canCreateEdit, canDelete } = usePermissions();
@@ -30,7 +32,7 @@ export default function InvoiceDetailPage() {
 
   const act = async () => {
     await api.post(`/invoices/${id}/${confirmAction}`);
-    toast.success(confirmAction === 'post' ? 'Posted to ledger' : 'Cancelled');
+    toast.success(confirmAction === 'post' ? t('invoices.postedToLedger') : t('invoices.status.cancelled'));
     setConfirmAction(null);
     load();
   };
@@ -40,56 +42,56 @@ export default function InvoiceDetailPage() {
     setPaying(true);
     try {
       await api.post(`/invoices/${id}/payments`, payForm);
-      toast.success('Payment recorded');
+      toast.success(t('invoices.paymentRecorded'));
       setPayOpen(false);
       setPayForm({ amount: '', date: new Date().toISOString().slice(0, 10), cash_account_id: '', notes: '' });
       load();
     } finally { setPaying(false); }
   };
 
-  if (!invoice) return <p className="text-slate-400">Loading...</p>;
+  if (!invoice) return <p className="text-slate-400">{t('common.loading')}</p>;
   const balance = Number(invoice.total) - Number(invoice.paid_total);
   const party = invoice.type === 'sales' ? invoice.client : invoice.supplier;
 
   return (
     <div>
-      <button onClick={() => navigate(`/invoices/${invoice.type}`)} className="btn-ghost !px-2 mb-3"><ArrowLeft size={16} /> Back</button>
+      <button onClick={() => navigate(`/invoices/${invoice.type}`)} className="btn-ghost !px-2 mb-3"><ArrowLeft size={16} /> {t('common.back')}</button>
       <PageHeader
         title={invoice.invoice_no}
-        subtitle={`${invoice.type === 'sales' ? 'Sales Invoice' : 'Purchase Bill'} · ${invoice.date}`}
+        subtitle={`${invoice.type === 'sales' ? t('invoices.salesInvoice') : t('invoices.purchaseBill')} · ${invoice.date}`}
         actions={
           <div className="flex items-center gap-2">
-            <button onClick={() => printFile(`/invoices/${id}/pdf`, {})} className="btn-ghost"><Printer size={16} /> Print</button>
+            <button onClick={() => printFile(`/invoices/${id}/pdf`, {})} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
             <button onClick={() => downloadFile(`/invoices/${id}/pdf`, {}, `${invoice.invoice_no}.pdf`)} className="btn-ghost"><Download size={16} /> PDF</button>
             {invoice.status === 'draft' && canCreateEdit && (
-              <button onClick={() => setConfirmAction('post')} className="btn-primary"><CheckCircle2 size={16} /> Post to Ledger</button>
+              <button onClick={() => setConfirmAction('post')} className="btn-primary"><CheckCircle2 size={16} /> {t('vouchers.postToLedger')}</button>
             )}
             {['posted', 'partially_paid'].includes(invoice.status) && canCreateEdit && (
-              <button onClick={() => setPayOpen(true)} className="btn-primary"><Wallet size={16} /> Record Payment</button>
+              <button onClick={() => setPayOpen(true)} className="btn-primary"><Wallet size={16} /> {t('invoices.recordPayment')}</button>
             )}
             {invoice.status === 'posted' && canDelete && (
-              <button onClick={() => setConfirmAction('cancel')} className="btn-danger"><XCircle size={16} /> Cancel</button>
+              <button onClick={() => setConfirmAction('cancel')} className="btn-danger"><XCircle size={16} /> {t('common.cancel')}</button>
             )}
           </div>
         }
       />
 
       <div className="card p-5 mb-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div><p className="text-xs text-slate-400 uppercase font-semibold">{invoice.type === 'sales' ? 'Client' : 'Supplier'}</p><p className="text-sm mt-1 font-medium">{party?.name_en || '—'}</p></div>
-        <div><p className="text-xs text-slate-400 uppercase font-semibold">Status</p><span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-bold capitalize ${STATUS_COLOR[invoice.status]}`}>{invoice.status.replace('_', ' ')}</span></div>
-        <div><p className="text-xs text-slate-400 uppercase font-semibold">Total</p><p className="text-sm mt-1 font-bold">{Number(invoice.total).toFixed(3)}</p></div>
-        <div><p className="text-xs text-slate-400 uppercase font-semibold">Balance Due</p><p className={`text-sm mt-1 font-bold ${balance > 0.001 ? 'text-red-500' : 'text-emerald-600'}`}>{balance.toFixed(3)}</p></div>
+        <div><p className="text-xs text-slate-400 uppercase font-semibold">{invoice.type === 'sales' ? t('common.client') : t('common.supplier')}</p><p className="text-sm mt-1 font-medium">{party?.name_en || '—'}</p></div>
+        <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.status')}</p><span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-bold capitalize ${STATUS_COLOR[invoice.status]}`}>{t(`invoices.status.${invoice.status}`)}</span></div>
+        <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.total')}</p><p className="text-sm mt-1 font-bold">{Number(invoice.total).toFixed(3)}</p></div>
+        <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.balanceDue')}</p><p className={`text-sm mt-1 font-bold ${balance > 0.001 ? 'text-red-500' : 'text-emerald-600'}`}>{balance.toFixed(3)}</p></div>
       </div>
 
       <div className="card overflow-hidden mb-5">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 dark:border-navy-800">
-              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">Description</th>
-              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">Qty</th>
-              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">Unit Price</th>
-              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">Tax %</th>
-              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">Total</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('common.description')}</th>
+              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.qty')}</th>
+              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.unitPrice')}</th>
+              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.taxPercent')}</th>
+              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.total')}</th>
             </tr>
           </thead>
           <tbody>
@@ -107,7 +109,7 @@ export default function InvoiceDetailPage() {
       </div>
 
       <div className="card p-5">
-        <h3 className="font-bold mb-3">Payment History</h3>
+        <h3 className="font-bold mb-3">{t('invoices.paymentHistory')}</h3>
         {invoice.payments?.length ? (
           <div className="space-y-2">
             {invoice.payments.map((p) => (
@@ -117,27 +119,27 @@ export default function InvoiceDetailPage() {
               </div>
             ))}
           </div>
-        ) : <p className="text-slate-400 text-sm">No payments recorded yet.</p>}
+        ) : <p className="text-slate-400 text-sm">{t('invoices.noPaymentsYet')}</p>}
       </div>
 
-      <SlideOver open={payOpen} onClose={() => setPayOpen(false)} title="Record Payment" onSubmit={submitPayment} submitting={paying}>
-        <div><label className="label">Amount (remaining: {balance.toFixed(3)})</label><input required type="number" step="0.001" max={balance} className="input" value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} /></div>
-        <div><label className="label">Date</label><input required type="date" className="input" value={payForm.date} onChange={(e) => setPayForm({ ...payForm, date: e.target.value })} /></div>
+      <SlideOver open={payOpen} onClose={() => setPayOpen(false)} title={t('invoices.recordPayment')} onSubmit={submitPayment} submitting={paying}>
+        <div><label className="label">{t('invoices.amountRemaining', { balance: balance.toFixed(3) })}</label><input required type="number" step="0.001" max={balance} className="input" value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} /></div>
+        <div><label className="label">{t('common.date')}</label><input required type="date" className="input" value={payForm.date} onChange={(e) => setPayForm({ ...payForm, date: e.target.value })} /></div>
         <div>
-          <label className="label">Cash / Bank Account</label>
+          <label className="label">{t('invoices.cashBankAccount')}</label>
           <select required className="input" value={payForm.cash_account_id} onChange={(e) => setPayForm({ ...payForm, cash_account_id: e.target.value })}>
-            <option value="">Select account</option>
+            <option value="">{t('common.select')}</option>
             {cashAccounts.map((c) => <option key={c.id} value={c.account_id}>{c.name_en}</option>)}
           </select>
         </div>
-        <div><label className="label">Notes</label><textarea className="input" rows={2} value={payForm.notes} onChange={(e) => setPayForm({ ...payForm, notes: e.target.value })} /></div>
+        <div><label className="label">{t('common.notes')}</label><textarea className="input" rows={2} value={payForm.notes} onChange={(e) => setPayForm({ ...payForm, notes: e.target.value })} /></div>
       </SlideOver>
 
       <ConfirmDialog
         open={!!confirmAction}
         onCancel={() => setConfirmAction(null)}
         onConfirm={act}
-        message={confirmAction === 'post' ? 'Post this invoice to the ledger?' : 'Cancel this invoice? Only allowed if no payments have been recorded.'}
+        message={confirmAction === 'post' ? t('invoices.postConfirm') : t('invoices.cancelConfirm')}
       />
     </div>
   );
