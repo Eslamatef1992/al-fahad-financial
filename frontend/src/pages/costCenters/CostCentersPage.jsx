@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus } from 'lucide-react';
+import { Plus, Printer, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '@/api/client';
+import api, { downloadFile, printFile } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import SlideOver from '@/components/SlideOver';
@@ -44,7 +44,16 @@ export default function CostCentersPage() {
 
   return (
     <div>
-      <PageHeader title={t('nav.costCenters')} actions={canManageStructure && <button onClick={() => openNew(null)} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>} />
+      <PageHeader
+        title={t('nav.costCenters')}
+        actions={
+          <div className="flex items-center gap-2">
+            <button onClick={() => printFile('/cost-centers/pdf', {})} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
+            <button onClick={() => downloadFile('/cost-centers/excel', {}, 'cost-centers.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
+            {canManageStructure && <button onClick={() => openNew(null)} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>}
+          </div>
+        }
+      />
       <div className="card p-3">
         {loading ? <p className="text-center text-slate-400 py-10">{t('common.loading')}</p>
           : tree.length === 0 ? <p className="text-center text-slate-400 py-10">{t('common.noData')}</p>

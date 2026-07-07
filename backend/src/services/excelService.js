@@ -190,4 +190,121 @@ async function exportEmployees(res, company, rows) {
   });
 }
 
-module.exports = { exportLedger, exportTrialBalance, exportVouchers, exportInvoices, exportEmployees };
+async function exportCostCenters(res, company, rows) {
+  await streamWorkbook(res, `cost-centers.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Cost Centers');
+    addTitleBlock(sheet, `${company?.name_en || ''} — Cost Centers`, `${rows.length} records`, 5);
+
+    sheet.columns = [
+      { header: 'Code', key: 'code', width: 14 },
+      { header: 'Name (EN)', key: 'name_en', width: 26 },
+      { header: 'Name (AR)', key: 'name_ar', width: 26 },
+      { header: 'Linked Account', key: 'account', width: 30 },
+      { header: 'Status', key: 'status', width: 12 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((c) => {
+      sheet.addRow([
+        c.code, c.name_en, c.name_ar,
+        c.account ? `${c.account.code} - ${c.account.name_en}` : '',
+        c.is_active ? 'Active' : 'Inactive',
+      ]);
+    });
+  });
+}
+
+async function exportCashAccounts(res, company, rows) {
+  await streamWorkbook(res, `cash-control.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Cash Control');
+    addTitleBlock(sheet, `${company?.name_en || ''} — Cash Control`, `${rows.length} records`, 6);
+
+    sheet.columns = [
+      { header: 'Name (EN)', key: 'name_en', width: 24 },
+      { header: 'Name (AR)', key: 'name_ar', width: 24 },
+      { header: 'Type', key: 'type', width: 14 },
+      { header: 'Linked Account', key: 'account', width: 30 },
+      { header: 'Bank', key: 'bank', width: 20 },
+      { header: 'Currency', key: 'currency', width: 12 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((c) => {
+      sheet.addRow([
+        c.name_en, c.name_ar, c.type.replace('_', ' '),
+        c.account ? `${c.account.code} - ${c.account.name_en}` : '',
+        c.bank_name || '', c.currency,
+      ]);
+    });
+  });
+}
+
+async function exportSuppliers(res, company, rows) {
+  await streamWorkbook(res, `suppliers.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Suppliers');
+    addTitleBlock(sheet, `${company?.name_en || ''} — Suppliers`, `${rows.length} records`, 8);
+
+    sheet.columns = [
+      { header: 'Code', key: 'code', width: 14 },
+      { header: 'Name (EN)', key: 'name_en', width: 26 },
+      { header: 'Name (AR)', key: 'name_ar', width: 26 },
+      { header: 'Phone', key: 'phone', width: 16 },
+      { header: 'Email', key: 'email', width: 22 },
+      { header: 'Linked Account', key: 'account', width: 30 },
+      { header: 'Payment Terms (days)', key: 'terms', width: 18 },
+      { header: 'Balance', key: 'balance', width: 16 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((s) => {
+      sheet.addRow([
+        s.code, s.name_en, s.name_ar, s.phone || '', s.email || '',
+        s.account ? `${s.account.code} - ${s.account.name_en}` : '',
+        s.payment_terms_days, Number(s.opening_balance) || 0,
+      ]);
+    });
+    sheet.getColumn(8).numFmt = '#,##0.000';
+  });
+}
+
+async function exportClients(res, company, rows) {
+  await streamWorkbook(res, `clients.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Clients');
+    addTitleBlock(sheet, `${company?.name_en || ''} — Clients`, `${rows.length} records`, 8);
+
+    sheet.columns = [
+      { header: 'Code', key: 'code', width: 14 },
+      { header: 'Name (EN)', key: 'name_en', width: 26 },
+      { header: 'Name (AR)', key: 'name_ar', width: 26 },
+      { header: 'Phone', key: 'phone', width: 16 },
+      { header: 'Email', key: 'email', width: 22 },
+      { header: 'Linked Account', key: 'account', width: 30 },
+      { header: 'Credit Limit', key: 'credit_limit', width: 16 },
+      { header: 'Balance', key: 'balance', width: 16 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((c) => {
+      sheet.addRow([
+        c.code, c.name_en, c.name_ar, c.phone || '', c.email || '',
+        c.account ? `${c.account.code} - ${c.account.name_en}` : '',
+        Number(c.credit_limit) || 0, Number(c.opening_balance) || 0,
+      ]);
+    });
+    sheet.getColumn(7).numFmt = '#,##0.000';
+    sheet.getColumn(8).numFmt = '#,##0.000';
+  });
+}
+
+module.exports = {
+  exportLedger, exportTrialBalance, exportVouchers, exportInvoices, exportEmployees,
+  exportCostCenters, exportCashAccounts, exportSuppliers, exportClients,
+};

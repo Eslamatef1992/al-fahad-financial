@@ -1,13 +1,27 @@
-const { sequelize, Supplier, Account } = require('../models');
+const { sequelize, Supplier, Account, Company } = require('../models');
 const crudFactory = require('../utils/crudFactory');
 const { createLinkedAccount, syncLinkedAccount } = require('../utils/linkedAccount');
 const { nextCode } = require('../utils/codeGenerator');
+const { exportSuppliers } = require('../services/excelService');
+const { generateSuppliersPdf } = require('../services/pdfService');
 
 const base = crudFactory(Supplier, { include: [{ model: Account, as: 'account' }], searchFields: ['name_en', 'name_ar', 'code', 'phone', 'email'] });
 
 exports.list = base.list;
 exports.get = base.get;
 exports.remove = base.remove;
+
+exports.exportExcel = async (req, res) => {
+  const rows = await Supplier.findAll({ where: { company_id: req.companyId, is_active: true }, include: [{ model: Account, as: 'account' }], order: [['code', 'ASC']] });
+  const company = await Company.findByPk(req.companyId);
+  await exportSuppliers(res, company, rows);
+};
+
+exports.pdf = async (req, res) => {
+  const rows = await Supplier.findAll({ where: { company_id: req.companyId, is_active: true }, include: [{ model: Account, as: 'account' }], order: [['code', 'ASC']] });
+  const company = await Company.findByPk(req.companyId);
+  generateSuppliersPdf(res, rows, company);
+};
 
 // Creating a supplier always gets a system-generated code (SUP-00001, SUP-00002, ...) —
 // any supplier-supplied code is ignored. It can optionally also auto-create its ledger

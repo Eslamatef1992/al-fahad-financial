@@ -507,6 +507,98 @@ function generateEmployeesPdf(res, rows, company) {
   doc.end();
 }
 
+function generateCostCentersPdf(res, rows, company) {
+  const doc = newDoc(res, 'cost-centers.pdf');
+  header(doc, company, 'Cost Centers', `${rows.length} records`);
+
+  metaCard(doc, [{ label: 'Total Cost Centers', value: String(rows.length) }]);
+
+  table(doc, {
+    headers: [
+      { label: 'Code' }, { label: 'Name (EN)' }, { label: 'Name (AR)' },
+      { label: 'Linked Account' }, { label: 'Status' },
+    ],
+    colWidths: [70, 130, 130, 130, 55],
+    rows: rows.map((c) => [
+      c.code, c.name_en, c.name_ar,
+      c.account ? `${c.account.code} - ${c.account.name_en}` : '-',
+      c.is_active ? 'Active' : 'Inactive',
+    ]),
+  });
+
+  footer(doc, company);
+  doc.end();
+}
+
+function generateCashAccountsPdf(res, rows, company) {
+  const doc = newDoc(res, 'cash-control.pdf');
+  header(doc, company, 'Cash Control', `${rows.length} records`);
+
+  metaCard(doc, [{ label: 'Total Accounts', value: String(rows.length) }]);
+
+  table(doc, {
+    headers: [
+      { label: 'Name (EN)' }, { label: 'Name (AR)' }, { label: 'Type' },
+      { label: 'Linked Account' }, { label: 'Bank' }, { label: 'Currency' },
+    ],
+    colWidths: [110, 110, 60, 130, 80, 55],
+    rows: rows.map((c) => [
+      c.name_en, c.name_ar, c.type.replace('_', ' '),
+      c.account ? `${c.account.code} - ${c.account.name_en}` : '-',
+      c.bank_name || '-', c.currency,
+    ]),
+  });
+
+  footer(doc, company);
+  doc.end();
+}
+
+function generateSuppliersPdf(res, rows, company) {
+  const doc = newDoc(res, 'suppliers.pdf');
+  header(doc, company, 'Suppliers', `${rows.length} records`);
+
+  metaCard(doc, [{ label: 'Total Suppliers', value: String(rows.length) }]);
+
+  table(doc, {
+    headers: [
+      { label: 'Code' }, { label: 'Name' }, { label: 'Phone' },
+      { label: 'Linked Account' }, { label: 'Balance', align: 'right' },
+    ],
+    colWidths: [65, 150, 90, 130, 70],
+    rows: rows.map((s) => [
+      s.code, s.name_en, s.phone || '-',
+      s.account ? `${s.account.code} - ${s.account.name_en}` : '-',
+      Number(s.opening_balance || 0).toFixed(3),
+    ]),
+  });
+
+  footer(doc, company);
+  doc.end();
+}
+
+function generateClientsPdf(res, rows, company) {
+  const doc = newDoc(res, 'clients.pdf');
+  header(doc, company, 'Clients', `${rows.length} records`);
+
+  metaCard(doc, [{ label: 'Total Clients', value: String(rows.length) }]);
+
+  table(doc, {
+    headers: [
+      { label: 'Code' }, { label: 'Name' }, { label: 'Phone' },
+      { label: 'Linked Account' }, { label: 'Balance', align: 'right' },
+    ],
+    colWidths: [65, 150, 90, 130, 70],
+    rows: rows.map((c) => [
+      c.code, c.name_en, c.phone || '-',
+      c.account ? `${c.account.code} - ${c.account.name_en}` : '-',
+      Number(c.opening_balance || 0).toFixed(3),
+    ]),
+  });
+
+  footer(doc, company);
+  doc.end();
+}
+
 function generateInvoicePdf(res, invoice, company) {
   const doc = newDoc(res, `${invoice.invoice_no}.pdf`);
   const partyName = invoice.type === 'sales' ? invoice.client?.name_en : invoice.supplier?.name_en;
@@ -581,4 +673,8 @@ function generateAgingPdf(res, aging, company) {
   doc.end();
 }
 
-module.exports = { generateVoucherPdf, generateProfitAndLossPdf, generateBalanceSheetPdf, generateTrialBalancePdf, generateInvoicePdf, generateAgingPdf, generateEmployeesPdf };
+module.exports = {
+  generateVoucherPdf, generateProfitAndLossPdf, generateBalanceSheetPdf, generateTrialBalancePdf,
+  generateInvoicePdf, generateAgingPdf, generateEmployeesPdf,
+  generateCostCentersPdf, generateCashAccountsPdf, generateSuppliersPdf, generateClientsPdf,
+};

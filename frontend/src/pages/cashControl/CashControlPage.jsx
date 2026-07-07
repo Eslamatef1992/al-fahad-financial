@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus } from 'lucide-react';
+import { Plus, Printer, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '@/api/client';
+import api, { downloadFile, printFile } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
@@ -56,7 +56,17 @@ export default function CashControlPage() {
 
   return (
     <div>
-      <PageHeader title={t('nav.cashControl')} subtitle="Cash, petty cash and bank accounts" actions={canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>} />
+      <PageHeader
+        title={t('nav.cashControl')}
+        subtitle="Cash, petty cash and bank accounts"
+        actions={
+          <div className="flex items-center gap-2">
+            <button onClick={() => printFile('/cash-accounts/pdf', {})} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
+            <button onClick={() => downloadFile('/cash-accounts/excel', {}, 'cash-control.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
+            {canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>}
+          </div>
+        }
+      />
       <DataTable columns={columns} data={items} loading={loading} onEdit={canCreateEdit ? openEdit : undefined} onDelete={canDelete ? setToDelete : undefined} />
       <SlideOver open={open} onClose={() => setOpen(false)} title={editing ? t('common.edit') : t('common.add')} onSubmit={submit} submitting={saving}>
         <div className="grid grid-cols-2 gap-3">

@@ -208,7 +208,11 @@
     "leaveDays": "Days",
     "leaveHistory": "Leave History",
     "leaveLogged": "Leave logged",
-    "leaveRemoved": "Leave entry removed, balance restored"
+    "leaveRemoved": "Leave entry removed, balance restored",
+    "filterByMonth": "Filter by month",
+    "vacationThisMonth": "Vacation (Month)",
+    "sickThisMonth": "Sick Leave (Month)",
+    "netSalary": "Net Salary"
   },
   "invoices": {
     "invoiceNo": "Invoice No.",

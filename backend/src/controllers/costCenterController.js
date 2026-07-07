@@ -1,8 +1,22 @@
-const { sequelize, CostCenter, Account } = require('../models');
+const { sequelize, CostCenter, Account, Company } = require('../models');
 const { createLinkedAccount, syncLinkedAccount } = require('../utils/linkedAccount');
 const { nextCode } = require('../utils/codeGenerator');
+const { exportCostCenters } = require('../services/excelService');
+const { generateCostCentersPdf } = require('../services/pdfService');
 
 const include = [{ model: Account, as: 'account' }];
+
+exports.exportExcel = async (req, res) => {
+  const rows = await CostCenter.findAll({ where: { company_id: req.companyId, is_active: true }, include, order: [['code', 'ASC']] });
+  const company = await Company.findByPk(req.companyId);
+  await exportCostCenters(res, company, rows);
+};
+
+exports.pdf = async (req, res) => {
+  const rows = await CostCenter.findAll({ where: { company_id: req.companyId, is_active: true }, include, order: [['code', 'ASC']] });
+  const company = await Company.findByPk(req.companyId);
+  generateCostCentersPdf(res, rows, company);
+};
 
 exports.tree = async (req, res) => {
   const items = await CostCenter.findAll({ where: { company_id: req.companyId }, include, order: [['code', 'ASC']] });

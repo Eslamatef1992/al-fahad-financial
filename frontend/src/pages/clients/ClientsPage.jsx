@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus } from 'lucide-react';
+import { Plus, Printer, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '@/api/client';
+import api, { downloadFile, printFile } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
@@ -65,7 +65,16 @@ export default function ClientsPage() {
 
   return (
     <div>
-      <PageHeader title={t('nav.clients')} actions={canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>} />
+      <PageHeader
+        title={t('nav.clients')}
+        actions={
+          <div className="flex items-center gap-2">
+            <button onClick={() => printFile('/clients/pdf', {})} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
+            <button onClick={() => downloadFile('/clients/excel', {}, 'clients.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
+            {canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>}
+          </div>
+        }
+      />
       <label className="flex items-center gap-2 text-sm text-slate-500 mb-3 cursor-pointer w-fit">
         <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="rounded" />
         {t('common.showInactive')}

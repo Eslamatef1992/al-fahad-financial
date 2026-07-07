@@ -1,13 +1,27 @@
-const { sequelize, Client, Account } = require('../models');
+const { sequelize, Client, Account, Company } = require('../models');
 const crudFactory = require('../utils/crudFactory');
 const { createLinkedAccount, syncLinkedAccount } = require('../utils/linkedAccount');
 const { nextCode } = require('../utils/codeGenerator');
+const { exportClients } = require('../services/excelService');
+const { generateClientsPdf } = require('../services/pdfService');
 
 const base = crudFactory(Client, { include: [{ model: Account, as: 'account' }], searchFields: ['name_en', 'name_ar', 'code', 'phone', 'email'] });
 
 exports.list = base.list;
 exports.get = base.get;
 exports.remove = base.remove;
+
+exports.exportExcel = async (req, res) => {
+  const rows = await Client.findAll({ where: { company_id: req.companyId, is_active: true }, include: [{ model: Account, as: 'account' }], order: [['code', 'ASC']] });
+  const company = await Company.findByPk(req.companyId);
+  await exportClients(res, company, rows);
+};
+
+exports.pdf = async (req, res) => {
+  const rows = await Client.findAll({ where: { company_id: req.companyId, is_active: true }, include: [{ model: Account, as: 'account' }], order: [['code', 'ASC']] });
+  const company = await Company.findByPk(req.companyId);
+  generateClientsPdf(res, rows, company);
+};
 
 // Creating a client always gets a system-generated code (CLI-00001, CLI-00002, ...) —
 // any client-supplied code is ignored, same reasoning as Employees: no manual numbering

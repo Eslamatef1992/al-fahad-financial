@@ -208,7 +208,11 @@
     "leaveDays": "عدد الأيام",
     "leaveHistory": "سجل الإجازات",
     "leaveLogged": "تم تسجيل الإجازة",
-    "leaveRemoved": "تم حذف الإجازة واستعادة الرصيد"
+    "leaveRemoved": "تم حذف الإجازة واستعادة الرصيد",
+    "filterByMonth": "تصفية حسب الشهر",
+    "vacationThisMonth": "إجازة (الشهر)",
+    "sickThisMonth": "إجازة مرضية (الشهر)",
+    "netSalary": "صافي الراتب"
   },
   "invoices": {
     "invoiceNo": "رقم الفاتورة",

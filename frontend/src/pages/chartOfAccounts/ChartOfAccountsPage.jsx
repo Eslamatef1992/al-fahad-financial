@@ -51,8 +51,8 @@ export default function ChartOfAccountsPage() {
   };
 
   const remove = async () => {
-    await api.delete(`/accounts/${toDelete.id}`);
-    toast.success(t('common.deactivated'));
+    const { data } = await api.delete(`/accounts/${toDelete.id}`);
+    toast.success(data?.message?.startsWith('Account permanently deleted') ? t('common.delete') : t('common.deactivated'));
     setToDelete(null);
     load();
   };

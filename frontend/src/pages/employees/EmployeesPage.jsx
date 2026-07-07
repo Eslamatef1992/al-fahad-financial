@@ -35,13 +35,32 @@ export default function EmployeesPage() {
   const [saving, setSaving] = useState(false);
   const [leaveEmployee, setLeaveEmployee] = useState(null);
   const [positionFilter, setPositionFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState(''); // 'YYYY-MM', native <input type="month">
+  const [monthLeaves, setMonthLeaves] = useState([]);
 
   const load = () => { setLoading(true); api.get('/employees').then((r) => setItems(r.data)).finally(() => setLoading(false)); };
   useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
 
+  // Loaded lazily — only once a month is actually picked — since it's not needed for
+  // the default view. GET /employee-leaves with no employee_id returns every leave
+  // entry for the active company, which we then bucket by month client-side.
+  useEffect(() => {
+    if (activeCompany && monthFilter) api.get('/employee-leaves').then((r) => setMonthLeaves(r.data));
+  }, [activeCompany, monthFilter]);
+
   // Distinct, sorted positions actually present in the data, for the filter dropdown.
   const positions = [...new Set(items.map((e) => e.position).filter(Boolean))].sort();
   const filteredItems = positionFilter ? items.filter((e) => e.position === positionFilter) : items;
+
+  // Vacation/sick days actually taken in the selected month, per employee — pulled from
+  // the dated leave log (date_from's year-month), not the running balance.
+  const monthlyByEmployee = {};
+  if (monthFilter) {
+    monthLeaves.filter((l) => l.date_from?.slice(0, 7) === monthFilter).forEach((l) => {
+      const bucket = monthlyByEmployee[l.employee_id] || (monthlyByEmployee[l.employee_id] = { vacation: 0, sick: 0 });
+      bucket[l.type] = (bucket[l.type] || 0) + Number(l.days || 0);
+    });
+  }
 
   // Keeps the leave dialog's displayed balances in sync with the latest fetch after
   // logging/undoing an entry (it changes the employee's balance on the backend).
@@ -76,6 +95,11 @@ export default function EmployeesPage() {
     { key: 'vacation_balance', label: t('employees.vacationDays'), render: (r) => days(r.vacation_balance) },
     { key: 'sick_leave_balance', label: t('employees.sickLeaveDays'), render: (r) => days(r.sick_leave_balance) },
     { key: 'deduction', label: t('employees.deduction'), render: (r) => money(r.deduction) },
+    ...(monthFilter ? [
+      { key: 'monthlyVacation', label: t('employees.vacationThisMonth'), render: (r) => days(monthlyByEmployee[r.id]?.vacation) },
+      { key: 'monthlySick', label: t('employees.sickThisMonth'), render: (r) => days(monthlyByEmployee[r.id]?.sick) },
+      { key: 'netSalary', label: t('employees.netSalary'), render: (r) => money(Number(r.salary || 0) - Number(r.deduction || 0)) },
+    ] : []),
     { key: 'account', label: t('accounts.parentAccount'), render: (r) => r.account ? `${r.account.code} - ${r.account.name_en}` : '—' },
     { key: 'deductionAccount', label: t('employees.deductionAccount'), render: (r) => r.deductionAccount ? `${r.deductionAccount.code} - ${r.deductionAccount.name_en}` : '—' },
     { key: 'is_driver', label: t('employees.driver'), render: (r) => r.is_driver ? <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gold-100 text-gold-700">{t('employees.driver')}</span> : '—' },
@@ -89,6 +113,13 @@ export default function EmployeesPage() {
             <option value="">{t('employees.allPositions')}</option>
             {positions.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
+          <input
+            type="month"
+            className="input !py-2"
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
+            title={t('employees.filterByMonth')}
+          />
           <button onClick={() => printFile('/employees/pdf', {})} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
           <button onClick={() => downloadFile('/employees/excel', {}, 'employees.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
           {canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>}
