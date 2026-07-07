@@ -599,6 +599,29 @@ function generateClientsPdf(res, rows, company) {
   doc.end();
 }
 
+function generateVehiclesPdf(res, rows, company) {
+  const doc = newDoc(res, 'vehicles.pdf');
+  header(doc, company, 'Vehicles', `${rows.length} records`);
+
+  metaCard(doc, [{ label: 'Total Vehicles', value: String(rows.length) }]);
+
+  table(doc, {
+    headers: [
+      { label: 'Code' }, { label: 'Plate No.' }, { label: 'Make/Model' },
+      { label: 'Type' }, { label: 'Driver' }, { label: 'Status' },
+    ],
+    colWidths: [65, 70, 110, 70, 100, 70],
+    rows: rows.map((v) => [
+      v.code, v.plate_no, `${v.make || ''} ${v.model || ''}`.trim() || '-',
+      v.vehicle_type || '-', v.driver ? v.driver.name_en : '-',
+      (v.status || '').charAt(0).toUpperCase() + (v.status || '').slice(1),
+    ]),
+  });
+
+  footer(doc, company);
+  doc.end();
+}
+
 function generateInvoicePdf(res, invoice, company) {
   const doc = newDoc(res, `${invoice.invoice_no}.pdf`);
   const partyName = invoice.type === 'sales' ? invoice.client?.name_en : invoice.supplier?.name_en;
@@ -677,4 +700,5 @@ module.exports = {
   generateVoucherPdf, generateProfitAndLossPdf, generateBalanceSheetPdf, generateTrialBalancePdf,
   generateInvoicePdf, generateAgingPdf, generateEmployeesPdf,
   generateCostCentersPdf, generateCashAccountsPdf, generateSuppliersPdf, generateClientsPdf,
+  generateVehiclesPdf,
 };

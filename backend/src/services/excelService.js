@@ -304,7 +304,35 @@ async function exportClients(res, company, rows) {
   });
 }
 
+async function exportVehicles(res, company, rows) {
+  await streamWorkbook(res, `vehicles.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Vehicles');
+    addTitleBlock(sheet, `${company?.name_en || ''} — Vehicles`, `${rows.length} records`, 7);
+
+    sheet.columns = [
+      { header: 'Code', key: 'code', width: 14 },
+      { header: 'Plate No.', key: 'plate_no', width: 14 },
+      { header: 'Make', key: 'make', width: 16 },
+      { header: 'Model', key: 'model', width: 16 },
+      { header: 'Type', key: 'type', width: 14 },
+      { header: 'Driver', key: 'driver', width: 22 },
+      { header: 'Status', key: 'status', width: 14 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((v) => {
+      sheet.addRow([
+        v.code, v.plate_no, v.make || '', v.model || '', v.vehicle_type || '',
+        v.driver ? v.driver.name_en : '', v.status || '',
+      ]);
+    });
+  });
+}
+
 module.exports = {
   exportLedger, exportTrialBalance, exportVouchers, exportInvoices, exportEmployees,
   exportCostCenters, exportCashAccounts, exportSuppliers, exportClients,
+  exportVehicles,
 };

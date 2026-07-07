@@ -1,10 +1,12 @@
 const fs = require('fs');
 const path = require('path');
 const { Op } = require('sequelize');
-const { sequelize, Vehicle, Employee, VehicleDocument, VehicleMaintenance, Account } = require('../models');
+const { sequelize, Vehicle, Employee, VehicleDocument, VehicleMaintenance, Account, Company } = require('../models');
 const { toPublicPath } = require('../middleware/upload');
 const { createLinkedAccount, syncLinkedAccount } = require('../utils/linkedAccount');
 const { nextCode } = require('../utils/codeGenerator');
+const { exportVehicles } = require('../services/excelService');
+const { generateVehiclesPdf } = require('../services/pdfService');
 
 const include = [
   { model: Employee, as: 'driver', attributes: ['id', 'name_en', 'name_ar', 'phone', 'license_no', 'license_expiry'] },
@@ -30,6 +32,18 @@ exports.get = async (req, res) => {
   const vehicle = await Vehicle.findOne({ where: { id: req.params.id, company_id: req.companyId }, include });
   if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
   res.json(vehicle);
+};
+
+exports.exportExcel = async (req, res) => {
+  const rows = await Vehicle.findAll({ where: { company_id: req.companyId, status: { [Op.ne]: 'inactive' } }, include, order: [['code', 'ASC']] });
+  const company = await Company.findByPk(req.companyId);
+  await exportVehicles(res, company, rows);
+};
+
+exports.pdf = async (req, res) => {
+  const rows = await Vehicle.findAll({ where: { company_id: req.companyId, status: { [Op.ne]: 'inactive' } }, include, order: [['code', 'ASC']] });
+  const company = await Company.findByPk(req.companyId);
+  generateVehiclesPdf(res, rows, company);
 };
 
 // Creating a vehicle always gets a system-generated code (VEH-00001, VEH-00002, ...) —
