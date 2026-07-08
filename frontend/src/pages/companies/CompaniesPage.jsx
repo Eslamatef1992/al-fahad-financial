@@ -68,8 +68,8 @@ export default function CompaniesPage() {
   };
 
   const remove = async () => {
-    await api.delete(`/companies/${toDelete.id}`);
-    toast.success(t('common.deactivated'));
+    const { data } = await api.delete(`/companies/${toDelete.id}`);
+    toast.success(data?.message?.startsWith('Company permanently deleted') ? t('common.delete') : t('common.deactivated'));
     setToDelete(null);
     load();
   };
@@ -123,7 +123,14 @@ export default function CompaniesPage() {
         </div>
       </SlideOver>
 
-      <ConfirmDialog open={!!toDelete} onCancel={() => setToDelete(null)} onConfirm={remove} />
+      <ConfirmDialog
+        open={!!toDelete}
+        onCancel={() => setToDelete(null)}
+        onConfirm={remove}
+        message={toDelete && !toDelete.is_active
+          ? `This company is already inactive — deleting it now will PERMANENTLY remove "${toDelete.name_en}" and everything in it (vouchers, ledger, invoices, employees, vehicles, clients, suppliers, chart of accounts). This cannot be undone.`
+          : undefined}
+      />
     </div>
   );
 }
