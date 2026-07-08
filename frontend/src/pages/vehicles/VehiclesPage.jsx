@@ -104,6 +104,7 @@ export default function VehiclesPage() {
         onToggleActive={canDelete ? toggleActive : undefined}
         isInactive={(r) => r.status === 'inactive'}
         onRowClick={(row) => navigate(`/vehicles/${row.id}`)}
+        pageSize={25}
       />
 
       <SlideOver open={open} onClose={() => setOpen(false)} title={editing ? t('common.edit') : t('vehicles.addVehicle')} onSubmit={submit} submitting={saving} wide>

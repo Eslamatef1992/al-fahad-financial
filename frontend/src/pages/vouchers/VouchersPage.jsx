@@ -39,7 +39,7 @@ export default function VouchersPage() {
           {canCreateEdit && <button onClick={() => navigate('/vouchers/new')} className="btn-primary"><Plus size={16} /> {t('vouchers.newVoucher')}</button>}
         </div>
       } />
-      <DataTable columns={columns} data={items} loading={loading} onRowClick={(row) => navigate(`/vouchers/${row.id}`)} />
+      <DataTable columns={columns} data={items} loading={loading} onRowClick={(row) => navigate(`/vouchers/${row.id}`)} pageSize={25} />
     </div>
   );
 }

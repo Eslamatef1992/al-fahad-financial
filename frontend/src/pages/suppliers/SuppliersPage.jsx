@@ -85,6 +85,7 @@ export default function SuppliersPage() {
         onEdit={canCreateEdit ? openEdit : undefined}
         onToggleActive={canDelete ? toggleActive : undefined}
         isInactive={(r) => !r.is_active}
+        pageSize={25}
       />
       <SlideOver open={open} onClose={() => setOpen(false)} title={editing ? t('common.edit') : t('common.add')} onSubmit={submit} submitting={saving}>
         <div className="grid grid-cols-2 gap-3">
