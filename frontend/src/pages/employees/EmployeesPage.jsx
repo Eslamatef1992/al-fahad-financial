@@ -39,6 +39,8 @@ export default function EmployeesPage() {
   const [monthLeaves, setMonthLeaves] = useState([]);
   const [salaryFrom, setSalaryFrom] = useState('');
   const [salaryTo, setSalaryTo] = useState('');
+  const [hireDateFrom, setHireDateFrom] = useState('');
+  const [hireDateTo, setHireDateTo] = useState('');
 
   const load = () => { setLoading(true); api.get('/employees').then((r) => setItems(r.data)).finally(() => setLoading(false)); };
   useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
@@ -55,7 +57,9 @@ export default function EmployeesPage() {
   const filteredItems = items
     .filter((e) => !positionFilter || e.position === positionFilter)
     .filter((e) => salaryFrom === '' || Number(e.salary || 0) >= Number(salaryFrom))
-    .filter((e) => salaryTo === '' || Number(e.salary || 0) <= Number(salaryTo));
+    .filter((e) => salaryTo === '' || Number(e.salary || 0) <= Number(salaryTo))
+    .filter((e) => !hireDateFrom || (e.hire_date && e.hire_date >= hireDateFrom))
+    .filter((e) => !hireDateTo || (e.hire_date && e.hire_date <= hireDateTo));
 
   // Vacation/sick days actually taken in the selected month, per employee — pulled from
   // the dated leave log (date_from's year-month), not the running balance.
@@ -142,6 +146,20 @@ export default function EmployeesPage() {
             title={t('employees.salaryTo')}
             value={salaryTo}
             onChange={(e) => setSalaryTo(e.target.value)}
+          />
+          <input
+            type="date"
+            className="input !py-2"
+            title={t('employees.hireDateFrom')}
+            value={hireDateFrom}
+            onChange={(e) => setHireDateFrom(e.target.value)}
+          />
+          <input
+            type="date"
+            className="input !py-2"
+            title={t('employees.hireDateTo')}
+            value={hireDateTo}
+            onChange={(e) => setHireDateTo(e.target.value)}
           />
           <button onClick={() => printFile('/employees/pdf', {})} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
           <button onClick={() => downloadFile('/employees/excel', {}, 'employees.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>

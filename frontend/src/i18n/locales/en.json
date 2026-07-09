@@ -214,7 +214,9 @@
     "sickThisMonth": "Sick Leave (Month)",
     "netSalary": "Net Salary",
     "salaryFrom": "Salary from",
-    "salaryTo": "Salary to"
+    "salaryTo": "Salary to",
+    "hireDateFrom": "Hire date from",
+    "hireDateTo": "Hire date to"
   },
   "invoices": {
     "invoiceNo": "Invoice No.",

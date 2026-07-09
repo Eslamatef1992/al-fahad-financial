@@ -214,7 +214,9 @@
     "sickThisMonth": "إجازة مرضية (الشهر)",
     "netSalary": "صافي الراتب",
     "salaryFrom": "الراتب من",
-    "salaryTo": "الراتب إلى"
+    "salaryTo": "الراتب إلى",
+    "hireDateFrom": "تاريخ التعيين من",
+    "hireDateTo": "تاريخ التعيين إلى"
   },
   "invoices": {
     "invoiceNo": "رقم الفاتورة",
