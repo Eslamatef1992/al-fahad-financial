@@ -37,6 +37,8 @@ export default function EmployeesPage() {
   const [positionFilter, setPositionFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState(''); // 'YYYY-MM', native <input type="month">
   const [monthLeaves, setMonthLeaves] = useState([]);
+  const [salaryFrom, setSalaryFrom] = useState('');
+  const [salaryTo, setSalaryTo] = useState('');
 
   const load = () => { setLoading(true); api.get('/employees').then((r) => setItems(r.data)).finally(() => setLoading(false)); };
   useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
@@ -50,7 +52,10 @@ export default function EmployeesPage() {
 
   // Distinct, sorted positions actually present in the data, for the filter dropdown.
   const positions = [...new Set(items.map((e) => e.position).filter(Boolean))].sort();
-  const filteredItems = positionFilter ? items.filter((e) => e.position === positionFilter) : items;
+  const filteredItems = items
+    .filter((e) => !positionFilter || e.position === positionFilter)
+    .filter((e) => salaryFrom === '' || Number(e.salary || 0) >= Number(salaryFrom))
+    .filter((e) => salaryTo === '' || Number(e.salary || 0) <= Number(salaryTo));
 
   // Vacation/sick days actually taken in the selected month, per employee — pulled from
   // the dated leave log (date_from's year-month), not the running balance.
@@ -119,6 +124,24 @@ export default function EmployeesPage() {
             value={monthFilter}
             onChange={(e) => setMonthFilter(e.target.value)}
             title={t('employees.filterByMonth')}
+          />
+          <input
+            type="number"
+            step="0.001"
+            className="input !py-2 !w-28"
+            placeholder={t('common.from')}
+            title={t('employees.salaryFrom')}
+            value={salaryFrom}
+            onChange={(e) => setSalaryFrom(e.target.value)}
+          />
+          <input
+            type="number"
+            step="0.001"
+            className="input !py-2 !w-28"
+            placeholder={t('common.to')}
+            title={t('employees.salaryTo')}
+            value={salaryTo}
+            onChange={(e) => setSalaryTo(e.target.value)}
           />
           <button onClick={() => printFile('/employees/pdf', {})} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
           <button onClick={() => downloadFile('/employees/excel', {}, 'employees.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>

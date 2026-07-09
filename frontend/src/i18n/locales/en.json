@@ -212,7 +212,9 @@
     "filterByMonth": "Filter by month",
     "vacationThisMonth": "Vacation (Month)",
     "sickThisMonth": "Sick Leave (Month)",
-    "netSalary": "Net Salary"
+    "netSalary": "Net Salary",
+    "salaryFrom": "Salary from",
+    "salaryTo": "Salary to"
   },
   "invoices": {
     "invoiceNo": "Invoice No.",

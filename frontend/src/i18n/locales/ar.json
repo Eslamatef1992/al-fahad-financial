@@ -212,7 +212,9 @@
     "filterByMonth": "تصفية حسب الشهر",
     "vacationThisMonth": "إجازة (الشهر)",
     "sickThisMonth": "إجازة مرضية (الشهر)",
-    "netSalary": "صافي الراتب"
+    "netSalary": "صافي الراتب",
+    "salaryFrom": "الراتب من",
+    "salaryTo": "الراتب إلى"
   },
   "invoices": {
     "invoiceNo": "رقم الفاتورة",
