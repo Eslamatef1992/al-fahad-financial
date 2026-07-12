@@ -12,7 +12,8 @@ const emptyLine = () => ({ account_id: '', description: '', quantity: 1, unit_pr
 
 export default function InvoiceFormPage() {
   const { t } = useTranslation();
-  const { type } = useParams(); // 'sales' | 'purchase'
+  const { type, id } = useParams(); // 'sales' | 'purchase'; id present only when editing an existing draft
+  const isEdit = !!id;
   const navigate = useNavigate();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const [accounts, setAccounts] = useState([]);
@@ -20,6 +21,7 @@ export default function InvoiceFormPage() {
   const [clients, setClients] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(isEdit);
 
   const partyKey = type === 'sales' ? 'client_id' : 'supplier_id';
   const [header, setHeader] = useState({
@@ -36,6 +38,24 @@ export default function InvoiceFormPage() {
     if (type === 'sales') api.get('/clients').then((r) => setClients(r.data));
     else api.get('/suppliers').then((r) => setSuppliers(r.data));
   }, [activeCompany, type]);
+
+  // Editing an existing draft — load it in and prefill the form once.
+  useEffect(() => {
+    if (!activeCompany || !isEdit) return;
+    api.get(`/invoices/${id}`).then((r) => {
+      const inv = r.data;
+      setHeader({
+        client_id: inv.client_id || '', supplier_id: inv.supplier_id || '',
+        date: inv.date, due_date: inv.due_date || '',
+        cost_center_id: inv.cost_center_id || '', reference_no: inv.reference_no || '', notes: inv.notes || '',
+      });
+      setLines(inv.lines.map((l) => ({
+        account_id: l.account_id, description: l.description || '',
+        quantity: l.quantity, unit_price: l.unit_price, tax_rate: l.tax_rate,
+      })));
+      setLoading(false);
+    });
+  }, [activeCompany, isEdit, id]);
 
   const updateLine = (idx, patch) => setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   const addLine = () => setLines((ls) => [...ls, emptyLine()]);
@@ -62,16 +82,26 @@ export default function InvoiceFormPage() {
     setSaving(true);
     try {
       const payload = { type, ...header, client_id: header.client_id || undefined, supplier_id: header.supplier_id || undefined, lines: validLines };
-      const { data } = await api.post('/invoices', payload);
-      toast.success(t('invoices.savedAsDraft'));
-      navigate(`/invoices/${data.id}`);
+      if (isEdit) {
+        const { data } = await api.put(`/invoices/${id}`, payload);
+        toast.success(t('common.save'));
+        navigate(`/invoices/${data.id}`);
+      } else {
+        const { data } = await api.post('/invoices', payload);
+        toast.success(t('invoices.savedAsDraft'));
+        navigate(`/invoices/${data.id}`);
+      }
     } finally { setSaving(false); }
   };
+
+  if (loading) return <p className="text-slate-400">{t('common.loading')}</p>;
 
   return (
     <div>
       <button onClick={() => navigate(`/invoices/${type}`)} className="btn-ghost !px-2 mb-3"><ArrowLeft size={16} /> {t('common.back')}</button>
-      <PageHeader title={type === 'sales' ? t('invoices.newSalesInvoiceTitle') : t('invoices.newPurchaseBillTitle')} />
+      <PageHeader title={isEdit
+        ? (type === 'sales' ? t('invoices.editSalesInvoiceTitle') : t('invoices.editPurchaseBillTitle'))
+        : (type === 'sales' ? t('invoices.newSalesInvoiceTitle') : t('invoices.newPurchaseBillTitle'))} />
 
       <form onSubmit={submit} className="space-y-5">
         <div className="card p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -126,7 +156,7 @@ export default function InvoiceFormPage() {
         </div>
 
         <div className="flex justify-end">
-          <button disabled={saving} className="btn-primary"><Save size={16} /> {t('vouchers.saveAsDraft')}</button>
+          <button disabled={saving} className="btn-primary"><Save size={16} /> {isEdit ? t('vouchers.saveChanges') : t('vouchers.saveAsDraft')}</button>
         </div>
       </form>
     </div>

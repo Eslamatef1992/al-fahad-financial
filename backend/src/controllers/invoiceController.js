@@ -44,6 +44,14 @@ exports.update = async (req, res) => {
   res.json(recreated);
 };
 
+exports.remove = async (req, res) => {
+  const invoice = await Invoice.findOne({ where: { id: req.params.id, company_id: req.companyId } });
+  if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+  if (invoice.status !== 'draft') return res.status(400).json({ message: 'Only draft invoices can be deleted' });
+  await invoice.destroy(); // InvoiceLine rows cascade-delete with it
+  res.json({ message: 'Invoice deleted' });
+};
+
 exports.post = async (req, res) => {
   const invoice = await invoiceService.postInvoice(req.companyId, req.params.id, req.user.id);
   res.json(invoice);

@@ -241,6 +241,10 @@
     "savedAsDraft": "Saved as draft",
     "newSalesInvoiceTitle": "New Sales Invoice",
     "newPurchaseBillTitle": "New Purchase Bill",
+    "editSalesInvoiceTitle": "Edit Sales Invoice",
+    "editPurchaseBillTitle": "Edit Purchase Bill",
+    "deleteConfirm": "Delete this draft permanently? This cannot be undone.",
+    "invoiceDeleted": "Invoice deleted",
     "revenueAccountPlaceholder": "Revenue account...",
     "expenseAccountPlaceholder": "Expense account...",
     "status": {

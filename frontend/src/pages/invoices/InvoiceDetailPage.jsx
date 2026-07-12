@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Wallet } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Wallet, Pencil, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { downloadFile, printFile } from '@/api/client';
 import PageHeader from '@/components/PageHeader';
@@ -31,6 +31,12 @@ export default function InvoiceDetailPage() {
   useEffect(() => { load(); api.get('/cash-accounts').then((r) => setCashAccounts(r.data)); }, [id]);
 
   const act = async () => {
+    if (confirmAction === 'delete') {
+      await api.delete(`/invoices/${id}`);
+      toast.success(t('invoices.invoiceDeleted'));
+      navigate(`/invoices/${invoice.type}`);
+      return;
+    }
     await api.post(`/invoices/${id}/${confirmAction}`);
     toast.success(confirmAction === 'post' ? t('invoices.postedToLedger') : t('invoices.status.cancelled'));
     setConfirmAction(null);
@@ -63,6 +69,12 @@ export default function InvoiceDetailPage() {
           <div className="flex items-center gap-2">
             <button onClick={() => printFile(`/invoices/${id}/pdf`, {})} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
             <button onClick={() => downloadFile(`/invoices/${id}/pdf`, {}, `${invoice.invoice_no}.pdf`)} className="btn-ghost"><Download size={16} /> PDF</button>
+            {invoice.status === 'draft' && canCreateEdit && (
+              <button onClick={() => navigate(`/invoices/${invoice.type}/edit/${id}`)} className="btn-ghost"><Pencil size={16} /> {t('common.edit')}</button>
+            )}
+            {invoice.status === 'draft' && canDelete && (
+              <button onClick={() => setConfirmAction('delete')} className="btn-danger"><Trash2 size={16} /> {t('common.delete')}</button>
+            )}
             {invoice.status === 'draft' && canCreateEdit && (
               <button onClick={() => setConfirmAction('post')} className="btn-primary"><CheckCircle2 size={16} /> {t('vouchers.postToLedger')}</button>
             )}
@@ -139,7 +151,7 @@ export default function InvoiceDetailPage() {
         open={!!confirmAction}
         onCancel={() => setConfirmAction(null)}
         onConfirm={act}
-        message={confirmAction === 'post' ? t('invoices.postConfirm') : t('invoices.cancelConfirm')}
+        message={confirmAction === 'post' ? t('invoices.postConfirm') : confirmAction === 'delete' ? t('invoices.deleteConfirm') : t('invoices.cancelConfirm')}
       />
     </div>
   );

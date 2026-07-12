@@ -241,6 +241,10 @@
     "savedAsDraft": "تم الحفظ كمسودة",
     "newSalesInvoiceTitle": "فاتورة مبيعات جديدة",
     "newPurchaseBillTitle": "فاتورة مشتريات جديدة",
+    "editSalesInvoiceTitle": "تعديل فاتورة المبيعات",
+    "editPurchaseBillTitle": "تعديل فاتورة المشتريات",
+    "deleteConfirm": "هل تريد حذف هذه المسودة نهائياً؟ لا يمكن التراجع عن هذا الإجراء.",
+    "invoiceDeleted": "تم حذف الفاتورة",
     "revenueAccountPlaceholder": "حساب الإيرادات...",
     "expenseAccountPlaceholder": "حساب المصروفات...",
     "status": {

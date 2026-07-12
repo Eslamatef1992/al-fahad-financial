@@ -70,6 +70,7 @@ export default function App() {
           <Route path="/invoices/sales" element={<SalesInvoicesPage />} />
           <Route path="/invoices/purchase" element={<PurchaseInvoicesPage />} />
           <Route path="/invoices/:type/new" element={<InvoiceFormPage />} />
+          <Route path="/invoices/:type/edit/:id" element={<InvoiceFormPage />} />
           <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
           <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
         </Route>
