@@ -3,6 +3,9 @@
     "name": "Al Fahad Group",
     "tagline": "Integrated Financial System"
   },
+  "dashboard": {
+    "admins": "Admins"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "chartOfAccounts": "Chart of Accounts",

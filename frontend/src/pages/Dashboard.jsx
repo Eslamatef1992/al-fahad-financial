@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Wallet, TrendingUp, TrendingDown, Users, Truck, Receipt } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Users, Truck, Receipt, FileText, ShoppingCart, Briefcase, Layers, ShieldCheck } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
@@ -17,7 +17,10 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const [pnl, setPnl] = useState(null);
-  const [counts, setCounts] = useState({ clients: 0, suppliers: 0, vehicles: 0, vouchers: 0 });
+  const [counts, setCounts] = useState({
+    clients: 0, suppliers: 0, vehicles: 0, vouchers: 0,
+    salesInvoices: 0, purchaseInvoices: 0, employees: 0, costCenters: 0, admins: 0,
+  });
   const [trend, setTrend] = useState([]);
 
   useEffect(() => {
@@ -29,8 +32,14 @@ export default function Dashboard() {
 
     Promise.all([
       api.get('/clients'), api.get('/suppliers'), api.get('/vehicles'), api.get('/vouchers'),
-    ]).then(([c, s, v, vo]) => {
-      setCounts({ clients: c.data.length, suppliers: s.data.length, vehicles: v.data.length, vouchers: vo.data.length });
+      api.get('/invoices', { params: { type: 'sales' } }), api.get('/invoices', { params: { type: 'purchase' } }),
+      api.get('/employees'), api.get('/cost-centers'),
+    ]).then(([c, s, v, vo, si, pi, emp, cc]) => {
+      setCounts((prev) => ({
+        ...prev,
+        clients: c.data.length, suppliers: s.data.length, vehicles: v.data.length, vouchers: vo.data.length,
+        salesInvoices: si.data.length, purchaseInvoices: pi.data.length, employees: emp.data.length, costCenters: cc.data.length,
+      }));
 
       const byMonth = {};
       vo.data.forEach((x) => {
@@ -41,6 +50,13 @@ export default function Dashboard() {
         byMonth[m].credit += Number(x.total_credit);
       });
       setTrend(Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month)));
+    }).catch(() => {});
+
+    // Separate call/failure boundary — /users is super-admin only, so a company admin
+    // viewing their own dashboard would 403 here; that must not blank out the other cards.
+    api.get('/users').then((r) => {
+      const adminCount = r.data.filter((u) => u.companies?.some((co) => co.id === activeCompany.id && co.UserCompany?.role === 'admin')).length;
+      setCounts((prev) => ({ ...prev, admins: adminCount }));
     }).catch(() => {});
   }, [activeCompany]);
 
@@ -53,6 +69,11 @@ export default function Dashboard() {
         <StatCard label={t('nav.clients')} value={counts.clients} icon={Users} tone="navy" delay={0.05} />
         <StatCard label={t('nav.vehicles')} value={counts.vehicles} icon={Truck} tone="gold" delay={0.1} />
         <StatCard label={t('nav.vouchers')} value={counts.vouchers} icon={Receipt} tone="navy" delay={0.15} />
+        <StatCard label={t('nav.salesInvoices')} value={counts.salesInvoices} icon={FileText} tone="green" delay={0.2} />
+        <StatCard label={t('nav.purchaseInvoices')} value={counts.purchaseInvoices} icon={ShoppingCart} tone="gold" delay={0.25} />
+        <StatCard label={t('nav.employees')} value={counts.employees} icon={Briefcase} tone="navy" delay={0.3} />
+        <StatCard label={t('nav.costCenters')} value={counts.costCenters} icon={Layers} tone="gold" delay={0.35} />
+        <StatCard label={t('dashboard.admins')} value={counts.admins} icon={ShieldCheck} tone="navy" delay={0.4} />
       </div>
 
       <div className="card p-5">

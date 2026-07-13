@@ -3,6 +3,9 @@
     "name": "مجموعة الفهد",
     "tagline": "نظام مالي متكامل"
   },
+  "dashboard": {
+    "admins": "المشرفون"
+  },
   "nav": {
     "dashboard": "لوحة التحكم",
     "chartOfAccounts": "دليل الحسابات",
