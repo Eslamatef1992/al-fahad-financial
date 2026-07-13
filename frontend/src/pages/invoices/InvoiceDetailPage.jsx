@@ -152,6 +152,8 @@ export default function InvoiceDetailPage() {
         onCancel={() => setConfirmAction(null)}
         onConfirm={act}
         message={confirmAction === 'post' ? t('invoices.postConfirm') : confirmAction === 'delete' ? t('invoices.deleteConfirm') : t('invoices.cancelConfirm')}
+        confirmLabel={confirmAction === 'post' ? t('vouchers.postToLedger') : confirmAction === 'cancel' ? t('common.cancel') : t('common.delete')}
+        variant={confirmAction === 'post' ? 'primary' : 'danger'}
       />
     </div>
   );

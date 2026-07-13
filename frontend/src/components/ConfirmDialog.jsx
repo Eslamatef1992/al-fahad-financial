@@ -2,8 +2,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 
-export default function ConfirmDialog({ open, onCancel, onConfirm, message }) {
+export default function ConfirmDialog({ open, onCancel, onConfirm, message, confirmLabel, variant = 'danger' }) {
   const { t } = useTranslation();
+  const confirmClass = variant === 'primary' ? 'btn-primary' : 'btn-danger';
   return (
     <AnimatePresence>
       {open && (
@@ -21,7 +22,7 @@ export default function ConfirmDialog({ open, onCancel, onConfirm, message }) {
               <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">{message || t('common.confirmDelete')}</p>
               <div className="flex items-center justify-center gap-2">
                 <button onClick={onCancel} className="btn-ghost">{t('common.cancel')}</button>
-                <button onClick={onConfirm} className="btn-danger">{t('common.delete')}</button>
+                <button onClick={onConfirm} className={confirmClass}>{confirmLabel || t('common.delete')}</button>
               </div>
             </div>
           </motion.div>

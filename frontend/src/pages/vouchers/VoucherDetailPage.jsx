@@ -40,6 +40,10 @@ export default function VoucherDetailPage() {
   const confirmMessage = confirmAction === 'post' ? t('vouchers.postConfirm')
     : confirmAction === 'cancel' ? t('vouchers.cancelConfirm')
     : t('vouchers.deleteConfirm');
+  const confirmLabel = confirmAction === 'post' ? t('vouchers.postToLedger')
+    : confirmAction === 'cancel' ? t('vouchers.cancelVoucher')
+    : t('vouchers.deleteVoucher');
+  const confirmVariant = confirmAction === 'post' ? 'primary' : 'danger';
 
   return (
     <div>
@@ -106,6 +110,8 @@ export default function VoucherDetailPage() {
         onCancel={() => setConfirmAction(null)}
         onConfirm={act}
         message={confirmMessage}
+        confirmLabel={confirmLabel}
+        variant={confirmVariant}
       />
     </div>
   );
