@@ -82,6 +82,7 @@ export default function CompaniesPage() {
     { key: 'name_en', label: t('common.nameEn') },
     { key: 'name_ar', label: t('common.nameAr') },
     { key: 'industry', label: 'Industry' },
+    { key: 'voucher_count', label: t('nav.vouchers'), render: (r) => r.voucher_count ?? 0 },
     { key: 'is_active', label: t('common.status'), render: (r) => (
       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${r.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
         {r.is_active ? t('common.active') : t('common.inactive')}

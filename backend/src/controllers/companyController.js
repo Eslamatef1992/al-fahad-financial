@@ -11,7 +11,19 @@ const { toPublicPath } = require('../middleware/upload');
 
 exports.list = async (req, res) => {
   const companies = await Company.findAll({ order: [['name_en', 'ASC']] });
-  res.json(companies);
+
+  // Voucher count per company, fetched as a single grouped query and merged in — avoids
+  // the pitfalls of an include+GROUP BY join (which drags in every non-aggregated column).
+  const voucherCounts = await Voucher.findAll({
+    attributes: ['company_id', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
+    group: ['company_id'],
+    raw: true,
+  });
+  const countByCompany = {};
+  voucherCounts.forEach((row) => { countByCompany[row.company_id] = Number(row.count); });
+
+  const withCounts = companies.map((c) => ({ ...c.toJSON(), voucher_count: countByCompany[c.id] || 0 }));
+  res.json(withCounts);
 };
 
 exports.create = async (req, res) => {
