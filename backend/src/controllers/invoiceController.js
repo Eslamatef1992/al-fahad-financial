@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Company, Voucher } = require('../models');
+const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Company, Voucher } = require('../models');
 const invoiceService = require('../services/invoiceService');
 const { generateInvoicePdf, generateAgingPdf } = require('../services/pdfService');
 const { exportInvoices } = require('../services/excelService');
@@ -34,14 +34,67 @@ exports.create = async (req, res) => {
   res.status(201).json(invoice);
 };
 
+// Edits a draft invoice IN PLACE — same id, same invoice_no. Previously this
+// destroy()ed the row and recreated it via createInvoice(), which handed out a
+// new id (and new invoice_no) on every edit; that broke any reference to the
+// old id and made saving the same edit form twice 404 with "Invoice not
+// found" once the first save had already replaced the row underneath it.
+// See the identical fix applied to voucherController.exports.update.
 exports.update = async (req, res) => {
-  const invoice = await Invoice.findOne({ where: { id: req.params.id, company_id: req.companyId } });
-  if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
-  if (invoice.status !== 'draft') return res.status(400).json({ message: 'Only draft invoices can be edited' });
+  const { client_id, supplier_id, date, due_date, cost_center_id, tax_account_id, currency, notes, reference_no, lines } = req.body;
 
-  await invoice.destroy();
-  const recreated = await invoiceService.createInvoice(req.companyId, req.user.id, req.body);
-  res.json(recreated);
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return res.status(400).json({ message: 'At least one line item is required' });
+  }
+  const computedLines = lines.map(invoiceService.computeLine);
+  const subtotal = computedLines.reduce((s, l) => s + l.line_subtotal, 0);
+  const tax_total = computedLines.reduce((s, l) => s + l.line_tax, 0);
+  const total = subtotal + tax_total;
+
+  const updated = await sequelize.transaction(async (t) => {
+    const invoice = await Invoice.findOne({
+      where: { id: req.params.id, company_id: req.companyId },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+    if (!invoice) { const e = new Error('Invoice not found'); e.status = 404; throw e; }
+    if (invoice.status !== 'draft') { const e = new Error('Only draft invoices can be edited'); e.status = 400; throw e; }
+    if (invoice.type === 'sales' && !client_id) { const e = new Error('client_id is required for sales invoices'); e.status = 400; throw e; }
+    if (invoice.type === 'purchase' && !supplier_id) { const e = new Error('supplier_id is required for purchase invoices'); e.status = 400; throw e; }
+
+    await invoice.update({
+      client_id: client_id || null,
+      supplier_id: supplier_id || null,
+      reference_no: reference_no || null,
+      date,
+      due_date: due_date || null,
+      cost_center_id: cost_center_id || null,
+      tax_account_id: tax_account_id || null,
+      currency: currency || invoice.currency,
+      notes,
+      subtotal,
+      tax_total,
+      total,
+    }, { transaction: t });
+
+    await InvoiceLine.destroy({ where: { invoice_id: invoice.id }, transaction: t });
+    await Promise.all(computedLines.map((l, idx) => InvoiceLine.create({
+      invoice_id: invoice.id,
+      account_id: l.account_id,
+      description: l.description || '',
+      quantity: l.quantity,
+      unit_price: l.unit_price,
+      tax_rate: l.tax_rate,
+      line_subtotal: l.line_subtotal,
+      line_tax: l.line_tax,
+      line_total: l.line_total,
+      line_order: idx,
+    }, { transaction: t })));
+
+    return invoice;
+  });
+
+  res.json(updated);
 };
 
 exports.remove = async (req, res) => {

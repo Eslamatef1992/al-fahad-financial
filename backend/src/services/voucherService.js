@@ -127,4 +127,4 @@ async function cancelVoucher(companyId, voucherId) {
   });
 }
 
-module.exports = { createVoucher, postVoucher, cancelVoucher };
+module.exports = { createVoucher, postVoucher, cancelVoucher, nextVoucherNo };
