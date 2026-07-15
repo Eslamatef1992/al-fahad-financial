@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
-const reshaper = require('arabic-reshaper');
 
 // ---------------------------------------------------------------------------
 // Palette
@@ -66,10 +65,6 @@ function splitRuns(str) {
   return runs;
 }
 
-function reshapeArabicRun(text) {
-  return [...reshaper.convertArabic(text)].reverse().join('');
-}
-
 // Truncates plain (non-Arabic) text with an ellipsis so it never overflows
 // past `maxWidth` into a neighboring table cell.
 function truncateToWidth(doc, text, maxWidth, font) {
@@ -80,12 +75,23 @@ function truncateToWidth(doc, text, maxWidth, font) {
   return out + '…';
 }
 
-// Shapes a (possibly mixed Arabic/Latin) string into its script runs and
-// measures the total rendered width, in LOGICAL order — used both to decide
-// whether truncation is needed and to size the final visual layout.
+// Splits a (possibly mixed Arabic/Latin) string into its script runs and
+// measures the total rendered width — used both to decide whether truncation
+// is needed and to size the final visual layout.
+//
+// IMPORTANT: Arabic run text is passed through UNMODIFIED — no character
+// reshaping, no reversal. PDFKit's font rendering goes through fontkit's
+// `font.layout()`, which already does full OpenType Arabic shaping (choosing
+// correct initial/medial/final glyph forms) AND correctly reorders multi-word
+// RTL runs into visual order on its own. An earlier version of this file
+// pre-shaped runs with the `arabic-reshaper` package and then reversed them
+// character-by-character before handing them to PDFKit — that was doing the
+// engine's job a second time on top of it, which is what produced garbled,
+// disconnected-looking Arabic. Verified against a browser-rendered reference
+// (LibreOffice/system text engine) showing raw pass-through matches exactly.
 function bidiRunsAndWidth(doc, str, bold) {
   const runs = splitRuns(str).map((r) => ({
-    text: r.arabic ? reshapeArabicRun(r.text) : r.text,
+    text: r.text,
     arabic: r.arabic,
     font: r.arabic ? (bold ? 'Arabic-Bold' : 'Arabic') : (bold ? 'Helvetica-Bold' : 'Helvetica'),
   }));
@@ -109,10 +115,13 @@ function truncateBidiToWidth(doc, str, maxWidth, bold) {
   return '…';
 }
 
-// Draws text that may contain Arabic, shaping + reordering Arabic runs so
-// they render as joined, correctly-ordered glyphs instead of raw isolated
-// Unicode codepoints (which PDFKit/Helvetica cannot shape on its own).
-// Falls back to plain Helvetica for pure Latin/number strings.
+// Draws text that may contain Arabic. Splits into per-script runs so each
+// can use the right font (the Arabic font has no digit/Latin glyphs and vice
+// versa), reverses the RUN order so e.g. a trailing English/number run ends
+// up on the correct (left) side of an RTL-dominant line, then hands each
+// run's text to PDFKit as-is — fontkit shapes and internally reorders each
+// run correctly on its own. Falls back to plain Helvetica for pure Latin
+// strings (skips font lookup/registration entirely).
 function drawBidi(doc, str, x, y, opts = {}) {
   if (str === null || str === undefined || str === '') return;
   str = String(str);
