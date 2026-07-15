@@ -80,6 +80,35 @@ function truncateToWidth(doc, text, maxWidth, font) {
   return out + '…';
 }
 
+// Shapes a (possibly mixed Arabic/Latin) string into its script runs and
+// measures the total rendered width, in LOGICAL order — used both to decide
+// whether truncation is needed and to size the final visual layout.
+function bidiRunsAndWidth(doc, str, bold) {
+  const runs = splitRuns(str).map((r) => ({
+    text: r.arabic ? reshapeArabicRun(r.text) : r.text,
+    arabic: r.arabic,
+    font: r.arabic ? (bold ? 'Arabic-Bold' : 'Arabic') : (bold ? 'Helvetica-Bold' : 'Helvetica'),
+  }));
+  const width = runs.reduce((sum, r) => { doc.font(r.font); return sum + doc.widthOfString(r.text); }, 0);
+  return { runs, width };
+}
+
+// Truncates a mixed Arabic/Latin string (BEFORE shaping) with an ellipsis so
+// it never overflows `maxWidth`. Trims from the logical end of the string —
+// same "keep the beginning, cut the end" behavior as truncateToWidth — which
+// is what let Arabic descriptions overrun into the next table column/cell
+// (drawBidi previously drew every run at full size with no width check at all).
+function truncateBidiToWidth(doc, str, maxWidth, bold) {
+  if (bidiRunsAndWidth(doc, str, bold).width <= maxWidth) return str;
+  let out = str;
+  while (out.length > 1) {
+    out = out.slice(0, -1);
+    const candidate = out + '…';
+    if (bidiRunsAndWidth(doc, candidate, bold).width <= maxWidth) return candidate;
+  }
+  return '…';
+}
+
 // Draws text that may contain Arabic, shaping + reordering Arabic runs so
 // they render as joined, correctly-ordered glyphs instead of raw isolated
 // Unicode codepoints (which PDFKit/Helvetica cannot shape on its own).
@@ -99,22 +128,19 @@ function drawBidi(doc, str, x, y, opts = {}) {
     return;
   }
 
-  const runs = splitRuns(str).map((r) => ({
-    text: r.arabic ? reshapeArabicRun(r.text) : r.text,
-    font: r.arabic ? (bold ? 'Arabic-Bold' : 'Arabic') : (bold ? 'Helvetica-Bold' : 'Helvetica'),
-  }));
+  const display = width ? truncateBidiToWidth(doc, str, width, bold) : str;
+  const { runs, width: totalWidth } = bidiRunsAndWidth(doc, display, bold);
   const visualRuns = [...runs].reverse();
-  const widths = visualRuns.map((r) => { doc.font(r.font); return doc.widthOfString(r.text); });
-  const totalWidth = widths.reduce((a, b) => a + b, 0);
   const boxWidth = width || totalWidth;
   let startX = x;
   if (align === 'right') startX = x + boxWidth - totalWidth;
   else if (align === 'center') startX = x + (boxWidth - totalWidth) / 2;
 
   let curX = startX;
-  visualRuns.forEach((r, i) => {
-    doc.font(r.font).text(r.text, curX, y, { lineBreak: false });
-    curX += widths[i];
+  visualRuns.forEach((r) => {
+    doc.font(r.font);
+    doc.text(r.text, curX, y, { lineBreak: false });
+    curX += doc.widthOfString(r.text);
   });
 }
 
@@ -239,33 +265,75 @@ function statusBadge(doc, status, x, y) {
 
 // A bordered "meta info" card showing label/value pairs in a 2-column grid —
 // used for the document summary block under the header (status, dates, refs).
+// Pass `full: true` on an item (e.g. a long Description) to give it its own
+// full-width row instead of squeezing it into half the card — that's what
+// was truncating/crowding long bilingual descriptions against their neighbor.
 function metaCard(doc, items, opts = {}) {
   const startX = opts.x ?? 40;
   const width = opts.width ?? doc.page.width - 80;
   const colWidth = width / 2;
   const rowHeight = 34;
-  const rows = Math.ceil(items.length / 2);
-  const cardHeight = rows * rowHeight + 14;
+
+  let row = 0, col = 0;
+  const positions = items.map((item) => {
+    if (item.full) {
+      if (col !== 0) row += 1;
+      const pos = { row, col: 0, span: 2 };
+      row += 1;
+      col = 0;
+      return pos;
+    }
+    const pos = { row, col, span: 1 };
+    col += 1;
+    if (col > 1) { col = 0; row += 1; }
+    return pos;
+  });
+  const totalRows = row + (col !== 0 ? 1 : 0) || 1;
+  const cardHeight = totalRows * rowHeight + 14;
   const y0 = doc.y;
 
   doc.roundedRect(startX, y0, width, cardHeight, 6).fillAndStroke('#fafbfd', BORDER);
 
   items.forEach((item, idx) => {
-    const col = idx % 2;
-    const row = Math.floor(idx / 2);
-    const cx = startX + 14 + col * colWidth;
-    const labelY = y0 + 9 + row * rowHeight;
+    const pos = positions[idx];
+    const cx = startX + 14 + pos.col * colWidth;
+    const boxWidth = (pos.span === 2 ? width : colWidth) - 28;
+    const labelY = y0 + 9 + pos.row * rowHeight;
     const valueY = labelY + 12;
     doc.font('Helvetica-Bold').fontSize(7.5).fillColor(GRAY)
-      .text(item.label.toUpperCase(), cx, labelY, { width: colWidth - 28, lineBreak: false });
+      .text(item.label.toUpperCase(), cx, labelY, { width: boxWidth, lineBreak: false });
     if (item.badge) {
       statusBadge(doc, item.value, cx, valueY - 2);
     } else {
-      drawBidi(doc, item.value ?? '-', cx, valueY, { fontSize: 9.5, color: TEXT_DARK, bold: true, width: colWidth - 28 });
+      drawBidi(doc, item.value ?? '-', cx, valueY, { fontSize: 9.5, color: TEXT_DARK, bold: true, width: boxWidth });
     }
   });
 
   doc.y = y0 + cardHeight + 18;
+}
+
+// Three-column "Prepared by / Reviewed by / Approved by" signature strip —
+// standard on printed accounting vouchers in this region. Purely a blank
+// line + label; there's no e-signature capture in the app, so this is what
+// gets physically signed once printed.
+function signatureBlock(doc, labels = ['Prepared by', 'Reviewed by', 'Approved by']) {
+  // If the table pushed doc.y close to the bottom margin, start a fresh page
+  // rather than let the signature strip collide with (or run under) the footer.
+  if (doc.y + 76 > doc.page.height - doc.page.margins.bottom) doc.addPage();
+
+  const startX = 40;
+  const width = doc.page.width - 80;
+  const colWidth = width / labels.length;
+  const y0 = doc.y + 20;
+  const lineY = y0 + 30;
+
+  labels.forEach((label, i) => {
+    const cx = startX + i * colWidth;
+    doc.moveTo(cx, lineY).lineTo(cx + colWidth - 24, lineY).lineWidth(0.75).strokeColor(BORDER).stroke();
+    doc.font('Helvetica').fontSize(8.5).fillColor(GRAY).text(label, cx, lineY + 6, { width: colWidth - 24, lineBreak: false });
+  });
+
+  doc.y = lineY + 26;
 }
 
 function table(doc, { headers, rows, colWidths, startX = 40 }) {
@@ -359,8 +427,8 @@ function generateVoucherPdf(res, voucher, company) {
   metaCard(doc, [
     { label: 'Status', value: voucher.status, badge: true },
     { label: 'Date', value: voucher.date },
-    { label: 'Description', value: voucher.description || '-' },
     { label: 'Currency', value: voucher.currency },
+    { label: 'Description', value: voucher.description || '-', full: true },
   ]);
 
   table(doc, {
@@ -383,6 +451,7 @@ function generateVoucherPdf(res, voucher, company) {
     { label: 'Total Credit', value: `${Number(voucher.total_credit ?? voucher.total_debit).toFixed(3)} ${voucher.currency}`, color: NAVY },
   ]);
 
+  signatureBlock(doc);
   footer(doc, company);
   doc.end();
 }
