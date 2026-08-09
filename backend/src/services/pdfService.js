@@ -780,7 +780,9 @@ function generateItemsPdf(res, rows, company) {
   const doc = newDoc(res, 'items.pdf');
   header(doc, company, 'Inventory Items', `${rows.length} records`);
 
-  const totalValue = rows.reduce((s, r) => s + Number(r.quantity_on_hand) * Number(r.cost_price), 0);
+  const qtyOf = (r) => Number(r.total_quantity_on_hand ?? r.quantity_on_hand);
+  const valueOf = (r) => Number(r.total_value ?? (Number(r.quantity_on_hand) * Number(r.cost_price)));
+  const totalValue = rows.reduce((s, r) => s + valueOf(r), 0);
   metaCard(doc, [
     { label: 'Total Items', value: String(rows.length) },
     { label: 'Total Stock Value', value: totalValue.toFixed(3) },
@@ -788,21 +790,153 @@ function generateItemsPdf(res, rows, company) {
 
   table(doc, {
     headers: [
-      { label: 'Code' }, { label: 'Name' }, { label: 'Unit' },
-      { label: 'Qty on Hand', align: 'right' }, { label: 'Avg Cost', align: 'right' },
-      { label: 'Value', align: 'right' }, { label: 'Selling Price', align: 'right' },
+      { label: 'Code' }, { label: 'SKU' }, { label: 'Name' }, { label: 'Unit' },
+      { label: 'Qty on Hand', align: 'right' }, { label: 'Value', align: 'right' }, { label: 'Selling Price', align: 'right' },
     ],
-    colWidths: [65, 150, 45, 70, 65, 70, 70],
+    colWidths: [55, 65, 130, 40, 65, 65, 65],
     rows: rows.map((it) => [
-      it.code, it.name_en, it.unit,
-      Number(it.quantity_on_hand).toFixed(2),
-      Number(it.cost_price).toFixed(3),
-      (Number(it.quantity_on_hand) * Number(it.cost_price)).toFixed(3),
+      it.code, it.sku || '-', it.name_en, it.unit,
+      qtyOf(it).toFixed(2),
+      valueOf(it).toFixed(3),
       Number(it.selling_price).toFixed(3),
     ]),
   });
 
   totalsBox(doc, [{ label: 'Total Stock Value', value: totalValue.toFixed(3) }], { width: 240 });
+
+  footer(doc, company);
+  doc.end();
+}
+
+// rows are StockTransfer headers, each with a .lines array (item/variant/qty)
+// — mirrors an invoice with multiple lines, so one PDF row per line.
+function generateStockTransfersPdf(res, rows, company) {
+  const doc = newDoc(res, 'stock-transfers.pdf');
+  header(doc, company, 'Stock Transfers', `${rows.length} records`);
+
+  metaCard(doc, [{ label: 'Total Transfers', value: String(rows.length) }]);
+
+  const locationLabel = (branch) => (branch ? `${branch.code} - ${branch.name_en}` : 'Unbranched');
+  const tableRows = [];
+  rows.forEach((r) => {
+    (r.lines || []).forEach((l) => {
+      tableRows.push([
+        r.transfer_no, r.date,
+        l.item ? `${l.item.code} - ${l.item.name_en}${l.variant ? ` (${l.variant.sku})` : ''}` : '-',
+        locationLabel(r.fromBranch), locationLabel(r.toBranch),
+        Number(l.quantity).toFixed(2), Number(l.unit_cost).toFixed(3),
+      ]);
+    });
+  });
+
+  table(doc, {
+    headers: [
+      { label: 'Transfer No.' }, { label: 'Date' }, { label: 'Item' },
+      { label: 'From' }, { label: 'To' }, { label: 'Qty', align: 'right' }, { label: 'Unit Cost', align: 'right' },
+    ],
+    colWidths: [75, 60, 110, 90, 90, 55, 65],
+    rows: tableRows,
+  });
+
+  footer(doc, company);
+  doc.end();
+}
+
+function generateItemVariantsPdf(res, item, rows, company) {
+  const doc = newDoc(res, `item-variants-${item.code}.pdf`);
+  header(doc, company, `${item.name_en} — Variants`, `${rows.length} records`);
+
+  metaCard(doc, [{ label: 'Item Code', value: item.code }, { label: 'Variants', value: String(rows.length) }]);
+
+  table(doc, {
+    headers: [
+      { label: 'SKU' }, { label: 'Attributes' }, { label: 'Qty on Hand', align: 'right' },
+      { label: 'Avg Cost', align: 'right' }, { label: 'Value', align: 'right' }, { label: 'Status' },
+    ],
+    colWidths: [80, 170, 65, 60, 65, 50],
+    rows: rows.map((v) => {
+      const qty = Number(v.total_quantity_on_hand ?? v.quantity_on_hand);
+      const value = v.total_value !== undefined ? Number(v.total_value) : qty * Number(v.cost_price);
+      return [
+        v.sku, Object.entries(v.attributes || {}).map(([k, val]) => `${k}: ${val}`).join(', '),
+        qty.toFixed(2), Number(v.cost_price).toFixed(3), value.toFixed(3),
+        v.is_active ? 'Active' : 'Inactive',
+      ];
+    }),
+  });
+
+  footer(doc, company);
+  doc.end();
+}
+
+function generateStockValuationPdf(res, rows, company, locationLabel) {
+  const doc = newDoc(res, 'stock-valuation.pdf');
+  header(doc, company, 'Stock Valuation Report', locationLabel);
+
+  const totalValue = rows.reduce((s, r) => s + r.value, 0);
+  metaCard(doc, [
+    { label: 'Line Items', value: String(rows.length) },
+    { label: 'Total Value', value: totalValue.toFixed(3) },
+  ]);
+
+  table(doc, {
+    headers: [
+      { label: 'Code' }, { label: 'Item' }, { label: 'Variant' },
+      { label: 'Qty', align: 'right' }, { label: 'Avg Cost', align: 'right' }, { label: 'Value', align: 'right' },
+    ],
+    colWidths: [55, 150, 110, 55, 60, 65],
+    rows: rows.map((r) => [
+      r.code, r.name_en,
+      r.variant_id ? (r.sku + (Object.keys(r.attributes || {}).length ? ` (${Object.entries(r.attributes).map(([k, v]) => `${k}: ${v}`).join(', ')})` : '')) : '-',
+      Number(r.quantity_on_hand).toFixed(2), Number(r.cost_price).toFixed(3), Number(r.value).toFixed(3),
+    ]),
+  });
+
+  totalsBox(doc, [{ label: 'Total Value', value: totalValue.toFixed(3) }], { width: 240 });
+  footer(doc, company);
+  doc.end();
+}
+
+function generateLowStockPdf(res, rows, company, locationLabel) {
+  const doc = newDoc(res, 'low-stock.pdf');
+  header(doc, company, 'Low Stock / Reorder Report', locationLabel);
+
+  metaCard(doc, [{ label: 'Items Below Reorder Level', value: String(rows.length) }]);
+
+  table(doc, {
+    headers: [
+      { label: 'Code' }, { label: 'Item' }, { label: 'Variant' },
+      { label: 'Qty on Hand', align: 'right' }, { label: 'Reorder Level', align: 'right' },
+    ],
+    colWidths: [55, 160, 130, 70, 75],
+    rows: rows.map((r) => [
+      r.code, r.name_en,
+      r.variant_id ? r.sku : '-',
+      Number(r.quantity_on_hand).toFixed(2), Number(r.reorder_level).toFixed(2),
+    ]),
+  });
+
+  footer(doc, company);
+  doc.end();
+}
+
+function generateStockMovementPdf(res, item, rows, company) {
+  const doc = newDoc(res, `stock-movement-${item.code}.pdf`);
+  header(doc, company, `${item.name_en} — Stock Movement`, `${rows.length} records`);
+
+  metaCard(doc, [{ label: 'Item Code', value: item.code }, { label: 'Movements', value: String(rows.length) }]);
+
+  table(doc, {
+    headers: [
+      { label: 'Date' }, { label: 'Type' }, { label: 'Qty', align: 'right' },
+      { label: 'Unit Cost', align: 'right' }, { label: 'Balance Qty', align: 'right' }, { label: 'Balance Value', align: 'right' },
+    ],
+    colWidths: [65, 90, 65, 65, 70, 75],
+    rows: rows.map((r) => [
+      r.date, r.type, Number(r.quantity).toFixed(2), Number(r.unit_cost).toFixed(3),
+      Number(r.balance_qty_after).toFixed(2), Number(r.balance_value_after).toFixed(3),
+    ]),
+  });
 
   footer(doc, company);
   doc.end();
@@ -858,9 +992,13 @@ function generateBranchesPdf(res, rows, company) {
   metaCard(doc, [{ label: 'Total Branches', value: String(rows.length) }]);
 
   table(doc, {
-    headers: [{ label: 'Code' }, { label: 'Name (EN)' }, { label: 'Name (AR)' }, { label: 'Phone' }, { label: 'Status' }],
-    colWidths: [70, 150, 150, 100, 45],
-    rows: rows.map((b) => [b.code, b.name_en, b.name_ar, b.phone || '-', b.is_active ? 'Active' : 'Inactive']),
+    headers: [{ label: 'Code' }, { label: 'Name (EN)' }, { label: 'Name (AR)' }, { label: 'Linked Accounts' }, { label: 'Status' }],
+    colWidths: [55, 110, 110, 175, 65],
+    rows: rows.map((b) => [
+      b.code, b.name_en, b.name_ar,
+      (b.accounts || []).map((a) => `${a.code} - ${a.name_en}`).join(', ') || '-',
+      b.is_active ? 'Active' : 'Inactive',
+    ]),
   });
 
   footer(doc, company);
@@ -872,4 +1010,5 @@ module.exports = {
   generateInvoicePdf, generateAgingPdf, generateEmployeesPdf,
   generateCostCentersPdf, generateCashAccountsPdf, generateSuppliersPdf, generateClientsPdf,
   generateVehiclesPdf, generateItemsPdf, generatePurchaseOrderPdf, generateBranchesPdf,
+  generateStockTransfersPdf, generateItemVariantsPdf, generateStockValuationPdf, generateLowStockPdf, generateStockMovementPdf,
 };

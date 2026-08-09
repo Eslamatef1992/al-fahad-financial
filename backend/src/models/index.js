@@ -29,6 +29,12 @@ const InventoryTransaction = require('./InventoryTransaction')(sequelize, DataTy
 const PurchaseOrder = require('./PurchaseOrder')(sequelize, DataTypes);
 const PurchaseOrderLine = require('./PurchaseOrderLine')(sequelize, DataTypes);
 const Branch = require('./Branch')(sequelize, DataTypes);
+const BranchAccount = require('./BranchAccount')(sequelize, DataTypes);
+const ItemBranchStock = require('./ItemBranchStock')(sequelize, DataTypes);
+const StockTransfer = require('./StockTransfer')(sequelize, DataTypes);
+const StockTransferLine = require('./StockTransferLine')(sequelize, DataTypes);
+const ItemVariant = require('./ItemVariant')(sequelize, DataTypes);
+const ItemVariantBranchStock = require('./ItemVariantBranchStock')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -39,7 +45,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -122,6 +128,7 @@ Invoice.hasMany(InvoiceLine, { foreignKey: 'invoice_id', as: 'lines', onDelete: 
 InvoiceLine.belongsTo(Invoice, { foreignKey: 'invoice_id' });
 InvoiceLine.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 InvoiceLine.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
+InvoiceLine.belongsTo(ItemVariant, { foreignKey: 'variant_id', as: 'variant' });
 
 Invoice.hasMany(InvoicePayment, { foreignKey: 'invoice_id', as: 'payments', onDelete: 'CASCADE' });
 InvoicePayment.belongsTo(Invoice, { foreignKey: 'invoice_id' });
@@ -140,6 +147,41 @@ Item.belongsTo(Account, { foreignKey: 'income_account_id', as: 'incomeAccount' }
 Item.belongsTo(Account, { foreignKey: 'cogs_account_id', as: 'cogsAccount' });
 Item.hasMany(InventoryTransaction, { foreignKey: 'item_id', as: 'transactions', onDelete: 'CASCADE' });
 InventoryTransaction.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
+InventoryTransaction.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
+InventoryTransaction.belongsTo(ItemVariant, { foreignKey: 'variant_id', as: 'variant' });
+
+// Item Variants — trackable Color/Size/etc. combinations, each with its own
+// SKU and stock balance (unbranched pool via ItemVariant itself, per-branch
+// via ItemVariantBranchStock — same two-tier pattern as plain Items).
+Item.hasMany(ItemVariant, { foreignKey: 'item_id', as: 'variants', onDelete: 'CASCADE' });
+ItemVariant.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
+ItemVariant.hasMany(ItemVariantBranchStock, { foreignKey: 'variant_id', as: 'branchStocks', onDelete: 'CASCADE' });
+ItemVariantBranchStock.belongsTo(ItemVariant, { foreignKey: 'variant_id', as: 'variant' });
+ItemVariantBranchStock.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
+Branch.hasMany(ItemVariantBranchStock, { foreignKey: 'branch_id', as: 'variantStocks' });
+
+// Branch <-> Account (open-ended tag-style link — a branch can list any
+// number of Chart-of-Accounts accounts it cares about, e.g. its own cash,
+// revenue, or expense account, purely for reference/reporting).
+Branch.belongsToMany(Account, { through: BranchAccount, foreignKey: 'branch_id', otherKey: 'account_id', as: 'accounts' });
+Account.belongsToMany(Branch, { through: BranchAccount, foreignKey: 'account_id', otherKey: 'branch_id', as: 'branches' });
+
+// Per-branch stock balances (multi-location weighted-average costing)
+Item.hasMany(ItemBranchStock, { foreignKey: 'item_id', as: 'branchStocks', onDelete: 'CASCADE' });
+ItemBranchStock.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
+ItemBranchStock.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
+Branch.hasMany(ItemBranchStock, { foreignKey: 'branch_id', as: 'itemStocks' });
+
+// Stock Transfers between two locations (a real Branch or the unbranched
+// pool) — header (StockTransfer) + lines (StockTransferLine), so one transfer
+// can move several items (and/or variants) at once, mirroring Invoice/PO.
+StockTransfer.belongsTo(Branch, { foreignKey: 'from_branch_id', as: 'fromBranch' });
+StockTransfer.belongsTo(Branch, { foreignKey: 'to_branch_id', as: 'toBranch' });
+StockTransfer.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+StockTransfer.hasMany(StockTransferLine, { foreignKey: 'transfer_id', as: 'lines', onDelete: 'CASCADE' });
+StockTransferLine.belongsTo(StockTransfer, { foreignKey: 'transfer_id' });
+StockTransferLine.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
+StockTransferLine.belongsTo(ItemVariant, { foreignKey: 'variant_id', as: 'variant' });
 
 PurchaseOrder.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
 PurchaseOrder.belongsTo(CostCenter, { foreignKey: 'cost_center_id', as: 'costCenter' });
@@ -151,6 +193,7 @@ PurchaseOrder.hasMany(PurchaseOrderLine, { foreignKey: 'purchase_order_id', as: 
 PurchaseOrderLine.belongsTo(PurchaseOrder, { foreignKey: 'purchase_order_id' });
 PurchaseOrderLine.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 PurchaseOrderLine.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
+PurchaseOrderLine.belongsTo(ItemVariant, { foreignKey: 'variant_id', as: 'variant' });
 
 module.exports = {
   sequelize,
@@ -182,4 +225,10 @@ module.exports = {
   PurchaseOrder,
   PurchaseOrderLine,
   Branch,
+  BranchAccount,
+  ItemBranchStock,
+  StockTransfer,
+  StockTransferLine,
+  ItemVariant,
+  ItemVariantBranchStock,
 };

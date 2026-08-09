@@ -4,6 +4,7 @@ module.exports = (sequelize, DataTypes) => {
     invoice_id: { type: DataTypes.UUID, allowNull: false },
     account_id: { type: DataTypes.UUID, allowNull: false }, // revenue account (sales) or expense account (purchase)
     item_id: { type: DataTypes.UUID, allowNull: true }, // optional link to an inventory Item — drives stock + COGS on posting
+    variant_id: { type: DataTypes.UUID, allowNull: true }, // which variant of that item, if it has any
     description: { type: DataTypes.STRING(255) },
     quantity: { type: DataTypes.DECIMAL(12, 3), defaultValue: 1 },
     unit_price: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },

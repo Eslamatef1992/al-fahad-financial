@@ -62,6 +62,7 @@ async function createInvoice(companyId, userId, payload) {
       invoice_id: invoice.id,
       account_id: l.account_id,
       item_id: l.item_id || null,
+      variant_id: l.variant_id || null,
       description: l.description || '',
       quantity: l.quantity,
       unit_price: l.unit_price,
@@ -154,6 +155,8 @@ async function postInvoice(companyId, invoiceId, userId) {
           referenceId: invoice.id,
           userId,
           notes: `Sold on ${invoice.invoice_no}`,
+          branchId: invoice.branch_id,
+          variantId: l.variant_id,
         }, t);
         if (cogsAmount > 0.0009) {
           lines.push({
@@ -181,6 +184,8 @@ async function postInvoice(companyId, invoiceId, userId) {
           referenceId: invoice.id,
           userId,
           notes: `Received on ${invoice.invoice_no}`,
+          branchId: invoice.branch_id,
+          variantId: l.variant_id,
         }, t);
       }
     }

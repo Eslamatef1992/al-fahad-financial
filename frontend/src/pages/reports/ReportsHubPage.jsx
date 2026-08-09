@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { PieChart, Scale, ListTree, ScrollText, Receipt, ArrowRight, FileText, FileMinus } from 'lucide-react';
+import { PieChart, Scale, ListTree, ScrollText, Receipt, ArrowRight, FileText, FileMinus, Boxes } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 
 const REPORTS = [
@@ -12,6 +12,7 @@ const REPORTS = [
   { to: '/vouchers', icon: Receipt, key: 'vouchersRegister', tone: 'text-gold-700 bg-gold-100' },
   { to: '/reports/aging/sales', icon: FileText, key: 'arAging', tone: 'text-emerald-600 bg-emerald-50' },
   { to: '/reports/aging/purchase', icon: FileMinus, key: 'apAging', tone: 'text-orange-600 bg-orange-50' },
+  { to: '/reports/inventory', icon: Boxes, key: 'inventory', tone: 'text-blue-600 bg-blue-50' },
 ];
 
 export default function ReportsHubPage() {

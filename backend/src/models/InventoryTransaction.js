@@ -8,11 +8,13 @@ module.exports = (sequelize, DataTypes) => {
     company_id: { type: DataTypes.UUID, allowNull: false },
     item_id: { type: DataTypes.UUID, allowNull: false },
     type: {
-      type: DataTypes.ENUM('opening', 'purchase_receipt', 'sale', 'adjustment'),
+      type: DataTypes.ENUM('opening', 'purchase_receipt', 'sale', 'adjustment', 'transfer_out', 'transfer_in'),
       allowNull: false,
     },
-    reference_type: { type: DataTypes.STRING(30) }, // 'invoice', 'manual', ...
+    reference_type: { type: DataTypes.STRING(30) }, // 'invoice', 'manual', 'transfer', ...
     reference_id: { type: DataTypes.UUID, allowNull: true },
+    branch_id: { type: DataTypes.UUID, allowNull: true }, // where this movement happened; null = unbranched pool
+    variant_id: { type: DataTypes.UUID, allowNull: true }, // which variant, if the item has any; null = plain item
     date: { type: DataTypes.DATEONLY, allowNull: false },
     quantity: { type: DataTypes.DECIMAL(18, 3), allowNull: false }, // positive = in, negative = out
     unit_cost: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },

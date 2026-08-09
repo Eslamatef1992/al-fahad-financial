@@ -36,6 +36,8 @@ import PurchaseOrdersPage from '@/pages/purchaseOrders/PurchaseOrdersPage';
 import PurchaseOrderFormPage from '@/pages/purchaseOrders/PurchaseOrderFormPage';
 import PurchaseOrderDetailPage from '@/pages/purchaseOrders/PurchaseOrderDetailPage';
 import BranchesPage from '@/pages/branches/BranchesPage';
+import StockTransfersPage from '@/pages/stockTransfers/StockTransfersPage';
+import InventoryReportsPage from '@/pages/reports/InventoryReportsPage';
 
 export default function App() {
   const theme = useUiStore((s) => s.theme);
@@ -70,6 +72,7 @@ export default function App() {
           <Route path="/reports/balance-sheet" element={<BalanceSheetPage />} />
           <Route path="/reports/trial-balance" element={<TrialBalancePage />} />
           <Route path="/reports/aging/:type" element={<AgingPage />} />
+          <Route path="/reports/inventory" element={<InventoryReportsPage />} />
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/audit-log" element={<AuditLogPage />} />
@@ -80,6 +83,7 @@ export default function App() {
           <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
           <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
           <Route path="/items" element={<ItemsPage />} />
+          <Route path="/stock-transfers" element={<StockTransfersPage />} />
           <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
           <Route path="/purchase-orders/new" element={<PurchaseOrderFormPage />} />
           <Route path="/purchase-orders/:id/edit" element={<PurchaseOrderFormPage />} />

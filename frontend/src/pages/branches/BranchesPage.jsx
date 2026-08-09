@@ -7,9 +7,10 @@ import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
+import MultiAccountPicker from '@/components/MultiAccountPicker';
 import usePermissions from '@/hooks/usePermissions';
 
-const empty = { code: '', name_en: '', name_ar: '', address: '', phone: '' };
+const empty = { code: '', name_en: '', name_ar: '', address: '', phone: '', account_ids: [] };
 
 export default function BranchesPage() {
   const { t } = useTranslation();
@@ -30,7 +31,7 @@ export default function BranchesPage() {
   useEffect(() => { if (activeCompany) load(); }, [activeCompany, showInactive]);
 
   const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
-  const openEdit = (row) => { setEditing(row); setForm({ ...empty, ...row }); setOpen(true); };
+  const openEdit = (row) => { setEditing(row); setForm({ ...empty, ...row, account_ids: (row.accounts || []).map((a) => a.id) }); setOpen(true); };
 
   const submit = async (e) => {
     e.preventDefault(); setSaving(true);
@@ -58,6 +59,7 @@ export default function BranchesPage() {
     { key: 'name_ar', label: t('common.nameAr') },
     { key: 'phone', label: t('common.phone'), render: (r) => r.phone || '—' },
     { key: 'address', label: t('common.address'), render: (r) => r.address || '—' },
+    { key: 'accounts', label: t('branches.linkedAccounts'), render: (r) => (r.accounts?.length ? `${r.accounts.length} ${t('branches.accountsLinked')}` : '—') },
     { key: 'is_active', label: t('common.status'), render: (r) => (
       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${r.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
         {r.is_active ? t('common.active') : t('common.inactive')}
@@ -100,6 +102,7 @@ export default function BranchesPage() {
         <div><label className="label">{t('common.nameAr')}</label><input required dir="rtl" className="input" value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} /></div>
         <div><label className="label">{t('common.phone')}</label><input className="input" value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
         <div><label className="label">{t('common.address')}</label><textarea className="input" rows={2} value={form.address || ''} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+        <MultiAccountPicker value={form.account_ids} onChange={(v) => setForm({ ...form, account_ids: v })} />
       </SlideOver>
     </div>
   );

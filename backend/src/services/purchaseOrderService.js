@@ -75,6 +75,7 @@ async function createPurchaseOrder(companyId, userId, payload) {
     await Promise.all(computedLines.map((l, idx) => PurchaseOrderLine.create({
       purchase_order_id: po.id,
       item_id: l.item_id || null,
+      variant_id: l.variant_id || null,
       account_id: l.account_id,
       description: l.description || '',
       quantity: l.quantity,
@@ -127,6 +128,7 @@ async function updatePurchaseOrder(companyId, poId, payload) {
     await Promise.all(computedLines.map((l, idx) => PurchaseOrderLine.create({
       purchase_order_id: po.id,
       item_id: l.item_id || null,
+      variant_id: l.variant_id || null,
       account_id: l.account_id,
       description: l.description || '',
       quantity: l.quantity,
@@ -186,6 +188,7 @@ async function convertToPurchaseBill(companyId, poId, userId) {
       invoice_id: invoice.id,
       account_id: l.account_id,
       item_id: l.item_id || null,
+      variant_id: l.variant_id || null,
       description: l.description || `From ${po.po_no}`,
       quantity: l.quantity,
       unit_price: l.unit_price,

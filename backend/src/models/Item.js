@@ -8,10 +8,21 @@ module.exports = (sequelize, DataTypes) => {
     id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     company_id: { type: DataTypes.UUID, allowNull: false },
     code: { type: DataTypes.STRING(30), allowNull: false },
+    // Optional user-entered identifier (barcode, supplier SKU, etc.) — separate
+    // from the auto-generated `code` above. For items with variants, each
+    // ItemVariant carries its own sku instead and this field is typically left
+    // blank on the parent.
+    sku: { type: DataTypes.STRING(60), allowNull: true },
     name_en: { type: DataTypes.STRING(150), allowNull: false },
     name_ar: { type: DataTypes.STRING(150), allowNull: false },
     category: { type: DataTypes.STRING(100) },
     unit: { type: DataTypes.STRING(30), defaultValue: 'pcs' },
+    // Names of the attributes that define this item's variants, e.g.
+    // ["Color", "Size"] — purely drives the "add variant" UI so every variant
+    // of the same item is prompted for the same attribute set. Empty/absent
+    // means this item has no variants and is tracked exactly as before
+    // (quantity_on_hand/cost_price directly on the Item row).
+    variant_attributes: { type: DataTypes.JSON, defaultValue: [] },
     // Chart-of-Accounts links — where this item's value/movements post to.
     inventory_account_id: { type: DataTypes.UUID, allowNull: false }, // asset: stock value
     income_account_id: { type: DataTypes.UUID, allowNull: false },    // revenue: default sales line account
@@ -23,6 +34,9 @@ module.exports = (sequelize, DataTypes) => {
     is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
   }, {
     tableName: 'items',
-    indexes: [{ unique: true, fields: ['company_id', 'code'] }],
+    indexes: [
+      { unique: true, fields: ['company_id', 'code'] },
+      { unique: true, fields: ['company_id', 'sku'] },
+    ],
   });
 };

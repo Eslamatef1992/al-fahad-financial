@@ -338,16 +338,17 @@ async function exportVehicles(res, company, rows) {
 async function exportItems(res, company, rows) {
   await streamWorkbook(res, `items.xlsx`, (wb) => {
     const sheet = wb.addWorksheet('Items');
-    addTitleBlock(sheet, `${company?.name_en || ''} — Inventory Items`, `${rows.length} records`, 9);
+    addTitleBlock(sheet, `${company?.name_en || ''} — Inventory Items`, `${rows.length} records`, 10);
 
     sheet.columns = [
       { header: 'Code', key: 'code', width: 14 },
+      { header: 'SKU', key: 'sku', width: 16 },
       { header: 'Name (EN)', key: 'name_en', width: 26 },
       { header: 'Name (AR)', key: 'name_ar', width: 26 },
       { header: 'Category', key: 'category', width: 16 },
       { header: 'Unit', key: 'unit', width: 10 },
+      { header: 'Variants', key: 'variants', width: 10 },
       { header: 'Qty on Hand', key: 'qty', width: 14 },
-      { header: 'Avg Cost', key: 'cost', width: 14 },
       { header: 'Stock Value', key: 'value', width: 14 },
       { header: 'Selling Price', key: 'price', width: 14 },
     ];
@@ -356,12 +357,177 @@ async function exportItems(res, company, rows) {
     styleHeaderRow(sheet.getRow(headerRowIndex));
 
     rows.forEach((it) => {
-      const qty = Number(it.quantity_on_hand) || 0;
+      const qty = Number(it.total_quantity_on_hand ?? it.quantity_on_hand) || 0;
       const cost = Number(it.cost_price) || 0;
-      sheet.addRow([it.code, it.name_en, it.name_ar, it.category || '', it.unit, qty, cost, qty * cost, Number(it.selling_price) || 0]);
+      const value = it.total_value !== undefined ? Number(it.total_value) : qty * cost;
+      sheet.addRow([it.code, it.sku || '', it.name_en, it.name_ar, it.category || '', it.unit, it.variant_count || 0, qty, value, Number(it.selling_price) || 0]);
     });
-    [7, 8, 9].forEach((col) => { sheet.getColumn(col).numFmt = '#,##0.000'; });
-    sheet.getColumn(6).numFmt = '#,##0.00';
+    [9, 10].forEach((col) => { sheet.getColumn(col).numFmt = '#,##0.000'; });
+    sheet.getColumn(8).numFmt = '#,##0.00';
+  });
+}
+
+// rows are StockTransfer headers (with a .lines array, each line carrying its
+// own .item/.variant) — one Excel row per transfer LINE, so a multi-item
+// transfer still lists every item it moved.
+async function exportStockTransfers(res, company, rows) {
+  await streamWorkbook(res, `stock-transfers.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Stock Transfers');
+    const lineCount = rows.reduce((s, r) => s + (r.lines?.length || 1), 0);
+    addTitleBlock(sheet, `${company?.name_en || ''} — Stock Transfers`, `${rows.length} transfers, ${lineCount} lines`, 8);
+
+    sheet.columns = [
+      { header: 'Transfer No.', key: 'no', width: 16 },
+      { header: 'Date', key: 'date', width: 12 },
+      { header: 'Item', key: 'item', width: 26 },
+      { header: 'Variant', key: 'variant', width: 18 },
+      { header: 'From', key: 'from', width: 22 },
+      { header: 'To', key: 'to', width: 22 },
+      { header: 'Quantity', key: 'qty', width: 14 },
+      { header: 'Unit Cost', key: 'cost', width: 14 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    const locationLabel = (branch) => (branch ? `${branch.code} - ${branch.name_en}` : 'Unbranched');
+
+    rows.forEach((r) => {
+      (r.lines || []).forEach((l) => {
+        sheet.addRow([
+          r.transfer_no, r.date, l.item ? `${l.item.code} - ${l.item.name_en}` : '',
+          l.variant ? l.variant.sku : '',
+          locationLabel(r.fromBranch), locationLabel(r.toBranch),
+          Number(l.quantity) || 0, Number(l.unit_cost) || 0,
+        ]);
+      });
+    });
+    sheet.getColumn(7).numFmt = '#,##0.000';
+    sheet.getColumn(8).numFmt = '#,##0.000';
+  });
+}
+
+async function exportItemVariants(res, company, item, rows) {
+  await streamWorkbook(res, `item-variants-${item.code}.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Variants');
+    addTitleBlock(sheet, `${company?.name_en || ''} — ${item.name_en} Variants`, `${rows.length} records`, 6);
+
+    sheet.columns = [
+      { header: 'SKU', key: 'sku', width: 18 },
+      { header: 'Attributes', key: 'attributes', width: 30 },
+      { header: 'Qty on Hand', key: 'qty', width: 14 },
+      { header: 'Avg Cost', key: 'cost', width: 14 },
+      { header: 'Value', key: 'value', width: 14 },
+      { header: 'Status', key: 'status', width: 12 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((v) => {
+      const attrText = Object.entries(v.attributes || {}).map(([k, val]) => `${k}: ${val}`).join(', ');
+      const qty = Number(v.total_quantity_on_hand ?? v.quantity_on_hand) || 0;
+      const value = v.total_value !== undefined ? Number(v.total_value) : qty * Number(v.cost_price || 0);
+      sheet.addRow([v.sku, attrText, qty, Number(v.cost_price) || 0, value, v.is_active ? 'Active' : 'Inactive']);
+    });
+    [4, 5].forEach((col) => { sheet.getColumn(col).numFmt = '#,##0.000'; });
+    sheet.getColumn(3).numFmt = '#,##0.00';
+  });
+}
+
+// ---- Inventory Reports ----
+
+async function exportStockValuation(res, company, rows, locationLabel) {
+  await streamWorkbook(res, `stock-valuation.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Stock Valuation');
+    addTitleBlock(sheet, `${company?.name_en || ''} — Stock Valuation`, locationLabel, 7);
+
+    sheet.columns = [
+      { header: 'Code', key: 'code', width: 14 },
+      { header: 'SKU', key: 'sku', width: 16 },
+      { header: 'Item', key: 'item', width: 26 },
+      { header: 'Variant', key: 'variant', width: 20 },
+      { header: 'Qty on Hand', key: 'qty', width: 14 },
+      { header: 'Avg Cost', key: 'cost', width: 14 },
+      { header: 'Value', key: 'value', width: 14 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    let totalValue = 0;
+    rows.forEach((r) => {
+      totalValue += r.value;
+      sheet.addRow([
+        r.code, r.sku || '', r.name_en,
+        r.variant_id ? Object.entries(r.attributes || {}).map(([k, v]) => `${k}: ${v}`).join(', ') : '',
+        r.quantity_on_hand, r.cost_price, r.value,
+      ]);
+    });
+    sheet.addRow([]);
+    const totalRow = sheet.addRow(['', '', '', '', '', 'Total Value', totalValue]);
+    totalRow.font = { bold: true };
+    [5].forEach((col) => { sheet.getColumn(col).numFmt = '#,##0.00'; });
+    [6, 7].forEach((col) => { sheet.getColumn(col).numFmt = '#,##0.000'; });
+  });
+}
+
+async function exportLowStock(res, company, rows, locationLabel) {
+  await streamWorkbook(res, `low-stock.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Low Stock');
+    addTitleBlock(sheet, `${company?.name_en || ''} — Low Stock / Reorder Report`, locationLabel, 6);
+
+    sheet.columns = [
+      { header: 'Code', key: 'code', width: 14 },
+      { header: 'SKU', key: 'sku', width: 16 },
+      { header: 'Item', key: 'item', width: 26 },
+      { header: 'Variant', key: 'variant', width: 20 },
+      { header: 'Qty on Hand', key: 'qty', width: 14 },
+      { header: 'Reorder Level', key: 'reorder', width: 14 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((r) => {
+      sheet.addRow([
+        r.code, r.sku || '', r.name_en,
+        r.variant_id ? Object.entries(r.attributes || {}).map(([k, v]) => `${k}: ${v}`).join(', ') : '',
+        r.quantity_on_hand, r.reorder_level,
+      ]);
+    });
+    [5, 6].forEach((col) => { sheet.getColumn(col).numFmt = '#,##0.00'; });
+  });
+}
+
+async function exportStockMovement(res, company, item, rows) {
+  await streamWorkbook(res, `stock-movement-${item.code}.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Stock Movement');
+    addTitleBlock(sheet, `${company?.name_en || ''} — ${item.name_en} Movement`, `${rows.length} records`, 8);
+
+    sheet.columns = [
+      { header: 'Date', key: 'date', width: 12 },
+      { header: 'Type', key: 'type', width: 16 },
+      { header: 'Reference', key: 'ref', width: 14 },
+      { header: 'Quantity', key: 'qty', width: 14 },
+      { header: 'Unit Cost', key: 'cost', width: 14 },
+      { header: 'Balance Qty', key: 'balQty', width: 14 },
+      { header: 'Balance Value', key: 'balValue', width: 16 },
+      { header: 'Notes', key: 'notes', width: 26 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((r) => {
+      sheet.addRow([
+        r.date, r.type, r.reference_type || '',
+        Number(r.quantity), Number(r.unit_cost),
+        Number(r.balance_qty_after), Number(r.balance_value_after),
+        r.notes || '',
+      ]);
+    });
+    [4, 5, 6, 7].forEach((col) => { sheet.getColumn(col).numFmt = '#,##0.000'; });
   });
 }
 
@@ -401,6 +567,7 @@ async function exportBranches(res, company, rows) {
       { header: 'Name (EN)', key: 'name_en', width: 26 },
       { header: 'Name (AR)', key: 'name_ar', width: 26 },
       { header: 'Phone', key: 'phone', width: 16 },
+      { header: 'Linked Accounts', key: 'accounts', width: 40 },
       { header: 'Status', key: 'status', width: 12 },
     ];
     const headerRowIndex = sheet.lastRow.number + 1;
@@ -408,7 +575,8 @@ async function exportBranches(res, company, rows) {
     styleHeaderRow(sheet.getRow(headerRowIndex));
 
     rows.forEach((b) => {
-      sheet.addRow([b.code, b.name_en, b.name_ar, b.phone || '', b.is_active ? 'Active' : 'Inactive']);
+      const linkedAccounts = (b.accounts || []).map((a) => `${a.code} - ${a.name_en}`).join(', ');
+      sheet.addRow([b.code, b.name_en, b.name_ar, b.phone || '', linkedAccounts, b.is_active ? 'Active' : 'Inactive']);
     });
   });
 }
@@ -416,5 +584,6 @@ async function exportBranches(res, company, rows) {
 module.exports = {
   exportLedger, exportTrialBalance, exportVouchers, exportInvoices, exportEmployees,
   exportCostCenters, exportCashAccounts, exportSuppliers, exportClients,
-  exportVehicles, exportItems, exportPurchaseOrders, exportBranches,
+  exportVehicles, exportItems, exportPurchaseOrders, exportBranches, exportStockTransfers,
+  exportItemVariants, exportStockValuation, exportLowStock, exportStockMovement,
 };

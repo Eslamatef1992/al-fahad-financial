@@ -29,7 +29,8 @@
     "recurringInvoices": "Recurring Invoices",
     "purchaseOrders": "Purchase Orders",
     "items": "Inventory Items",
-    "branches": "Branches"
+    "branches": "Branches",
+    "stockTransfers": "Stock Transfers"
   },
   "common": {
     "search": "Search...",
@@ -97,7 +98,13 @@
     "subtitle": "Optional locations for tracking sales, invoices, and reporting by branch",
     "code": "Branch Code",
     "nameEn": "Branch Name (English)",
-    "nameAr": "Branch Name (Arabic)"
+    "nameAr": "Branch Name (Arabic)",
+    "linkedAccounts": "Linked Chart of Accounts",
+    "linkedAccountsHint": "Optional — attach any number of accounts this branch should be associated with (e.g. its own cash, revenue, or expense account) for reference and reporting.",
+    "accountsLinked": "linked",
+    "stock": "Branch Stock",
+    "stockSubtitle": "Stock on hand for this item at each branch, plus the unbranched pool",
+    "unbranchedPool": "Unbranched (default)"
   },
   "auth": {
     "login": "Sign In",
@@ -317,7 +324,52 @@
     "quantityDeltaHint": "Positive to receive stock (e.g. 5), negative to remove stock (e.g. -2).",
     "unitCostOptional": "Unit Cost (for positive adjustments, optional — defaults to current avg. cost)",
     "noItemFreehand": "No item (freehand line)",
-    "pickItemHint": "Optionally link this line to a stock item"
+    "pickItemHint": "Optionally link this line to a stock item",
+    "item": "Item",
+    "adjustBranchHint": "Which location's balance this adjustment applies to. Leave as unbranched pool for companies not using branches.",
+    "sku": "SKU",
+    "skuPlaceholder": "Barcode or supplier SKU (optional)",
+    "variants": "Variants",
+    "variantsCount": "variants",
+    "variant": "Variant",
+    "variantAttributes": "Variant Attributes",
+    "variantAttributesPlaceholder": "e.g. Color, Size",
+    "variantAttributesHint": "Names of the attributes that define this item's variants (e.g. Color, Size). Leave empty if this item has no variants.",
+    "variantsOpeningHint": "Opening stock is set per variant — add variants below after saving.",
+    "manageVariants": "Manage Variants",
+    "addVariant": "Add Variant",
+    "noAttributesHint": "This item has no variant attributes defined yet. Edit the item to add attribute names (e.g. Color, Size) before adding variants.",
+    "adjustVariantHint": "Optionally scope this adjustment to one specific variant instead of the item as a whole."
+  },
+  "stockTransfers": {
+    "subtitle": "Move inventory between branches (or the unbranched pool), fully tracked and audited",
+    "newTransfer": "New Transfer",
+    "transferNo": "Transfer No.",
+    "from": "From",
+    "to": "To",
+    "sameLocationError": "Source and destination must be different locations",
+    "transferred": "Stock transferred",
+    "costHint": "The transferred quantity moves at the source location's current average cost — a transfer relocates stock, it doesn't revalue it.",
+    "lines": "Items",
+    "addLine": "Add Item",
+    "removeLine": "Remove",
+    "noLinesError": "Add at least one item to the transfer"
+  },
+  "inventoryReports": {
+    "title": "Inventory Reports",
+    "valuation": "Stock Valuation",
+    "valuationSubtitle": "Current quantity, average cost, and value per item and branch",
+    "movement": "Stock Movement",
+    "movementSubtitle": "Full in/out history for one item over a date range",
+    "lowStock": "Low Stock / Reorder",
+    "lowStockSubtitle": "Items at or below their reorder level",
+    "transferHistory": "Transfer History",
+    "transferHistorySubtitle": "All stock transfers over a date range",
+    "allLocations": "All Locations (Pool + Branches)",
+    "poolOnly": "Unbranched Pool Only",
+    "selectItem": "Select an item to view its movement history",
+    "noLowStock": "Nothing is currently below its reorder level.",
+    "totalValue": "Total Value"
   },
   "purchaseOrders": {
     "poNo": "PO No.",
@@ -353,6 +405,7 @@
     "vouchersRegister": { "title": "Vouchers Register", "desc": "All receipt, payment and journal vouchers with status. Export to Excel; each voucher exports to PDF." },
     "arAging": { "title": "AR Aging", "desc": "Outstanding client invoices bucketed by days overdue. Export to PDF." },
     "apAging": { "title": "AP Aging", "desc": "Outstanding supplier bills bucketed by days overdue. Export to PDF." },
+    "inventory": { "title": "Inventory Reports", "desc": "Stock valuation, movement history, low-stock alerts, and transfer history. Export to PDF or Excel." },
     "profitAndLossSubtitle": "Revenue vs. expenses over a date range, with period-over-period comparison",
     "balanceSheetSubtitle": "Assets, liabilities and equity as of a date, with a balance check",
     "compareToPriorPeriod": "Compare to prior period",
