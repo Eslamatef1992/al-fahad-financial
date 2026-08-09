@@ -44,11 +44,14 @@ export default function ProfitAndLossPage() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const currency = activeCompany?.base_currency || 'KWD';
-  const [range, setRange] = useState({ from: monthStart(), to: new Date().toISOString().slice(0, 10) });
+  const [range, setRange] = useState({ from: monthStart(), to: new Date().toISOString().slice(0, 10), branch_id: '' });
   const [compare, setCompare] = useState(true);
   const [data, setData] = useState(null);
   const [prevData, setPrevData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [branches, setBranches] = useState([]);
+
+  useEffect(() => { if (activeCompany) api.get('/branches').then((r) => setBranches(r.data)); }, [activeCompany]);
 
   const fmt = (n) => `${Number(n).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`;
 
@@ -57,7 +60,7 @@ export default function ProfitAndLossPage() {
     const prev = previousRange(range.from, range.to);
     Promise.all([
       api.get('/reports/profit-and-loss', { params: range }),
-      compare ? api.get('/reports/profit-and-loss', { params: prev }) : Promise.resolve(null),
+      compare ? api.get('/reports/profit-and-loss', { params: { ...prev, branch_id: range.branch_id } }) : Promise.resolve(null),
     ]).then(([cur, prv]) => {
       setData(cur.data);
       setPrevData(prv?.data || null);
@@ -99,6 +102,13 @@ export default function ProfitAndLossPage() {
       <div className="card p-4 mb-5 flex flex-wrap items-end gap-3">
         <div><label className="label">{t('common.from')}</label><input type="date" className="input" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></div>
         <div><label className="label">{t('common.to')}</label><input type="date" className="input" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></div>
+        <div className="min-w-[180px]">
+          <label className="label">{t('common.branch')}</label>
+          <select className="input" value={range.branch_id} onChange={(e) => setRange({ ...range, branch_id: e.target.value })}>
+            <option value="">{t('common.allBranches')}</option>
+            {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
+          </select>
+        </div>
         <label className="flex items-center gap-2 text-sm text-slate-500 pb-2.5 cursor-pointer">
           <input type="checkbox" checked={compare} onChange={(e) => setCompare(e.target.checked)} className="rounded" />
           {t('reports.compareToPriorPeriod')}

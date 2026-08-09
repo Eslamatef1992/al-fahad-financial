@@ -18,6 +18,7 @@ export default function InvoiceFormPage() {
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const [accounts, setAccounts] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [clients, setClients] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [availableItems, setAvailableItems] = useState([]);
@@ -27,7 +28,7 @@ export default function InvoiceFormPage() {
   const partyKey = type === 'sales' ? 'client_id' : 'supplier_id';
   const [header, setHeader] = useState({
     client_id: '', supplier_id: '', date: new Date().toISOString().slice(0, 10), due_date: '',
-    cost_center_id: '', reference_no: '', notes: '',
+    cost_center_id: '', branch_id: '', reference_no: '', notes: '',
   });
   const [lines, setLines] = useState([emptyLine()]);
 
@@ -39,6 +40,7 @@ export default function InvoiceFormPage() {
     const relevantType = type === 'sales' ? ['revenue'] : ['expense', 'asset'];
     api.get('/accounts').then((r) => setAccounts(r.data.filter((a) => !a.is_group && relevantType.includes(a.type))));
     api.get('/cost-centers').then((r) => setCostCenters(r.data));
+    api.get('/branches').then((r) => setBranches(r.data));
     api.get('/items').then((r) => setAvailableItems(r.data));
     if (type === 'sales') api.get('/clients').then((r) => setClients(r.data));
     else api.get('/suppliers').then((r) => setSuppliers(r.data));
@@ -52,7 +54,7 @@ export default function InvoiceFormPage() {
       setHeader({
         client_id: inv.client_id || '', supplier_id: inv.supplier_id || '',
         date: inv.date, due_date: inv.due_date || '',
-        cost_center_id: inv.cost_center_id || '', reference_no: inv.reference_no || '', notes: inv.notes || '',
+        cost_center_id: inv.cost_center_id || '', branch_id: inv.branch_id || '', reference_no: inv.reference_no || '', notes: inv.notes || '',
       });
       setLines(inv.lines.map((l) => ({
         account_id: l.account_id, item_id: l.item_id || '', description: l.description || '',
@@ -141,6 +143,13 @@ export default function InvoiceFormPage() {
             <select className="input" value={header.cost_center_id} onChange={(e) => setHeader({ ...header, cost_center_id: e.target.value })}>
               <option value="">{t('common.none')}</option>
               {costCenters.map((c) => <option key={c.id} value={c.id}>{c.name_en}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">{t('common.branch')}</label>
+            <select className="input" value={header.branch_id} onChange={(e) => setHeader({ ...header, branch_id: e.target.value })}>
+              <option value="">{t('common.none')}</option>
+              {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
             </select>
           </div>
           <div className="sm:col-span-2"><label className="label">{t('common.notes')}</label><textarea className="input" rows={2} value={header.notes} onChange={(e) => setHeader({ ...header, notes: e.target.value })} /></div>

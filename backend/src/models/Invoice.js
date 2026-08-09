@@ -13,6 +13,7 @@ module.exports = (sequelize, DataTypes) => {
     date: { type: DataTypes.DATEONLY, allowNull: false },
     due_date: { type: DataTypes.DATEONLY, allowNull: true },
     cost_center_id: { type: DataTypes.UUID, allowNull: true },
+    branch_id: { type: DataTypes.UUID, allowNull: true },
     tax_account_id: { type: DataTypes.UUID, allowNull: true }, // where line tax amounts post to, if any
     currency: { type: DataTypes.STRING(10), defaultValue: 'KWD' },
     notes: { type: DataTypes.TEXT },

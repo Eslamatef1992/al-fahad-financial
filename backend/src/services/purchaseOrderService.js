@@ -42,7 +42,7 @@ async function validateLines(companyId, lines, t) {
 }
 
 async function createPurchaseOrder(companyId, userId, payload) {
-  const { supplier_id, date, expected_date, cost_center_id, currency, notes, lines } = payload;
+  const { supplier_id, date, expected_date, cost_center_id, branch_id, currency, notes, lines } = payload;
   if (!supplier_id) throw badRequest('supplier_id is required');
 
   return sequelize.transaction(async (t) => {
@@ -62,6 +62,7 @@ async function createPurchaseOrder(companyId, userId, payload) {
       date,
       expected_date: expected_date || null,
       cost_center_id: cost_center_id || null,
+      branch_id: branch_id || null,
       currency: currency || 'KWD',
       notes,
       subtotal,
@@ -90,7 +91,7 @@ async function createPurchaseOrder(companyId, userId, payload) {
 }
 
 async function updatePurchaseOrder(companyId, poId, payload) {
-  const { supplier_id, date, expected_date, cost_center_id, currency, notes, lines } = payload;
+  const { supplier_id, date, expected_date, cost_center_id, branch_id, currency, notes, lines } = payload;
 
   return sequelize.transaction(async (t) => {
     const po = await PurchaseOrder.findOne({
@@ -114,6 +115,7 @@ async function updatePurchaseOrder(companyId, poId, payload) {
       date,
       expected_date: expected_date || null,
       cost_center_id: cost_center_id || null,
+      branch_id: branch_id || null,
       currency: currency || po.currency,
       notes,
       subtotal,
@@ -170,6 +172,7 @@ async function convertToPurchaseBill(companyId, poId, userId) {
       date: new Date().toISOString().slice(0, 10),
       due_date: null,
       cost_center_id: po.cost_center_id,
+      branch_id: po.branch_id,
       currency: po.currency,
       notes: po.notes,
       subtotal: po.subtotal,

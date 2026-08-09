@@ -35,6 +35,7 @@ import ItemsPage from '@/pages/items/ItemsPage';
 import PurchaseOrdersPage from '@/pages/purchaseOrders/PurchaseOrdersPage';
 import PurchaseOrderFormPage from '@/pages/purchaseOrders/PurchaseOrderFormPage';
 import PurchaseOrderDetailPage from '@/pages/purchaseOrders/PurchaseOrderDetailPage';
+import BranchesPage from '@/pages/branches/BranchesPage';
 
 export default function App() {
   const theme = useUiStore((s) => s.theme);
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="/vehicles" element={<VehiclesPage />} />
           <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
           <Route path="/cost-centers" element={<CostCentersPage />} />
+          <Route path="/branches" element={<BranchesPage />} />
           <Route path="/cash-control" element={<CashControlPage />} />
           <Route path="/reports" element={<ReportsHubPage />} />
           <Route path="/reports/profit-and-loss" element={<ProfitAndLossPage />} />

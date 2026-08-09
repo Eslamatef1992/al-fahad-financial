@@ -18,6 +18,7 @@ export default function PurchaseOrderFormPage() {
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const [accounts, setAccounts] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [availableItems, setAvailableItems] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -25,7 +26,7 @@ export default function PurchaseOrderFormPage() {
 
   const [header, setHeader] = useState({
     supplier_id: '', date: new Date().toISOString().slice(0, 10), expected_date: '',
-    cost_center_id: '', notes: '',
+    cost_center_id: '', branch_id: '', notes: '',
   });
   const [lines, setLines] = useState([emptyLine()]);
 
@@ -33,6 +34,7 @@ export default function PurchaseOrderFormPage() {
     if (!activeCompany) return;
     api.get('/accounts').then((r) => setAccounts(r.data.filter((a) => !a.is_group)));
     api.get('/cost-centers').then((r) => setCostCenters(r.data));
+    api.get('/branches').then((r) => setBranches(r.data));
     api.get('/suppliers').then((r) => setSuppliers(r.data));
     api.get('/items').then((r) => setAvailableItems(r.data));
   }, [activeCompany]);
@@ -43,7 +45,7 @@ export default function PurchaseOrderFormPage() {
       const po = r.data;
       setHeader({
         supplier_id: po.supplier_id || '', date: po.date, expected_date: po.expected_date || '',
-        cost_center_id: po.cost_center_id || '', notes: po.notes || '',
+        cost_center_id: po.cost_center_id || '', branch_id: po.branch_id || '', notes: po.notes || '',
       });
       setLines(po.lines.map((l) => ({
         item_id: l.item_id || '', account_id: l.account_id, description: l.description || '',
@@ -123,6 +125,13 @@ export default function PurchaseOrderFormPage() {
             <select className="input" value={header.cost_center_id} onChange={(e) => setHeader({ ...header, cost_center_id: e.target.value })}>
               <option value="">{t('common.none')}</option>
               {costCenters.map((c) => <option key={c.id} value={c.id}>{c.name_en}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">{t('common.branch')}</label>
+            <select className="input" value={header.branch_id} onChange={(e) => setHeader({ ...header, branch_id: e.target.value })}>
+              <option value="">{t('common.none')}</option>
+              {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
             </select>
           </div>
           <div className="sm:col-span-2"><label className="label">{t('common.notes')}</label><textarea className="input" rows={2} value={header.notes} onChange={(e) => setHeader({ ...header, notes: e.target.value })} /></div>

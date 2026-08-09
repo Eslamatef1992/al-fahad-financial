@@ -78,6 +78,7 @@ export default function VoucherDetailPage() {
         <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.status')}</p><span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-bold capitalize ${STATUS_COLOR[voucher.status]}`}>{t(`vouchers.status.${voucher.status}`)}</span></div>
         <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.description')}</p><p className="text-sm mt-1">{voucher.description || '—'}</p></div>
         <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.total')}</p><p className="text-sm mt-1 font-bold">{Number(voucher.total_debit).toFixed(3)}</p></div>
+        {voucher.branch && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.branch')}</p><p className="text-sm mt-1">{voucher.branch.code} - {voucher.branch.name_en}</p></div>}
       </div>
 
       <div className="card overflow-hidden">

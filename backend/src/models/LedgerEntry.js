@@ -7,6 +7,7 @@ module.exports = (sequelize, DataTypes) => {
     voucher_line_id: { type: DataTypes.UUID, allowNull: false },
     account_id: { type: DataTypes.UUID, allowNull: false },
     cost_center_id: { type: DataTypes.UUID, allowNull: true },
+    branch_id: { type: DataTypes.UUID, allowNull: true },
     date: { type: DataTypes.DATEONLY, allowNull: false },
     debit: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     credit: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },

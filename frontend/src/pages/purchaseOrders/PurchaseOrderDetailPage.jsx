@@ -81,6 +81,7 @@ export default function PurchaseOrderDetailPage() {
             <button onClick={() => navigate(`/invoices/${po.convertedInvoice.id}`)} className="text-sm mt-1 font-bold text-gold-600 hover:underline">{po.convertedInvoice.invoice_no}</button>
           ) : <p className="text-sm mt-1 text-slate-400">—</p>}
         </div>
+        {po.branch && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.branch')}</p><p className="text-sm mt-1 font-medium">{po.branch.code} - {po.branch.name_en}</p></div>}
       </div>
 
       <div className="card overflow-hidden mb-5">

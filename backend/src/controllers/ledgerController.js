@@ -1,14 +1,15 @@
 const { Op } = require('sequelize');
-const { LedgerEntry, Account, CostCenter, Voucher, Company } = require('../models');
+const { LedgerEntry, Account, CostCenter, Branch, Voucher, Company } = require('../models');
 const { exportLedger, exportTrialBalance } = require('../services/excelService');
 const { generateTrialBalancePdf } = require('../services/pdfService');
 
-// General Ledger viewer: filter by account, cost center, date range
+// General Ledger viewer: filter by account, cost center, branch, date range
 exports.query = async (req, res) => {
-  const { account_id, cost_center_id, from, to } = req.query;
+  const { account_id, cost_center_id, branch_id, from, to } = req.query;
   const where = { company_id: req.companyId };
   if (account_id) where.account_id = account_id;
   if (cost_center_id) where.cost_center_id = cost_center_id;
+  if (branch_id) where.branch_id = branch_id;
   if (from || to) where.date = { ...(from && { [Op.gte]: from }), ...(to && { [Op.lte]: to }) };
 
   const entries = await LedgerEntry.findAll({
@@ -16,6 +17,7 @@ exports.query = async (req, res) => {
     include: [
       { model: Account, as: 'account' },
       { model: CostCenter, as: 'costCenter' },
+      { model: Branch, as: 'branch' },
       { model: Voucher, attributes: ['voucher_no', 'voucher_type', 'status'] },
     ],
     order: [['date', 'ASC'], ['createdAt', 'ASC']],
@@ -31,15 +33,16 @@ exports.query = async (req, res) => {
 };
 
 exports.exportExcel = async (req, res) => {
-  const { account_id, cost_center_id, from, to } = req.query;
+  const { account_id, cost_center_id, branch_id, from, to } = req.query;
   const where = { company_id: req.companyId };
   if (account_id) where.account_id = account_id;
   if (cost_center_id) where.cost_center_id = cost_center_id;
+  if (branch_id) where.branch_id = branch_id;
   if (from || to) where.date = { ...(from && { [Op.gte]: from }), ...(to && { [Op.lte]: to }) };
 
   const entries = await LedgerEntry.findAll({
     where,
-    include: [{ model: Account, as: 'account' }, { model: Voucher, attributes: ['voucher_no'] }],
+    include: [{ model: Account, as: 'account' }, { model: Branch, as: 'branch' }, { model: Voucher, attributes: ['voucher_no'] }],
     order: [['date', 'ASC'], ['createdAt', 'ASC']],
   });
 
@@ -55,9 +58,10 @@ exports.exportExcel = async (req, res) => {
 
 // Trial balance: net balance per account as of a date
 exports.trialBalance = async (req, res) => {
-  const { as_of } = req.query;
+  const { as_of, branch_id } = req.query;
   const where = { company_id: req.companyId };
   if (as_of) where.date = { [Op.lte]: as_of };
+  if (branch_id) where.branch_id = branch_id;
 
   const entries = await LedgerEntry.findAll({ where, include: [{ model: Account, as: 'account' }] });
 
@@ -82,9 +86,10 @@ exports.trialBalance = async (req, res) => {
 };
 
 exports.trialBalanceExcel = async (req, res) => {
-  const { as_of } = req.query;
+  const { as_of, branch_id } = req.query;
   const where = { company_id: req.companyId };
   if (as_of) where.date = { [Op.lte]: as_of };
+  if (branch_id) where.branch_id = branch_id;
 
   const entries = await LedgerEntry.findAll({ where, include: [{ model: Account, as: 'account' }] });
   const byAccount = {};
@@ -101,9 +106,10 @@ exports.trialBalanceExcel = async (req, res) => {
 };
 
 exports.trialBalancePdf = async (req, res) => {
-  const { as_of } = req.query;
+  const { as_of, branch_id } = req.query;
   const where = { company_id: req.companyId };
   if (as_of) where.date = { [Op.lte]: as_of };
+  if (branch_id) where.branch_id = branch_id;
 
   const entries = await LedgerEntry.findAll({ where, include: [{ model: Account, as: 'account' }] });
   const byAccount = {};

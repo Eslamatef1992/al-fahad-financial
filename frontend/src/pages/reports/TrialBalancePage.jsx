@@ -12,14 +12,18 @@ export default function TrialBalancePage() {
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const currency = activeCompany?.base_currency || 'KWD';
   const [asOf, setAsOf] = useState(new Date().toISOString().slice(0, 10));
+  const [branchId, setBranchId] = useState('');
+  const [branches, setBranches] = useState([]);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => { if (activeCompany) api.get('/branches').then((r) => setBranches(r.data)); }, [activeCompany]);
 
   const fmt = (n) => `${Number(n).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`;
 
   const load = () => {
     setLoading(true);
-    api.get('/ledger/trial-balance', { params: { as_of: asOf } }).then((r) => setRows(r.data)).finally(() => setLoading(false));
+    api.get('/ledger/trial-balance', { params: { as_of: asOf, branch_id: branchId } }).then((r) => setRows(r.data)).finally(() => setLoading(false));
   };
   useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
 
@@ -33,10 +37,17 @@ export default function TrialBalancePage() {
 
       <div className="card p-4 mb-5 flex flex-wrap items-end gap-3">
         <div><label className="label">{t('reports.asOf')}</label><input type="date" className="input" value={asOf} onChange={(e) => setAsOf(e.target.value)} /></div>
+        <div className="min-w-[180px]">
+          <label className="label">{t('common.branch')}</label>
+          <select className="input" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+            <option value="">{t('common.allBranches')}</option>
+            {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
+          </select>
+        </div>
         <button onClick={load} className="btn-primary">{t('reports.generate')}</button>
-        <button onClick={() => printFile('/ledger/trial-balance/pdf', { as_of: asOf })} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
-        <button onClick={() => downloadFile('/ledger/trial-balance/pdf', { as_of: asOf }, 'trial-balance.pdf')} className="btn-ghost"><Download size={16} /> PDF</button>
-        <button onClick={() => downloadFile('/ledger/trial-balance/excel', { as_of: asOf }, 'trial-balance.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
+        <button onClick={() => printFile('/ledger/trial-balance/pdf', { as_of: asOf, branch_id: branchId })} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
+        <button onClick={() => downloadFile('/ledger/trial-balance/pdf', { as_of: asOf, branch_id: branchId }, 'trial-balance.pdf')} className="btn-ghost"><Download size={16} /> PDF</button>
+        <button onClick={() => downloadFile('/ledger/trial-balance/excel', { as_of: asOf, branch_id: branchId }, 'trial-balance.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
       </div>
 
       {loading && <p className="text-slate-400">{t('common.loading')}</p>}

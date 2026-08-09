@@ -1,4 +1,4 @@
-const { sequelize, Voucher, VoucherLine, Account, CostCenter, Client, Supplier, Company } = require('../models');
+const { sequelize, Voucher, VoucherLine, Account, CostCenter, Client, Supplier, Company, Branch } = require('../models');
 const voucherService = require('../services/voucherService');
 const { generateVoucherPdf } = require('../services/pdfService');
 const { exportVouchers } = require('../services/excelService');
@@ -11,21 +11,26 @@ const lineInclude = [
 ];
 
 exports.list = async (req, res) => {
-  const { type, status, from, to } = req.query;
+  const { type, status, from, to, branch_id } = req.query;
   const where = { company_id: req.companyId };
   if (type) where.voucher_type = type;
   if (status) where.status = status;
+  if (branch_id) where.branch_id = branch_id;
   const { Op } = require('sequelize');
   if (from || to) where.date = { ...(from && { [Op.gte]: from }), ...(to && { [Op.lte]: to }) };
 
-  const vouchers = await Voucher.findAll({ where, order: [['date', 'DESC'], ['createdAt', 'DESC']] });
+  const vouchers = await Voucher.findAll({ where, include: [{ model: Branch, as: 'branch' }], order: [['date', 'DESC'], ['createdAt', 'DESC']] });
   res.json(vouchers);
 };
 
 exports.get = async (req, res) => {
   const voucher = await Voucher.findOne({
     where: { id: req.params.id, company_id: req.companyId },
-    include: [{ model: VoucherLine, as: 'lines', include: lineInclude }],
+    include: [
+      { model: VoucherLine, as: 'lines', include: lineInclude },
+      { model: CostCenter, as: 'costCenter' },
+      { model: Branch, as: 'branch' },
+    ],
   });
   if (!voucher) return res.status(404).json({ message: 'Voucher not found' });
   res.json(voucher);
@@ -44,7 +49,7 @@ exports.create = async (req, res) => {
 // then re-save) 404 with "Voucher not found" once the first save had already
 // replaced the row out from under the second request.
 exports.update = async (req, res) => {
-  const { voucher_type, date, description, cost_center_id, currency, lines } = req.body;
+  const { voucher_type, date, description, cost_center_id, branch_id, currency, lines } = req.body;
 
   if (!Array.isArray(lines) || lines.length < 2) {
     return res.status(400).json({ message: 'A voucher requires at least two lines' });
@@ -75,6 +80,7 @@ exports.update = async (req, res) => {
       date,
       description,
       cost_center_id: cost_center_id || null,
+      branch_id: branch_id || null,
       currency: currency || voucher.currency,
       total_debit: totalDebit,
       total_credit: totalCredit,
@@ -100,14 +106,15 @@ exports.update = async (req, res) => {
 };
 
 exports.exportExcel = async (req, res) => {
-  const { type, status, from, to } = req.query;
+  const { type, status, from, to, branch_id } = req.query;
   const where = { company_id: req.companyId };
   if (type) where.voucher_type = type;
   if (status) where.status = status;
+  if (branch_id) where.branch_id = branch_id;
   const { Op } = require('sequelize');
   if (from || to) where.date = { ...(from && { [Op.gte]: from }), ...(to && { [Op.lte]: to }) };
 
-  const vouchers = await Voucher.findAll({ where, order: [['date', 'DESC']] });
+  const vouchers = await Voucher.findAll({ where, include: [{ model: Branch, as: 'branch' }], order: [['date', 'DESC']] });
   const company = await Company.findByPk(req.companyId);
   await exportVouchers(res, company, vouchers);
 };
@@ -115,7 +122,11 @@ exports.exportExcel = async (req, res) => {
 exports.pdf = async (req, res) => {
   const voucher = await Voucher.findOne({
     where: { id: req.params.id, company_id: req.companyId },
-    include: [{ model: VoucherLine, as: 'lines', include: [{ model: Account, as: 'account' }, { model: CostCenter, as: 'costCenter' }] }],
+    include: [
+      { model: VoucherLine, as: 'lines', include: [{ model: Account, as: 'account' }, { model: CostCenter, as: 'costCenter' }] },
+      { model: CostCenter, as: 'costCenter' },
+      { model: Branch, as: 'branch' },
+    ],
   });
   if (!voucher) return res.status(404).json({ message: 'Voucher not found' });
   const company = await Company.findByPk(req.companyId);

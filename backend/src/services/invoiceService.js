@@ -23,7 +23,7 @@ function computeLine(l) {
 
 // Creates a draft invoice with computed line totals. No ledger impact yet.
 async function createInvoice(companyId, userId, payload) {
-  const { type, client_id, supplier_id, date, due_date, cost_center_id, tax_account_id, currency, notes, reference_no, lines } = payload;
+  const { type, client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines } = payload;
 
   if (!['sales', 'purchase'].includes(type)) throw badRequest('Invoice type must be "sales" or "purchase"');
   if (type === 'sales' && !client_id) throw badRequest('client_id is required for sales invoices');
@@ -47,6 +47,7 @@ async function createInvoice(companyId, userId, payload) {
       date,
       due_date: due_date || null,
       cost_center_id: cost_center_id || null,
+      branch_id: branch_id || null,
       tax_account_id: tax_account_id || null,
       currency: currency || 'KWD',
       notes,
@@ -189,6 +190,7 @@ async function postInvoice(companyId, invoiceId, userId) {
       date: invoice.date,
       description: `${invoice.type === 'sales' ? 'Sales Invoice' : 'Purchase Bill'} ${invoice.invoice_no}`,
       cost_center_id: invoice.cost_center_id,
+      branch_id: invoice.branch_id,
       currency: invoice.currency,
       lines,
     }, t);

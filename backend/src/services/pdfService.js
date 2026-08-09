@@ -437,6 +437,7 @@ function generateVoucherPdf(res, voucher, company) {
     { label: 'Status', value: voucher.status, badge: true },
     { label: 'Date', value: voucher.date },
     { label: 'Currency', value: voucher.currency },
+    ...(voucher.branch ? [{ label: 'Branch', value: `${voucher.branch.code} - ${voucher.branch.name_en}` }] : []),
     { label: 'Description', value: voucher.description || '-', full: true },
   ]);
 
@@ -710,6 +711,7 @@ function generateInvoicePdf(res, invoice, company) {
     { label: 'Status', value: invoice.status, badge: true },
     { label: 'Due Date', value: invoice.due_date || '-' },
     { label: 'Reference', value: invoice.reference_no || '-' },
+    ...(invoice.branch ? [{ label: 'Branch', value: `${invoice.branch.code} - ${invoice.branch.name_en}` }] : []),
   ]);
 
   table(doc, {
@@ -815,6 +817,7 @@ function generatePurchaseOrderPdf(res, po, company) {
     { label: 'Status', value: po.status, badge: true },
     { label: 'Expected Date', value: po.expected_date || '-' },
     { label: 'Currency', value: po.currency },
+    ...(po.branch ? [{ label: 'Branch', value: `${po.branch.code} - ${po.branch.name_en}` }] : []),
   ]);
 
   table(doc, {
@@ -848,9 +851,25 @@ function generatePurchaseOrderPdf(res, po, company) {
   doc.end();
 }
 
+function generateBranchesPdf(res, rows, company) {
+  const doc = newDoc(res, 'branches.pdf');
+  header(doc, company, 'Branches', `${rows.length} records`);
+
+  metaCard(doc, [{ label: 'Total Branches', value: String(rows.length) }]);
+
+  table(doc, {
+    headers: [{ label: 'Code' }, { label: 'Name (EN)' }, { label: 'Name (AR)' }, { label: 'Phone' }, { label: 'Status' }],
+    colWidths: [70, 150, 150, 100, 45],
+    rows: rows.map((b) => [b.code, b.name_en, b.name_ar, b.phone || '-', b.is_active ? 'Active' : 'Inactive']),
+  });
+
+  footer(doc, company);
+  doc.end();
+}
+
 module.exports = {
   generateVoucherPdf, generateProfitAndLossPdf, generateBalanceSheetPdf, generateTrialBalancePdf,
   generateInvoicePdf, generateAgingPdf, generateEmployeesPdf,
   generateCostCentersPdf, generateCashAccountsPdf, generateSuppliersPdf, generateClientsPdf,
-  generateVehiclesPdf, generateItemsPdf, generatePurchaseOrderPdf,
+  generateVehiclesPdf, generateItemsPdf, generatePurchaseOrderPdf, generateBranchesPdf,
 };

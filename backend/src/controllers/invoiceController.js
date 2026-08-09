@@ -1,18 +1,19 @@
 const { Op } = require('sequelize');
-const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Company, Voucher, Item } = require('../models');
+const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Branch, Company, Voucher, Item } = require('../models');
 const invoiceService = require('../services/invoiceService');
 const { generateInvoicePdf, generateAgingPdf } = require('../services/pdfService');
 const { exportInvoices } = require('../services/excelService');
 
 const lineInclude = [{ model: InvoiceLine, as: 'lines', include: [{ model: Account, as: 'account' }, { model: Item, as: 'item' }] }];
-const partyInclude = [{ model: Client, as: 'client' }, { model: Supplier, as: 'supplier' }, { model: CostCenter, as: 'costCenter' }];
+const partyInclude = [{ model: Client, as: 'client' }, { model: Supplier, as: 'supplier' }, { model: CostCenter, as: 'costCenter' }, { model: Branch, as: 'branch' }];
 const paymentInclude = [{ model: InvoicePayment, as: 'payments', include: [{ model: Voucher, as: 'voucher', attributes: ['id', 'voucher_no', 'status'] }] }];
 
 exports.list = async (req, res) => {
-  const { type, status, from, to, party_id } = req.query;
+  const { type, status, from, to, party_id, branch_id } = req.query;
   const where = { company_id: req.companyId };
   if (type) where.type = type;
   if (status) where.status = status;
+  if (branch_id) where.branch_id = branch_id;
   if (from || to) where.date = { ...(from && { [Op.gte]: from }), ...(to && { [Op.lte]: to }) };
   if (party_id) where[Op.or] = [{ client_id: party_id }, { supplier_id: party_id }];
 
@@ -41,7 +42,7 @@ exports.create = async (req, res) => {
 // found" once the first save had already replaced the row underneath it.
 // See the identical fix applied to voucherController.exports.update.
 exports.update = async (req, res) => {
-  const { client_id, supplier_id, date, due_date, cost_center_id, tax_account_id, currency, notes, reference_no, lines } = req.body;
+  const { client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines } = req.body;
 
   if (!Array.isArray(lines) || lines.length === 0) {
     return res.status(400).json({ message: 'At least one line item is required' });
@@ -69,6 +70,7 @@ exports.update = async (req, res) => {
       date,
       due_date: due_date || null,
       cost_center_id: cost_center_id || null,
+      branch_id: branch_id || null,
       tax_account_id: tax_account_id || null,
       currency: currency || invoice.currency,
       notes,
@@ -130,9 +132,10 @@ exports.pdf = async (req, res) => {
 };
 
 exports.exportExcel = async (req, res) => {
-  const { type, status, from, to } = req.query;
+  const { type, status, from, to, branch_id } = req.query;
   const where = { company_id: req.companyId, type: type || 'sales' };
   if (status) where.status = status;
+  if (branch_id) where.branch_id = branch_id;
   if (from || to) where.date = { ...(from && { [Op.gte]: from }), ...(to && { [Op.lte]: to }) };
 
   const invoices = await Invoice.findAll({ where, include: partyInclude, order: [['date', 'DESC']] });

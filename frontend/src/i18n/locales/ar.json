@@ -28,7 +28,8 @@
     "purchaseInvoices": "فواتير المشتريات",
     "recurringInvoices": "الفواتير الدورية",
     "purchaseOrders": "أوامر الشراء",
-    "items": "أصناف المخزون"
+    "items": "أصناف المخزون",
+    "branches": "الفروع"
   },
   "common": {
     "search": "بحث...",
@@ -88,7 +89,15 @@
     "addLine": "إضافة بند",
     "dueDate": "تاريخ الاستحقاق",
     "showingRange": "عرض {{from}}-{{to}} من {{total}}",
-    "pageOf": "صفحة {{page}} من {{count}}"
+    "pageOf": "صفحة {{page}} من {{count}}",
+    "branch": "الفرع",
+    "allBranches": "كل الفروع"
+  },
+  "branches": {
+    "subtitle": "فروع اختيارية لتتبع المبيعات والفواتير والتقارير حسب الفرع",
+    "code": "رمز الفرع",
+    "nameEn": "اسم الفرع (إنجليزي)",
+    "nameAr": "اسم الفرع (عربي)"
   },
   "auth": {
     "login": "تسجيل الدخول",

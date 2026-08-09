@@ -18,15 +18,25 @@ export default function VouchersPage() {
   const { canCreateEdit } = usePermissions();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [branchFilter, setBranchFilter] = useState('');
+  const [branches, setBranches] = useState([]);
 
-  const load = () => { setLoading(true); api.get('/vouchers').then((r) => setItems(r.data)).finally(() => setLoading(false)); };
-  useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
+  useEffect(() => { if (activeCompany) api.get('/branches').then((r) => setBranches(r.data)); }, [activeCompany]);
+
+  const load = () => {
+    setLoading(true);
+    const params = {};
+    if (branchFilter) params.branch_id = branchFilter;
+    api.get('/vouchers', { params }).then((r) => setItems(r.data)).finally(() => setLoading(false));
+  };
+  useEffect(() => { if (activeCompany) load(); }, [activeCompany, branchFilter]);
 
   const columns = [
     { key: 'voucher_no', label: t('vouchers.voucherNo') },
     { key: 'voucher_type', label: t('vouchers.voucherType'), render: (r) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${TYPE_COLOR[r.voucher_type]}`}>{t(`vouchers.${r.voucher_type}`)}</span> },
     { key: 'date', label: t('common.date') },
     { key: 'description', label: t('common.description') },
+    { key: 'branch', label: t('common.branch'), render: (r) => r.branch?.name_en || '—' },
     { key: 'total_debit', label: t('common.total'), render: (r) => Number(r.total_debit).toFixed(3) },
     { key: 'status', label: t('common.status'), render: (r) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${STATUS_COLOR[r.status]}`}>{t(`vouchers.status.${r.status}`)}</span> },
   ];
@@ -35,7 +45,11 @@ export default function VouchersPage() {
     <div>
       <PageHeader title={t('nav.vouchers')} actions={
         <div className="flex items-center gap-2">
-          <button onClick={() => downloadFile('/vouchers/excel', {}, 'vouchers.xlsx')} className="btn-ghost"><Download size={16} /> Excel</button>
+          <select className="input !py-2" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}>
+            <option value="">{t('common.allBranches')}</option>
+            {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
+          </select>
+          <button onClick={() => downloadFile('/vouchers/excel', { branch_id: branchFilter }, 'vouchers.xlsx')} className="btn-ghost"><Download size={16} /> Excel</button>
           {canCreateEdit && <button onClick={() => navigate('/vouchers/new')} className="btn-primary"><Plus size={16} /> {t('vouchers.newVoucher')}</button>}
         </div>
       } />

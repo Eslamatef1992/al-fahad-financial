@@ -25,6 +25,7 @@ const NAV = [
   { to: '/employees', icon: UsersRound, key: 'employees' },
   { to: '/vehicles', icon: Truck, key: 'vehicles' },
   { to: '/cost-centers', icon: Landmark, key: 'costCenters' },
+  { to: '/branches', icon: Building2, key: 'branches' },
   { to: '/cash-control', icon: Wallet, key: 'cashControl' },
   { to: '/reports', icon: PieChart, key: 'reports' },
 ];

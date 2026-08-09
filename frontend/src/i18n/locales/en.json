@@ -28,7 +28,8 @@
     "purchaseInvoices": "Purchase Bills",
     "recurringInvoices": "Recurring Invoices",
     "purchaseOrders": "Purchase Orders",
-    "items": "Inventory Items"
+    "items": "Inventory Items",
+    "branches": "Branches"
   },
   "common": {
     "search": "Search...",
@@ -88,7 +89,15 @@
     "addLine": "Add Line",
     "dueDate": "Due Date",
     "showingRange": "Showing {{from}}-{{to}} of {{total}}",
-    "pageOf": "Page {{page}} of {{count}}"
+    "pageOf": "Page {{page}} of {{count}}",
+    "branch": "Branch",
+    "allBranches": "All Branches"
+  },
+  "branches": {
+    "subtitle": "Optional locations for tracking sales, invoices, and reporting by branch",
+    "code": "Branch Code",
+    "nameEn": "Branch Name (English)",
+    "nameAr": "Branch Name (Arabic)"
   },
   "auth": {
     "login": "Sign In",

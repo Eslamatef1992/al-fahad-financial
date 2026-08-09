@@ -22,23 +22,29 @@ export default function InvoicesListPage({ type }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
+  const [branches, setBranches] = useState([]);
 
   const label = type === 'sales' ? t('nav.salesInvoices') : t('nav.purchaseInvoices');
   const partyLabel = type === 'sales' ? t('common.client') : t('common.supplier');
+
+  useEffect(() => { if (activeCompany) api.get('/branches').then((r) => setBranches(r.data)); }, [activeCompany]);
 
   const load = () => {
     setLoading(true);
     const params = { type };
     if (statusFilter) params.status = statusFilter;
+    if (branchFilter) params.branch_id = branchFilter;
     api.get('/invoices', { params }).then((r) => setItems(r.data)).finally(() => setLoading(false));
   };
-  useEffect(() => { if (activeCompany) load(); }, [activeCompany, statusFilter]);
+  useEffect(() => { if (activeCompany) load(); }, [activeCompany, statusFilter, branchFilter]);
 
   const columns = [
     { key: 'invoice_no', label: type === 'sales' ? t('invoices.invoiceNo') : t('invoices.billNo') },
     { key: 'party', label: partyLabel, render: (r) => (type === 'sales' ? r.client?.name_en : r.supplier?.name_en) || '—' },
     { key: 'date', label: t('common.date') },
     { key: 'due_date', label: t('common.dueDate'), render: (r) => r.due_date || '—' },
+    { key: 'branch', label: t('common.branch'), render: (r) => r.branch?.name_en || '—' },
     { key: 'total', label: t('common.total'), render: (r) => Number(r.total).toFixed(3) },
     { key: 'balance', label: t('common.balanceDue'), render: (r) => (Number(r.total) - Number(r.paid_total)).toFixed(3) },
     { key: 'status', label: t('common.status'), render: (r) => <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${STATUS_COLOR[r.status]}`}>{t(`invoices.status.${r.status}`)}</span> },
@@ -56,7 +62,11 @@ export default function InvoicesListPage({ type }) {
             <option value="paid">{t('invoices.status.paid')}</option>
             <option value="cancelled">{t('invoices.status.cancelled')}</option>
           </select>
-          <button onClick={() => downloadFile('/invoices/excel', { type }, `${type}-invoices.xlsx`)} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
+          <select className="input !py-2" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)}>
+            <option value="">{t('common.allBranches')}</option>
+            {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
+          </select>
+          <button onClick={() => downloadFile('/invoices/excel', { type, branch_id: branchFilter }, `${type}-invoices.xlsx`)} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
           {canCreateEdit && <button onClick={() => navigate(`/invoices/${type}/new`)} className="btn-primary"><Plus size={16} /> {type === 'sales' ? t('invoices.newInvoice') : t('invoices.newBill')}</button>}
         </div>
       } />

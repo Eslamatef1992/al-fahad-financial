@@ -28,6 +28,7 @@ const Item = require('./Item')(sequelize, DataTypes);
 const InventoryTransaction = require('./InventoryTransaction')(sequelize, DataTypes);
 const PurchaseOrder = require('./PurchaseOrder')(sequelize, DataTypes);
 const PurchaseOrderLine = require('./PurchaseOrderLine')(sequelize, DataTypes);
+const Branch = require('./Branch')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -38,7 +39,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -96,12 +97,14 @@ VoucherLine.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
 VoucherLine.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
 
 Voucher.belongsTo(CostCenter, { foreignKey: 'cost_center_id', as: 'costCenter' });
+Voucher.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
 Voucher.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 
 LedgerEntry.belongsTo(Voucher, { foreignKey: 'voucher_id' });
 LedgerEntry.belongsTo(VoucherLine, { foreignKey: 'voucher_line_id' });
 LedgerEntry.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 LedgerEntry.belongsTo(CostCenter, { foreignKey: 'cost_center_id', as: 'costCenter' });
+LedgerEntry.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
 Account.hasMany(LedgerEntry, { foreignKey: 'account_id' });
 
 AuditLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
@@ -111,6 +114,7 @@ AuditLog.belongsTo(Company, { foreignKey: 'company_id', as: 'company' });
 Invoice.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
 Invoice.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
 Invoice.belongsTo(CostCenter, { foreignKey: 'cost_center_id', as: 'costCenter' });
+Invoice.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
 Invoice.belongsTo(Account, { foreignKey: 'tax_account_id', as: 'taxAccount' });
 Invoice.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 
@@ -139,6 +143,7 @@ InventoryTransaction.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
 
 PurchaseOrder.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
 PurchaseOrder.belongsTo(CostCenter, { foreignKey: 'cost_center_id', as: 'costCenter' });
+PurchaseOrder.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
 PurchaseOrder.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 PurchaseOrder.belongsTo(Invoice, { foreignKey: 'converted_invoice_id', as: 'convertedInvoice' });
 
@@ -176,4 +181,5 @@ module.exports = {
   InventoryTransaction,
   PurchaseOrder,
   PurchaseOrderLine,
+  Branch,
 };

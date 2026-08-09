@@ -12,6 +12,7 @@ module.exports = (sequelize, DataTypes) => {
     date: { type: DataTypes.DATEONLY, allowNull: false },
     expected_date: { type: DataTypes.DATEONLY, allowNull: true },
     cost_center_id: { type: DataTypes.UUID, allowNull: true },
+    branch_id: { type: DataTypes.UUID, allowNull: true },
     currency: { type: DataTypes.STRING(10), defaultValue: 'KWD' },
     notes: { type: DataTypes.TEXT },
     subtotal: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },

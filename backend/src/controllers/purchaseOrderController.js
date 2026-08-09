@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { PurchaseOrder, PurchaseOrderLine, Supplier, CostCenter, Account, Item, Invoice, Company } = require('../models');
+const { PurchaseOrder, PurchaseOrderLine, Supplier, CostCenter, Branch, Account, Item, Invoice, Company } = require('../models');
 const purchaseOrderService = require('../services/purchaseOrderService');
 const { generatePurchaseOrderPdf } = require('../services/pdfService');
 const { exportPurchaseOrders } = require('../services/excelService');
@@ -8,14 +8,16 @@ const lineInclude = [{ model: PurchaseOrderLine, as: 'lines', include: [{ model:
 const partyInclude = [
   { model: Supplier, as: 'supplier' },
   { model: CostCenter, as: 'costCenter' },
+  { model: Branch, as: 'branch' },
   { model: Invoice, as: 'convertedInvoice', attributes: ['id', 'invoice_no', 'status'] },
 ];
 
 exports.list = async (req, res) => {
-  const { status, from, to, supplier_id } = req.query;
+  const { status, from, to, supplier_id, branch_id } = req.query;
   const where = { company_id: req.companyId };
   if (status) where.status = status;
   if (supplier_id) where.supplier_id = supplier_id;
+  if (branch_id) where.branch_id = branch_id;
   if (from || to) where.date = { ...(from && { [Op.gte]: from }), ...(to && { [Op.lte]: to }) };
 
   const rows = await PurchaseOrder.findAll({ where, include: partyInclude, order: [['date', 'DESC'], ['createdAt', 'DESC']] });

@@ -2,10 +2,11 @@ const { Op } = require('sequelize');
 const { LedgerEntry, Account, Company } = require('../models');
 const { generateProfitAndLossPdf, generateBalanceSheetPdf } = require('../services/pdfService');
 
-async function getEntries(companyId, { from, to, as_of }) {
+async function getEntries(companyId, { from, to, as_of, branch_id }) {
   const where = { company_id: companyId };
   if (as_of) where.date = { [Op.lte]: as_of };
   else if (from || to) where.date = { ...(from && { [Op.gte]: from }), ...(to && { [Op.lte]: to }) };
+  if (branch_id) where.branch_id = branch_id;
   return LedgerEntry.findAll({ where, include: [{ model: Account, as: 'account' }] });
 }
 
@@ -30,10 +31,10 @@ function summarizeByAccount(entries, types) {
 
 // Profit & Loss for a date range: revenue - expense
 exports.profitAndLoss = async (req, res) => {
-  const { from, to } = req.query;
+  const { from, to, branch_id } = req.query;
   if (!from || !to) return res.status(400).json({ message: 'from and to dates are required' });
 
-  const entries = await getEntries(req.companyId, { from, to });
+  const entries = await getEntries(req.companyId, { from, to, branch_id });
   const revenue = summarizeByAccount(entries, ['revenue']);
   const expense = summarizeByAccount(entries, ['expense']);
 
@@ -52,10 +53,10 @@ exports.profitAndLoss = async (req, res) => {
 
 // Balance Sheet as of a date: assets = liabilities + equity (+ retained earnings from P&L)
 exports.balanceSheet = async (req, res) => {
-  const { as_of } = req.query;
+  const { as_of, branch_id } = req.query;
   if (!as_of) return res.status(400).json({ message: 'as_of date is required' });
 
-  const entries = await getEntries(req.companyId, { as_of });
+  const entries = await getEntries(req.companyId, { as_of, branch_id });
   const assets = summarizeByAccount(entries, ['asset']);
   const liabilities = summarizeByAccount(entries, ['liability']);
   const equity = summarizeByAccount(entries, ['equity']);
@@ -83,10 +84,10 @@ exports.balanceSheet = async (req, res) => {
 };
 
 exports.profitAndLossPdf = async (req, res) => {
-  const { from, to } = req.query;
+  const { from, to, branch_id } = req.query;
   if (!from || !to) return res.status(400).json({ message: 'from and to dates are required' });
 
-  const entries = await getEntries(req.companyId, { from, to });
+  const entries = await getEntries(req.companyId, { from, to, branch_id });
   const revenue = summarizeByAccount(entries, ['revenue']);
   const expense = summarizeByAccount(entries, ['expense']);
   const total_revenue = revenue.reduce((s, r) => s + r.amount, 0);
@@ -99,10 +100,10 @@ exports.profitAndLossPdf = async (req, res) => {
 };
 
 exports.balanceSheetPdf = async (req, res) => {
-  const { as_of } = req.query;
+  const { as_of, branch_id } = req.query;
   if (!as_of) return res.status(400).json({ message: 'as_of date is required' });
 
-  const entries = await getEntries(req.companyId, { as_of });
+  const entries = await getEntries(req.companyId, { as_of, branch_id });
   const assets = summarizeByAccount(entries, ['asset']);
   const liabilities = summarizeByAccount(entries, ['liability']);
   const equity = summarizeByAccount(entries, ['equity']);

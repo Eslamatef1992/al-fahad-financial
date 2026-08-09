@@ -9,16 +9,22 @@ export default function LedgerPage() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const [accounts, setAccounts] = useState([]);
-  const [filters, setFilters] = useState({ account_id: '', from: '', to: '' });
+  const [branches, setBranches] = useState([]);
+  const [filters, setFilters] = useState({ account_id: '', branch_id: '', from: '', to: '' });
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { if (activeCompany) api.get('/accounts').then((r) => setAccounts(r.data.filter((a) => !a.is_group))); }, [activeCompany]);
+  useEffect(() => {
+    if (!activeCompany) return;
+    api.get('/accounts').then((r) => setAccounts(r.data.filter((a) => !a.is_group)));
+    api.get('/branches').then((r) => setBranches(r.data));
+  }, [activeCompany]);
 
   const search = () => {
     setLoading(true);
     const params = {};
     if (filters.account_id) params.account_id = filters.account_id;
+    if (filters.branch_id) params.branch_id = filters.branch_id;
     if (filters.from) params.from = filters.from;
     if (filters.to) params.to = filters.to;
     api.get('/ledger', { params }).then((r) => setRows(r.data)).finally(() => setLoading(false));
@@ -35,6 +41,13 @@ export default function LedgerPage() {
           <select className="input" value={filters.account_id} onChange={(e) => setFilters({ ...filters, account_id: e.target.value })}>
             <option value="">{t('common.all')}</option>
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.code} - {a.name_en}</option>)}
+          </select>
+        </div>
+        <div className="min-w-[180px]">
+          <label className="label">{t('common.branch')}</label>
+          <select className="input" value={filters.branch_id} onChange={(e) => setFilters({ ...filters, branch_id: e.target.value })}>
+            <option value="">{t('common.allBranches')}</option>
+            {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
           </select>
         </div>
         <div><label className="label">{t('common.from')}</label><input type="date" className="input" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} /></div>

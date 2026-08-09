@@ -4,6 +4,7 @@ module.exports = (sequelize, DataTypes) => {
     id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     company_id: { type: DataTypes.UUID, allowNull: false },
     cost_center_id: { type: DataTypes.UUID, allowNull: true },
+    branch_id: { type: DataTypes.UUID, allowNull: true },
     voucher_no: { type: DataTypes.STRING(30), allowNull: false },
     voucher_type: {
       type: DataTypes.ENUM('receipt', 'payment', 'journal'),

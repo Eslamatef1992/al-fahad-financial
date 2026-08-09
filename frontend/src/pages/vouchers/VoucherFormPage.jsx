@@ -18,18 +18,20 @@ export default function VoucherFormPage() {
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const [accounts, setAccounts] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [clients, setClients] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
 
-  const [header, setHeader] = useState({ voucher_type: 'journal', date: new Date().toISOString().slice(0, 10), description: '', cost_center_id: '' });
+  const [header, setHeader] = useState({ voucher_type: 'journal', date: new Date().toISOString().slice(0, 10), description: '', cost_center_id: '', branch_id: '' });
   const [lines, setLines] = useState([emptyLine(), emptyLine()]);
 
   useEffect(() => {
     if (!activeCompany) return;
     api.get('/accounts').then((r) => setAccounts(r.data.filter((a) => !a.is_group)));
     api.get('/cost-centers').then((r) => setCostCenters(r.data));
+    api.get('/branches').then((r) => setBranches(r.data));
     api.get('/clients').then((r) => setClients(r.data));
     api.get('/suppliers').then((r) => setSuppliers(r.data));
   }, [activeCompany]);
@@ -44,7 +46,7 @@ export default function VoucherFormPage() {
         navigate(`/vouchers/${id}`);
         return;
       }
-      setHeader({ voucher_type: v.voucher_type, date: v.date, description: v.description || '', cost_center_id: v.cost_center_id || '' });
+      setHeader({ voucher_type: v.voucher_type, date: v.date, description: v.description || '', cost_center_id: v.cost_center_id || '', branch_id: v.branch_id || '' });
       setLines((v.lines || []).map((l) => ({
         account_id: l.account_id || '', cost_center_id: l.cost_center_id || '', client_id: l.client_id || '',
         supplier_id: l.supplier_id || '', debit: Number(l.debit) > 0 ? l.debit : '', credit: Number(l.credit) > 0 ? l.credit : '',
@@ -87,7 +89,7 @@ export default function VoucherFormPage() {
       <PageHeader title={isEdit ? t('vouchers.editVoucher') : t('vouchers.newVoucher')} />
 
       <form onSubmit={submit} className="space-y-5">
-        <div className="card p-5 grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div className="card p-5 grid grid-cols-1 sm:grid-cols-5 gap-3">
           <div>
             <label className="label">{t('vouchers.voucherType')}</label>
             <select className="input" value={header.voucher_type} onChange={(e) => setHeader({ ...header, voucher_type: e.target.value })}>
@@ -96,6 +98,13 @@ export default function VoucherFormPage() {
           </div>
           <div><label className="label">{t('common.date')}</label><input required type="date" className="input" value={header.date} onChange={(e) => setHeader({ ...header, date: e.target.value })} /></div>
           <div className="sm:col-span-2"><label className="label">{t('common.description')}</label><input className="input" value={header.description} onChange={(e) => setHeader({ ...header, description: e.target.value })} /></div>
+          <div>
+            <label className="label">{t('common.branch')}</label>
+            <select className="input" value={header.branch_id} onChange={(e) => setHeader({ ...header, branch_id: e.target.value })}>
+              <option value="">{t('common.none')}</option>
+              {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
+            </select>
+          </div>
         </div>
 
         <div className="card p-5">

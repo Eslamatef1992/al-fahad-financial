@@ -16,7 +16,7 @@ async function nextVoucherNo(companyId, voucherType) {
 // of getting a separate one — every existing caller that omits it keeps
 // getting its own dedicated transaction exactly as before.
 async function createVoucher(companyId, userId, payload, externalT) {
-  const { voucher_type, date, description, cost_center_id, currency, lines } = payload;
+  const { voucher_type, date, description, cost_center_id, branch_id, currency, lines } = payload;
 
   if (!Array.isArray(lines) || lines.length < 2) {
     const err = new Error('A voucher requires at least two lines');
@@ -38,6 +38,7 @@ async function createVoucher(companyId, userId, payload, externalT) {
     const voucher = await Voucher.create({
       company_id: companyId,
       cost_center_id: cost_center_id || null,
+      branch_id: branch_id || null,
       voucher_no,
       voucher_type,
       date,
@@ -96,6 +97,7 @@ async function postVoucher(companyId, voucherId, externalT) {
       voucher_line_id: line.id,
       account_id: line.account_id,
       cost_center_id: line.cost_center_id,
+      branch_id: voucher.branch_id,
       date: voucher.date,
       debit: line.debit,
       credit: line.credit,
@@ -126,6 +128,7 @@ async function cancelVoucher(companyId, voucherId) {
       voucher_line_id: line.id,
       account_id: line.account_id,
       cost_center_id: line.cost_center_id,
+      branch_id: voucher.branch_id,
       date: new Date().toISOString().slice(0, 10),
       debit: line.credit,   // reversed
       credit: line.debit,   // reversed

@@ -39,14 +39,18 @@ export default function BalanceSheetPage() {
   const [data, setData] = useState(null);
   const [prevData, setPrevData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [branchId, setBranchId] = useState('');
+  const [branches, setBranches] = useState([]);
+
+  useEffect(() => { if (activeCompany) api.get('/branches').then((r) => setBranches(r.data)); }, [activeCompany]);
 
   const fmt = (n) => `${Number(n).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`;
 
   const load = () => {
     setLoading(true);
     Promise.all([
-      api.get('/reports/balance-sheet', { params: { as_of: asOf } }),
-      compare ? api.get('/reports/balance-sheet', { params: { as_of: compareAsOf } }) : Promise.resolve(null),
+      api.get('/reports/balance-sheet', { params: { as_of: asOf, branch_id: branchId } }),
+      compare ? api.get('/reports/balance-sheet', { params: { as_of: compareAsOf, branch_id: branchId } }) : Promise.resolve(null),
     ]).then(([cur, prv]) => {
       setData(cur.data);
       setPrevData(prv?.data || null);
@@ -118,9 +122,16 @@ export default function BalanceSheetPage() {
         {compare && (
           <div><label className="label">{t('reports.compareAsOf')}</label><input type="date" className="input" value={compareAsOf} onChange={(e) => setCompareAsOf(e.target.value)} /></div>
         )}
+        <div className="min-w-[180px]">
+          <label className="label">{t('common.branch')}</label>
+          <select className="input" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+            <option value="">{t('common.allBranches')}</option>
+            {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
+          </select>
+        </div>
         <button onClick={load} className="btn-primary">{t('reports.generate')}</button>
-        <button onClick={() => printFile('/reports/balance-sheet/pdf', { as_of: asOf })} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
-        <button onClick={() => downloadFile('/reports/balance-sheet/pdf', { as_of: asOf }, 'balance-sheet.pdf')} className="btn-ghost"><Download size={16} /> PDF</button>
+        <button onClick={() => printFile('/reports/balance-sheet/pdf', { as_of: asOf, branch_id: branchId })} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
+        <button onClick={() => downloadFile('/reports/balance-sheet/pdf', { as_of: asOf, branch_id: branchId }, 'balance-sheet.pdf')} className="btn-ghost"><Download size={16} /> PDF</button>
       </div>
 
       {loading && <p className="text-slate-400">{t('common.loading')}</p>}
