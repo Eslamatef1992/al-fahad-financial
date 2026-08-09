@@ -31,6 +31,10 @@ import PurchaseInvoicesPage from '@/pages/invoices/PurchaseInvoicesPage';
 import InvoiceFormPage from '@/pages/invoices/InvoiceFormPage';
 import InvoiceDetailPage from '@/pages/invoices/InvoiceDetailPage';
 import RecurringInvoicesPage from '@/pages/recurringInvoices/RecurringInvoicesPage';
+import ItemsPage from '@/pages/items/ItemsPage';
+import PurchaseOrdersPage from '@/pages/purchaseOrders/PurchaseOrdersPage';
+import PurchaseOrderFormPage from '@/pages/purchaseOrders/PurchaseOrderFormPage';
+import PurchaseOrderDetailPage from '@/pages/purchaseOrders/PurchaseOrderDetailPage';
 
 export default function App() {
   const theme = useUiStore((s) => s.theme);
@@ -73,6 +77,11 @@ export default function App() {
           <Route path="/invoices/:type/edit/:id" element={<InvoiceFormPage />} />
           <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
           <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
+          <Route path="/items" element={<ItemsPage />} />
+          <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
+          <Route path="/purchase-orders/new" element={<PurchaseOrderFormPage />} />
+          <Route path="/purchase-orders/:id/edit" element={<PurchaseOrderFormPage />} />
+          <Route path="/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
         </Route>
       </Route>
 

@@ -1,10 +1,10 @@
 const { Op } = require('sequelize');
-const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Company, Voucher } = require('../models');
+const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Company, Voucher, Item } = require('../models');
 const invoiceService = require('../services/invoiceService');
 const { generateInvoicePdf, generateAgingPdf } = require('../services/pdfService');
 const { exportInvoices } = require('../services/excelService');
 
-const lineInclude = [{ model: InvoiceLine, as: 'lines', include: [{ model: Account, as: 'account' }] }];
+const lineInclude = [{ model: InvoiceLine, as: 'lines', include: [{ model: Account, as: 'account' }, { model: Item, as: 'item' }] }];
 const partyInclude = [{ model: Client, as: 'client' }, { model: Supplier, as: 'supplier' }, { model: CostCenter, as: 'costCenter' }];
 const paymentInclude = [{ model: InvoicePayment, as: 'payments', include: [{ model: Voucher, as: 'voucher', attributes: ['id', 'voucher_no', 'status'] }] }];
 
@@ -81,6 +81,7 @@ exports.update = async (req, res) => {
     await Promise.all(computedLines.map((l, idx) => InvoiceLine.create({
       invoice_id: invoice.id,
       account_id: l.account_id,
+      item_id: l.item_id || null,
       description: l.description || '',
       quantity: l.quantity,
       unit_price: l.unit_price,

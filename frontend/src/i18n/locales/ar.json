@@ -26,7 +26,9 @@
     "auditLog": "سجل النشاطات",
     "salesInvoices": "فواتير المبيعات",
     "purchaseInvoices": "فواتير المشتريات",
-    "recurringInvoices": "الفواتير الدورية"
+    "recurringInvoices": "الفواتير الدورية",
+    "purchaseOrders": "أوامر الشراء",
+    "items": "أصناف المخزون"
   },
   "common": {
     "search": "بحث...",
@@ -285,6 +287,52 @@
   },
   "ledger": {
     "voucher": "السند"
+  },
+  "items": {
+    "category": "الفئة",
+    "unit": "الوحدة",
+    "stockOnHand": "الرصيد الحالي",
+    "avgCost": "متوسط التكلفة",
+    "stockValue": "قيمة المخزون",
+    "sellingPrice": "سعر البيع",
+    "inventoryAccount": "حساب المخزون (أصول)",
+    "inventoryAccountHint": "الحساب من نوع الأصول الذي تُسجَّل عليه قيمة مخزون هذا الصنف.",
+    "incomeAccount": "حساب الإيرادات",
+    "cogsAccount": "حساب تكلفة البضاعة المباعة",
+    "reorderLevel": "حد إعادة الطلب",
+    "openingQuantity": "الكمية الافتتاحية",
+    "openingCost": "تكلفة الوحدة الافتتاحية",
+    "adjustStock": "تسوية المخزون",
+    "stockAdjusted": "تمت تسوية المخزون",
+    "quantityDelta": "التغيير في الكمية",
+    "quantityDeltaHint": "قيمة موجبة لإضافة مخزون (مثال 5)، وسالبة لخصم مخزون (مثال -2).",
+    "unitCostOptional": "تكلفة الوحدة (للتسويات الموجبة، اختياري — تفترض متوسط التكلفة الحالي)",
+    "noItemFreehand": "بدون صنف (بند حر)",
+    "pickItemHint": "اختياري — اربط هذا البند بصنف مخزون"
+  },
+  "purchaseOrders": {
+    "poNo": "رقم أمر الشراء",
+    "purchaseOrder": "أمر شراء",
+    "newPo": "أمر شراء جديد",
+    "newTitle": "أمر شراء جديد",
+    "editTitle": "تعديل أمر الشراء",
+    "expectedDate": "التاريخ المتوقع",
+    "bill": "الفاتورة",
+    "convertToBill": "تحويل إلى فاتورة",
+    "convertedToBill": "تم التحويل إلى فاتورة مشتريات",
+    "convertConfirm": "هل تريد تحويل أمر الشراء هذا إلى فاتورة مشتريات؟ يجب ترحيل الفاتورة بشكل منفصل لتأثيرها على دفتر الأستاذ واستلام المخزون.",
+    "cancelConfirm": "هل تريد إلغاء أمر الشراء هذا؟",
+    "deleteConfirm": "هل تريد حذف أمر الشراء هذا نهائياً؟ لا يمكن التراجع عن هذا الإجراء.",
+    "poDeleted": "تم حذف أمر الشراء",
+    "pleaseSelectSupplier": "يرجى اختيار مورد",
+    "addLineItemPrompt": "أضف بندًا واحدًا على الأقل",
+    "savedAsDraft": "تم الحفظ كمسودة",
+    "lineHint": "كل بند إما يرتبط بصنف مخزون (يملأ حساب المخزون تلقائياً) أو يُرحَّل مباشرة إلى أي حساب من دليل الحسابات.",
+    "status": {
+      "draft": "مسودة",
+      "converted": "تم التحويل",
+      "cancelled": "ملغى"
+    }
   },
   "reports": {
     "subtitle": "جميع تقارير النظام، مع إمكانية التصدير إلى PDF أو إكسل",

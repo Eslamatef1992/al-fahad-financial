@@ -26,7 +26,9 @@
     "auditLog": "Audit Log",
     "salesInvoices": "Sales Invoices",
     "purchaseInvoices": "Purchase Bills",
-    "recurringInvoices": "Recurring Invoices"
+    "recurringInvoices": "Recurring Invoices",
+    "purchaseOrders": "Purchase Orders",
+    "items": "Inventory Items"
   },
   "common": {
     "search": "Search...",
@@ -285,6 +287,52 @@
   },
   "ledger": {
     "voucher": "Voucher"
+  },
+  "items": {
+    "category": "Category",
+    "unit": "Unit",
+    "stockOnHand": "Stock on Hand",
+    "avgCost": "Avg. Cost",
+    "stockValue": "Stock Value",
+    "sellingPrice": "Selling Price",
+    "inventoryAccount": "Inventory Account (Asset)",
+    "inventoryAccountHint": "The asset account this item's stock value is tracked against.",
+    "incomeAccount": "Income Account (Revenue)",
+    "cogsAccount": "COGS Account (Expense)",
+    "reorderLevel": "Reorder Level",
+    "openingQuantity": "Opening Quantity",
+    "openingCost": "Opening Unit Cost",
+    "adjustStock": "Adjust Stock",
+    "stockAdjusted": "Stock adjusted",
+    "quantityDelta": "Quantity Change",
+    "quantityDeltaHint": "Positive to receive stock (e.g. 5), negative to remove stock (e.g. -2).",
+    "unitCostOptional": "Unit Cost (for positive adjustments, optional — defaults to current avg. cost)",
+    "noItemFreehand": "No item (freehand line)",
+    "pickItemHint": "Optionally link this line to a stock item"
+  },
+  "purchaseOrders": {
+    "poNo": "PO No.",
+    "purchaseOrder": "Purchase Order",
+    "newPo": "New Purchase Order",
+    "newTitle": "New Purchase Order",
+    "editTitle": "Edit Purchase Order",
+    "expectedDate": "Expected Date",
+    "bill": "Bill",
+    "convertToBill": "Convert to Bill",
+    "convertedToBill": "Converted to purchase bill",
+    "convertConfirm": "Convert this purchase order into a purchase bill? The bill will need to be posted separately to affect the ledger and receive stock.",
+    "cancelConfirm": "Cancel this draft purchase order?",
+    "deleteConfirm": "Delete this draft purchase order permanently? This cannot be undone.",
+    "poDeleted": "Purchase order deleted",
+    "pleaseSelectSupplier": "Please select a supplier",
+    "addLineItemPrompt": "Add at least one line item",
+    "savedAsDraft": "Saved as draft",
+    "lineHint": "Each line either links to a stock Item (auto-fills its inventory account) or posts freehand to any Chart of Accounts account.",
+    "status": {
+      "draft": "Draft",
+      "converted": "Converted",
+      "cancelled": "Cancelled"
+    }
   },
   "reports": {
     "subtitle": "Every report in the system, each with PDF or Excel export",

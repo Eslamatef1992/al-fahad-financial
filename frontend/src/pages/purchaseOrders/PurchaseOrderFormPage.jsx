@@ -8,54 +8,45 @@ import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 
-const emptyLine = () => ({ account_id: '', item_id: '', description: '', quantity: 1, unit_price: '', tax_rate: 0 });
+const emptyLine = () => ({ item_id: '', account_id: '', description: '', quantity: 1, unit_price: '', tax_rate: 0 });
 
-export default function InvoiceFormPage() {
+export default function PurchaseOrderFormPage() {
   const { t } = useTranslation();
-  const { type, id } = useParams(); // 'sales' | 'purchase'; id present only when editing an existing draft
+  const { id } = useParams();
   const isEdit = !!id;
   const navigate = useNavigate();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const [accounts, setAccounts] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
-  const [clients, setClients] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [availableItems, setAvailableItems] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
 
-  const partyKey = type === 'sales' ? 'client_id' : 'supplier_id';
   const [header, setHeader] = useState({
-    client_id: '', supplier_id: '', date: new Date().toISOString().slice(0, 10), due_date: '',
-    cost_center_id: '', reference_no: '', notes: '',
+    supplier_id: '', date: new Date().toISOString().slice(0, 10), expected_date: '',
+    cost_center_id: '', notes: '',
   });
   const [lines, setLines] = useState([emptyLine()]);
 
   useEffect(() => {
     if (!activeCompany) return;
-    // Purchase bill lines can post to either an expense account (a plain
-    // service/expense purchase) or an asset account (an inventory item's
-    // stock account, auto-filled when the line is linked to an Item below).
-    const relevantType = type === 'sales' ? ['revenue'] : ['expense', 'asset'];
-    api.get('/accounts').then((r) => setAccounts(r.data.filter((a) => !a.is_group && relevantType.includes(a.type))));
+    api.get('/accounts').then((r) => setAccounts(r.data.filter((a) => !a.is_group)));
     api.get('/cost-centers').then((r) => setCostCenters(r.data));
+    api.get('/suppliers').then((r) => setSuppliers(r.data));
     api.get('/items').then((r) => setAvailableItems(r.data));
-    if (type === 'sales') api.get('/clients').then((r) => setClients(r.data));
-    else api.get('/suppliers').then((r) => setSuppliers(r.data));
-  }, [activeCompany, type]);
+  }, [activeCompany]);
 
-  // Editing an existing draft — load it in and prefill the form once.
   useEffect(() => {
     if (!activeCompany || !isEdit) return;
-    api.get(`/invoices/${id}`).then((r) => {
-      const inv = r.data;
+    api.get(`/purchase-orders/${id}`).then((r) => {
+      const po = r.data;
       setHeader({
-        client_id: inv.client_id || '', supplier_id: inv.supplier_id || '',
-        date: inv.date, due_date: inv.due_date || '',
-        cost_center_id: inv.cost_center_id || '', reference_no: inv.reference_no || '', notes: inv.notes || '',
+        supplier_id: po.supplier_id || '', date: po.date, expected_date: po.expected_date || '',
+        cost_center_id: po.cost_center_id || '', notes: po.notes || '',
       });
-      setLines(inv.lines.map((l) => ({
-        account_id: l.account_id, item_id: l.item_id || '', description: l.description || '',
+      setLines(po.lines.map((l) => ({
+        item_id: l.item_id || '', account_id: l.account_id, description: l.description || '',
         quantity: l.quantity, unit_price: l.unit_price, tax_rate: l.tax_rate,
       })));
       setLoading(false);
@@ -63,18 +54,12 @@ export default function InvoiceFormPage() {
   }, [activeCompany, isEdit, id]);
 
   const updateLine = (idx, patch) => setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
-  // Picking a stock item auto-fills the description, price, and destination
-  // account (revenue account for sales, inventory asset account for
-  // purchases) — the account can still be overridden afterward. Posting this
-  // invoice later will automatically move stock and, for sales, post COGS.
   const pickItem = (idx, itemId) => {
     const item = availableItems.find((i) => i.id === itemId);
-    if (!item) { updateLine(idx, { item_id: '' }); return; }
     updateLine(idx, {
       item_id: itemId,
-      description: item.name_en,
-      unit_price: type === 'sales' ? item.selling_price : item.cost_price,
-      account_id: type === 'sales' ? item.income_account_id : item.inventory_account_id,
+      account_id: item ? item.inventory_account_id : '',
+      description: item ? item.name_en : '',
     });
   };
   const addLine = () => setLines((ls) => [...ls, emptyLine()]);
@@ -94,23 +79,23 @@ export default function InvoiceFormPage() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!header[partyKey]) return toast.error(type === 'sales' ? t('invoices.pleaseSelectClient') : t('invoices.pleaseSelectSupplier'));
+    if (!header.supplier_id) return toast.error(t('purchaseOrders.pleaseSelectSupplier'));
     const validLines = lines
-      .filter((l) => l.account_id && Number(l.unit_price) > 0)
+      .filter((l) => (l.item_id || l.account_id) && Number(l.unit_price) > 0)
       .map((l) => ({ ...l, item_id: l.item_id || undefined }));
-    if (validLines.length === 0) return toast.error(t('invoices.addLineItemPrompt'));
+    if (validLines.length === 0) return toast.error(t('purchaseOrders.addLineItemPrompt'));
 
     setSaving(true);
     try {
-      const payload = { type, ...header, client_id: header.client_id || undefined, supplier_id: header.supplier_id || undefined, lines: validLines };
+      const payload = { ...header, lines: validLines };
       if (isEdit) {
-        const { data } = await api.put(`/invoices/${id}`, payload);
+        const { data } = await api.put(`/purchase-orders/${id}`, payload);
         toast.success(t('common.save'));
-        navigate(`/invoices/${data.id}`);
+        navigate(`/purchase-orders/${data.id}`);
       } else {
-        const { data } = await api.post('/invoices', payload);
-        toast.success(t('invoices.savedAsDraft'));
-        navigate(`/invoices/${data.id}`);
+        const { data } = await api.post('/purchase-orders', payload);
+        toast.success(t('purchaseOrders.savedAsDraft'));
+        navigate(`/purchase-orders/${data.id}`);
       }
     } finally { setSaving(false); }
   };
@@ -119,23 +104,20 @@ export default function InvoiceFormPage() {
 
   return (
     <div>
-      <button onClick={() => navigate(`/invoices/${type}`)} className="btn-ghost !px-2 mb-3"><ArrowLeft size={16} /> {t('common.back')}</button>
-      <PageHeader title={isEdit
-        ? (type === 'sales' ? t('invoices.editSalesInvoiceTitle') : t('invoices.editPurchaseBillTitle'))
-        : (type === 'sales' ? t('invoices.newSalesInvoiceTitle') : t('invoices.newPurchaseBillTitle'))} />
+      <button onClick={() => navigate('/purchase-orders')} className="btn-ghost !px-2 mb-3"><ArrowLeft size={16} /> {t('common.back')}</button>
+      <PageHeader title={isEdit ? t('purchaseOrders.editTitle') : t('purchaseOrders.newTitle')} />
 
       <form onSubmit={submit} className="space-y-5">
         <div className="card p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="label">{type === 'sales' ? t('common.client') : t('common.supplier')}</label>
-            <select required className="input" value={header[partyKey]} onChange={(e) => setHeader({ ...header, [partyKey]: e.target.value })}>
+            <label className="label">{t('common.supplier')}</label>
+            <select required className="input" value={header.supplier_id} onChange={(e) => setHeader({ ...header, supplier_id: e.target.value })}>
               <option value="">{t('common.select')}</option>
-              {(type === 'sales' ? clients : suppliers).map((p) => <option key={p.id} value={p.id}>{p.name_en}</option>)}
+              {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name_en}</option>)}
             </select>
           </div>
-          <div><label className="label">{t('common.referenceNo')}</label><input className="input" value={header.reference_no} onChange={(e) => setHeader({ ...header, reference_no: e.target.value })} /></div>
           <div><label className="label">{t('common.date')}</label><input required type="date" className="input" value={header.date} onChange={(e) => setHeader({ ...header, date: e.target.value })} /></div>
-          <div><label className="label">{t('common.dueDate')}</label><input type="date" className="input" value={header.due_date} onChange={(e) => setHeader({ ...header, due_date: e.target.value })} /></div>
+          <div><label className="label">{t('purchaseOrders.expectedDate')}</label><input type="date" className="input" value={header.expected_date} onChange={(e) => setHeader({ ...header, expected_date: e.target.value })} /></div>
           <div>
             <label className="label">{t('vouchers.costCenter')}</label>
             <select className="input" value={header.cost_center_id} onChange={(e) => setHeader({ ...header, cost_center_id: e.target.value })}>
@@ -151,23 +133,23 @@ export default function InvoiceFormPage() {
             <h3 className="font-bold">{t('common.lineItems')}</h3>
             <button type="button" onClick={addLine} className="btn-ghost !py-1.5"><Plus size={15} /> {t('common.addLine')}</button>
           </div>
+          <p className="text-xs text-slate-400 mb-3">{t('purchaseOrders.lineHint')}</p>
 
           <div className="space-y-3">
             {lines.map((line, idx) => (
               <motion.div key={idx} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-12 gap-2 items-start p-3 rounded-xl bg-slate-50 dark:bg-navy-800/40">
-                <select className="input col-span-2 !py-2" value={line.item_id} onChange={(e) => pickItem(idx, e.target.value)} title={t('items.pickItemHint')}>
+                <select className="input col-span-3 !py-2" value={line.item_id} onChange={(e) => pickItem(idx, e.target.value)}>
                   <option value="">{t('items.noItemFreehand')}</option>
                   {availableItems.map((i) => <option key={i.id} value={i.id}>{i.code} - {i.name_en}</option>)}
                 </select>
                 <select required className="input col-span-2 !py-2" value={line.account_id} onChange={(e) => updateLine(idx, { account_id: e.target.value })}>
-                  <option value="">{type === 'sales' ? t('invoices.revenueAccountPlaceholder') : t('invoices.expenseAccountPlaceholder')}</option>
+                  <option value="">{t('accounts.parentAccount')}</option>
                   {accounts.map((a) => <option key={a.id} value={a.id}>{a.code} - {a.name_en}</option>)}
                 </select>
                 <input placeholder={t('common.description')} className="input col-span-2 !py-2" value={line.description} onChange={(e) => updateLine(idx, { description: e.target.value })} />
                 <input type="number" step="0.001" placeholder={t('common.qty')} className="input col-span-1 !py-2" value={line.quantity} onChange={(e) => updateLine(idx, { quantity: e.target.value })} />
                 <input type="number" step="0.001" placeholder={t('common.unitPrice')} className="input col-span-2 !py-2" value={line.unit_price} onChange={(e) => updateLine(idx, { unit_price: e.target.value })} />
                 <input type="number" step="0.01" placeholder={t('common.taxPercent')} className="input col-span-1 !py-2" value={line.tax_rate} onChange={(e) => updateLine(idx, { tax_rate: e.target.value })} />
-                <div className="col-span-1 text-sm py-2 text-end font-semibold">{(Number(line.quantity || 0) * Number(line.unit_price || 0) * (1 + Number(line.tax_rate || 0) / 100)).toFixed(2)}</div>
                 <button type="button" onClick={() => removeLine(idx)} className="col-span-1 p-2 rounded-lg hover:bg-red-50 text-red-500 justify-self-center"><Trash2 size={15} /></button>
               </motion.div>
             ))}

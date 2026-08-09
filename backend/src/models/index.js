@@ -24,6 +24,10 @@ const InvoicePayment = require('./InvoicePayment')(sequelize, DataTypes);
 const RecurringInvoice = require('./RecurringInvoice')(sequelize, DataTypes);
 const RecurringInvoiceLine = require('./RecurringInvoiceLine')(sequelize, DataTypes);
 const EmployeeLeave = require('./EmployeeLeave')(sequelize, DataTypes);
+const Item = require('./Item')(sequelize, DataTypes);
+const InventoryTransaction = require('./InventoryTransaction')(sequelize, DataTypes);
+const PurchaseOrder = require('./PurchaseOrder')(sequelize, DataTypes);
+const PurchaseOrderLine = require('./PurchaseOrderLine')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -34,7 +38,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -113,6 +117,7 @@ Invoice.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 Invoice.hasMany(InvoiceLine, { foreignKey: 'invoice_id', as: 'lines', onDelete: 'CASCADE' });
 InvoiceLine.belongsTo(Invoice, { foreignKey: 'invoice_id' });
 InvoiceLine.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
+InvoiceLine.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
 
 Invoice.hasMany(InvoicePayment, { foreignKey: 'invoice_id', as: 'payments', onDelete: 'CASCADE' });
 InvoicePayment.belongsTo(Invoice, { foreignKey: 'invoice_id' });
@@ -124,6 +129,23 @@ RecurringInvoice.belongsTo(CostCenter, { foreignKey: 'cost_center_id', as: 'cost
 RecurringInvoice.hasMany(RecurringInvoiceLine, { foreignKey: 'recurring_invoice_id', as: 'lines', onDelete: 'CASCADE' });
 RecurringInvoiceLine.belongsTo(RecurringInvoice, { foreignKey: 'recurring_invoice_id' });
 RecurringInvoiceLine.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
+
+// ---- Inventory / Purchase Order associations ----
+Item.belongsTo(Account, { foreignKey: 'inventory_account_id', as: 'inventoryAccount' });
+Item.belongsTo(Account, { foreignKey: 'income_account_id', as: 'incomeAccount' });
+Item.belongsTo(Account, { foreignKey: 'cogs_account_id', as: 'cogsAccount' });
+Item.hasMany(InventoryTransaction, { foreignKey: 'item_id', as: 'transactions', onDelete: 'CASCADE' });
+InventoryTransaction.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
+
+PurchaseOrder.belongsTo(Supplier, { foreignKey: 'supplier_id', as: 'supplier' });
+PurchaseOrder.belongsTo(CostCenter, { foreignKey: 'cost_center_id', as: 'costCenter' });
+PurchaseOrder.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+PurchaseOrder.belongsTo(Invoice, { foreignKey: 'converted_invoice_id', as: 'convertedInvoice' });
+
+PurchaseOrder.hasMany(PurchaseOrderLine, { foreignKey: 'purchase_order_id', as: 'lines', onDelete: 'CASCADE' });
+PurchaseOrderLine.belongsTo(PurchaseOrder, { foreignKey: 'purchase_order_id' });
+PurchaseOrderLine.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
+PurchaseOrderLine.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
 
 module.exports = {
   sequelize,
@@ -150,4 +172,8 @@ module.exports = {
   Voucher,
   VoucherLine,
   LedgerEntry,
+  Item,
+  InventoryTransaction,
+  PurchaseOrder,
+  PurchaseOrderLine,
 };

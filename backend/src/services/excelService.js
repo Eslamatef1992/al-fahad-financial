@@ -331,8 +331,63 @@ async function exportVehicles(res, company, rows) {
   });
 }
 
+async function exportItems(res, company, rows) {
+  await streamWorkbook(res, `items.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Items');
+    addTitleBlock(sheet, `${company?.name_en || ''} — Inventory Items`, `${rows.length} records`, 9);
+
+    sheet.columns = [
+      { header: 'Code', key: 'code', width: 14 },
+      { header: 'Name (EN)', key: 'name_en', width: 26 },
+      { header: 'Name (AR)', key: 'name_ar', width: 26 },
+      { header: 'Category', key: 'category', width: 16 },
+      { header: 'Unit', key: 'unit', width: 10 },
+      { header: 'Qty on Hand', key: 'qty', width: 14 },
+      { header: 'Avg Cost', key: 'cost', width: 14 },
+      { header: 'Stock Value', key: 'value', width: 14 },
+      { header: 'Selling Price', key: 'price', width: 14 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((it) => {
+      const qty = Number(it.quantity_on_hand) || 0;
+      const cost = Number(it.cost_price) || 0;
+      sheet.addRow([it.code, it.name_en, it.name_ar, it.category || '', it.unit, qty, cost, qty * cost, Number(it.selling_price) || 0]);
+    });
+    [7, 8, 9].forEach((col) => { sheet.getColumn(col).numFmt = '#,##0.000'; });
+    sheet.getColumn(6).numFmt = '#,##0.00';
+  });
+}
+
+async function exportPurchaseOrders(res, company, rows) {
+  await streamWorkbook(res, `purchase-orders.xlsx`, (wb) => {
+    const sheet = wb.addWorksheet('Purchase Orders');
+    addTitleBlock(sheet, `${company?.name_en || ''} — Purchase Orders`, `${rows.length} records`, 7);
+
+    sheet.columns = [
+      { header: 'PO No.', key: 'no', width: 16 },
+      { header: 'Supplier', key: 'supplier', width: 26 },
+      { header: 'Date', key: 'date', width: 12 },
+      { header: 'Expected Date', key: 'expected', width: 14 },
+      { header: 'Total', key: 'total', width: 14 },
+      { header: 'Status', key: 'status', width: 14 },
+      { header: 'Bill No.', key: 'bill', width: 16 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((po) => {
+      sheet.addRow([po.po_no, po.supplier?.name_en || '', po.date, po.expected_date || '', Number(po.total), po.status, po.convertedInvoice?.invoice_no || '']);
+    });
+    sheet.getColumn(5).numFmt = '#,##0.000';
+  });
+}
+
 module.exports = {
   exportLedger, exportTrialBalance, exportVouchers, exportInvoices, exportEmployees,
   exportCostCenters, exportCashAccounts, exportSuppliers, exportClients,
-  exportVehicles,
+  exportVehicles, exportItems, exportPurchaseOrders,
 };

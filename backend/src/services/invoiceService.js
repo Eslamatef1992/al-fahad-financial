@@ -1,5 +1,6 @@
-const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Voucher, VoucherLine } = require('../models');
+const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Voucher, VoucherLine, Item } = require('../models');
 const voucherService = require('./voucherService');
+const itemService = require('./itemService');
 
 const PREFIX = { sales: 'INV', purchase: 'BILL' };
 
@@ -59,6 +60,7 @@ async function createInvoice(companyId, userId, payload) {
     await Promise.all(computedLines.map((l, idx) => InvoiceLine.create({
       invoice_id: invoice.id,
       account_id: l.account_id,
+      item_id: l.item_id || null,
       description: l.description || '',
       quantity: l.quantity,
       unit_price: l.unit_price,
@@ -77,66 +79,124 @@ async function createInvoice(companyId, userId, payload) {
 // client or supplier control account against revenue/expense + tax lines)
 // and posts it through the existing voucher/ledger pipeline, so invoices
 // share the exact same audited posting logic as every other transaction.
+//
+// For any line linked to an inventory Item, this ALSO drives the inventory
+// module in the same atomic transaction as the ledger posting:
+//   - purchase bill lines RECEIVE stock and roll the item's weighted-average
+//     cost forward using the line's unit price as the received unit cost.
+//   - sales invoice lines ISSUE stock at the item's current weighted-average
+//     cost and add an extra Debit COGS / Credit Inventory pair onto the SAME
+//     journal voucher as the revenue recognition, so a sale is fully,
+//     automatically self-balancing: AR/Revenue/Tax AND COGS/Inventory post
+//     together as one posting, or neither does if anything fails.
 async function postInvoice(companyId, invoiceId, userId) {
-  const invoice = await Invoice.findOne({
-    where: { id: invoiceId, company_id: companyId },
-    include: [
-      { model: InvoiceLine, as: 'lines' },
-      { model: Client, as: 'client' },
-      { model: Supplier, as: 'supplier' },
-    ],
-  });
-  if (!invoice) throw notFound();
-  if (invoice.status !== 'draft') throw badRequest('Only draft invoices can be posted');
-
-  const controlAccountId = invoice.type === 'sales' ? invoice.client?.account_id : invoice.supplier?.account_id;
-  if (!controlAccountId) {
-    throw badRequest(`The ${invoice.type === 'sales' ? 'client' : 'supplier'} must have a linked GL account before this invoice can be posted`);
-  }
-
-  const useSeparateTax = !!invoice.tax_account_id && Number(invoice.tax_total) > 0.001;
-  const lines = [];
-
-  lines.push({
-    account_id: controlAccountId,
-    debit: invoice.type === 'sales' ? Number(invoice.total) : 0,
-    credit: invoice.type === 'purchase' ? Number(invoice.total) : 0,
-    description: `${invoice.type === 'sales' ? 'Invoice' : 'Bill'} ${invoice.invoice_no}`,
-    client_id: invoice.client_id,
-    supplier_id: invoice.supplier_id,
-  });
-
-  invoice.lines.forEach((l) => {
-    const amount = useSeparateTax ? Number(l.line_subtotal) : Number(l.line_total);
-    lines.push({
-      account_id: l.account_id,
-      debit: invoice.type === 'purchase' ? amount : 0,
-      credit: invoice.type === 'sales' ? amount : 0,
-      description: l.description || invoice.invoice_no,
+  return sequelize.transaction(async (t) => {
+    // Lock the invoice header row alone first — FOR UPDATE cannot be combined
+    // with the outer joins below (client/supplier are mutually nullable), the
+    // same constraint voucherService.postVoucher already works around.
+    const invoice = await Invoice.findOne({
+      where: { id: invoiceId, company_id: companyId },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
     });
-  });
+    if (!invoice) throw notFound();
+    if (invoice.status !== 'draft') throw badRequest('Only draft invoices can be posted');
 
-  if (useSeparateTax) {
+    invoice.lines = await InvoiceLine.findAll({ where: { invoice_id: invoice.id }, include: [{ model: Item, as: 'item' }], transaction: t });
+    invoice.client = invoice.client_id ? await Client.findByPk(invoice.client_id, { transaction: t }) : null;
+    invoice.supplier = invoice.supplier_id ? await Supplier.findByPk(invoice.supplier_id, { transaction: t }) : null;
+
+    const controlAccountId = invoice.type === 'sales' ? invoice.client?.account_id : invoice.supplier?.account_id;
+    if (!controlAccountId) {
+      throw badRequest(`The ${invoice.type === 'sales' ? 'client' : 'supplier'} must have a linked GL account before this invoice can be posted`);
+    }
+
+    const useSeparateTax = !!invoice.tax_account_id && Number(invoice.tax_total) > 0.001;
+    const lines = [];
+
     lines.push({
-      account_id: invoice.tax_account_id,
-      debit: invoice.type === 'purchase' ? Number(invoice.tax_total) : 0,
-      credit: invoice.type === 'sales' ? Number(invoice.tax_total) : 0,
-      description: `Tax on ${invoice.invoice_no}`,
+      account_id: controlAccountId,
+      debit: invoice.type === 'sales' ? Number(invoice.total) : 0,
+      credit: invoice.type === 'purchase' ? Number(invoice.total) : 0,
+      description: `${invoice.type === 'sales' ? 'Invoice' : 'Bill'} ${invoice.invoice_no}`,
+      client_id: invoice.client_id,
+      supplier_id: invoice.supplier_id,
     });
-  }
 
-  const voucher = await voucherService.createVoucher(companyId, userId, {
-    voucher_type: 'journal',
-    date: invoice.date,
-    description: `${invoice.type === 'sales' ? 'Sales Invoice' : 'Purchase Bill'} ${invoice.invoice_no}`,
-    cost_center_id: invoice.cost_center_id,
-    currency: invoice.currency,
-    lines,
+    invoice.lines.forEach((l) => {
+      const amount = useSeparateTax ? Number(l.line_subtotal) : Number(l.line_total);
+      lines.push({
+        account_id: l.account_id,
+        debit: invoice.type === 'purchase' ? amount : 0,
+        credit: invoice.type === 'sales' ? amount : 0,
+        description: l.description || invoice.invoice_no,
+      });
+    });
+
+    if (useSeparateTax) {
+      lines.push({
+        account_id: invoice.tax_account_id,
+        debit: invoice.type === 'purchase' ? Number(invoice.tax_total) : 0,
+        credit: invoice.type === 'sales' ? Number(invoice.tax_total) : 0,
+        description: `Tax on ${invoice.invoice_no}`,
+      });
+    }
+
+    // Inventory side-effects, inside the same transaction as the voucher below.
+    if (invoice.type === 'sales') {
+      for (const l of invoice.lines) {
+        if (!l.item_id) continue;
+        const { item, cogsAmount } = await itemService.issueStock(companyId, l.item_id, {
+          quantity: Number(l.quantity),
+          date: invoice.date,
+          referenceType: 'invoice',
+          referenceId: invoice.id,
+          userId,
+          notes: `Sold on ${invoice.invoice_no}`,
+        }, t);
+        if (cogsAmount > 0.0009) {
+          lines.push({
+            account_id: item.cogs_account_id,
+            debit: cogsAmount,
+            credit: 0,
+            description: `COGS - ${item.name_en} (${invoice.invoice_no})`,
+          });
+          lines.push({
+            account_id: item.inventory_account_id,
+            debit: 0,
+            credit: cogsAmount,
+            description: `COGS - ${item.name_en} (${invoice.invoice_no})`,
+          });
+        }
+      }
+    } else if (invoice.type === 'purchase') {
+      for (const l of invoice.lines) {
+        if (!l.item_id) continue;
+        await itemService.receiveStock(companyId, l.item_id, {
+          quantity: Number(l.quantity),
+          unitCost: Number(l.unit_price),
+          date: invoice.date,
+          referenceType: 'invoice',
+          referenceId: invoice.id,
+          userId,
+          notes: `Received on ${invoice.invoice_no}`,
+        }, t);
+      }
+    }
+
+    const voucher = await voucherService.createVoucher(companyId, userId, {
+      voucher_type: 'journal',
+      date: invoice.date,
+      description: `${invoice.type === 'sales' ? 'Sales Invoice' : 'Purchase Bill'} ${invoice.invoice_no}`,
+      cost_center_id: invoice.cost_center_id,
+      currency: invoice.currency,
+      lines,
+    }, t);
+    await voucherService.postVoucher(companyId, voucher.id, t);
+
+    await invoice.update({ status: 'posted', posted_at: new Date(), posting_voucher_id: voucher.id }, { transaction: t });
+    return invoice;
   });
-  await voucherService.postVoucher(companyId, voucher.id);
-
-  await invoice.update({ status: 'posted', posted_at: new Date(), posting_voucher_id: voucher.id });
-  return invoice;
 }
 
 // Records a payment against a posted invoice by creating + posting a

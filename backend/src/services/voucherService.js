@@ -10,7 +10,12 @@ async function nextVoucherNo(companyId, voucherType) {
 
 // Creates a voucher with its lines in 'draft' status. Debit/credit balance is
 // validated but ledger entries are NOT created until the voucher is posted.
-async function createVoucher(companyId, userId, payload) {
+// Accepts an optional externally-managed transaction (`externalT`) so callers
+// that need this to be part of a larger atomic operation (e.g. invoice
+// posting that also mutates inventory) can pass their own transaction instead
+// of getting a separate one — every existing caller that omits it keeps
+// getting its own dedicated transaction exactly as before.
+async function createVoucher(companyId, userId, payload, externalT) {
   const { voucher_type, date, description, cost_center_id, currency, lines } = payload;
 
   if (!Array.isArray(lines) || lines.length < 2) {
@@ -28,7 +33,7 @@ async function createVoucher(companyId, userId, payload) {
     throw err;
   }
 
-  return sequelize.transaction(async (t) => {
+  const run = async (t) => {
     const voucher_no = await nextVoucherNo(companyId, voucher_type);
     const voucher = await Voucher.create({
       company_id: companyId,
@@ -57,13 +62,16 @@ async function createVoucher(companyId, userId, payload) {
     }, { transaction: t })));
 
     return voucher;
-  });
+  };
+
+  return externalT ? run(externalT) : sequelize.transaction(run);
 }
 
 // Posts a draft voucher: validates accounts are postable (not group headers),
 // creates immutable ledger entries, and marks the voucher as posted.
-async function postVoucher(companyId, voucherId) {
-  return sequelize.transaction(async (t) => {
+// Also accepts an optional externally-managed transaction, same rationale as createVoucher.
+async function postVoucher(companyId, voucherId, externalT) {
+  const run = async (t) => {
     // Lock the voucher header row first (FOR UPDATE cannot be combined with
     // the outer join used to eager-load lines), then fetch lines separately.
     const voucher = await Voucher.findOne({
@@ -96,7 +104,9 @@ async function postVoucher(companyId, voucherId) {
 
     await voucher.update({ status: 'posted', posted_at: new Date() }, { transaction: t });
     return voucher;
-  });
+  };
+
+  return externalT ? run(externalT) : sequelize.transaction(run);
 }
 
 // Cancels a posted voucher by creating reversing ledger entries (never deletes history).

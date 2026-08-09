@@ -774,9 +774,83 @@ function generateAgingPdf(res, aging, company) {
   doc.end();
 }
 
+function generateItemsPdf(res, rows, company) {
+  const doc = newDoc(res, 'items.pdf');
+  header(doc, company, 'Inventory Items', `${rows.length} records`);
+
+  const totalValue = rows.reduce((s, r) => s + Number(r.quantity_on_hand) * Number(r.cost_price), 0);
+  metaCard(doc, [
+    { label: 'Total Items', value: String(rows.length) },
+    { label: 'Total Stock Value', value: totalValue.toFixed(3) },
+  ]);
+
+  table(doc, {
+    headers: [
+      { label: 'Code' }, { label: 'Name' }, { label: 'Unit' },
+      { label: 'Qty on Hand', align: 'right' }, { label: 'Avg Cost', align: 'right' },
+      { label: 'Value', align: 'right' }, { label: 'Selling Price', align: 'right' },
+    ],
+    colWidths: [65, 150, 45, 70, 65, 70, 70],
+    rows: rows.map((it) => [
+      it.code, it.name_en, it.unit,
+      Number(it.quantity_on_hand).toFixed(2),
+      Number(it.cost_price).toFixed(3),
+      (Number(it.quantity_on_hand) * Number(it.cost_price)).toFixed(3),
+      Number(it.selling_price).toFixed(3),
+    ]),
+  });
+
+  totalsBox(doc, [{ label: 'Total Stock Value', value: totalValue.toFixed(3) }], { width: 240 });
+
+  footer(doc, company);
+  doc.end();
+}
+
+function generatePurchaseOrderPdf(res, po, company) {
+  const doc = newDoc(res, `${po.po_no}.pdf`);
+  header(doc, company, po.po_no, `PURCHASE ORDER · ${po.date}`);
+
+  metaCard(doc, [
+    { label: 'Supplier', value: po.supplier?.name_en || '-' },
+    { label: 'Status', value: po.status, badge: true },
+    { label: 'Expected Date', value: po.expected_date || '-' },
+    { label: 'Currency', value: po.currency },
+  ]);
+
+  table(doc, {
+    headers: [
+      { label: 'Description' }, { label: 'Qty', align: 'right' }, { label: 'Unit Price', align: 'right' },
+      { label: 'Tax %', align: 'right' }, { label: 'Total', align: 'right' },
+    ],
+    colWidths: [220, 50, 80, 60, 90],
+    rows: po.lines.map((l) => [
+      l.item ? `${l.item.name_en}${l.description ? ' - ' + l.description : ''}` : (l.description || '-'),
+      Number(l.quantity).toFixed(2),
+      Number(l.unit_price).toFixed(3),
+      Number(l.tax_rate).toFixed(1),
+      Number(l.line_total).toFixed(3),
+    ]),
+  });
+
+  totalsBox(doc, [
+    { label: 'Subtotal', value: Number(po.subtotal).toFixed(3) },
+    { label: 'Tax', value: Number(po.tax_total).toFixed(3) },
+    { label: 'Total', value: `${Number(po.total).toFixed(3)} ${po.currency}` },
+  ], { width: 240 });
+
+  if (po.notes) {
+    drawBidi(doc, `Notes: ${po.notes}`, 40, doc.y, { fontSize: 9, color: GRAY, width: doc.page.width - 80 });
+    doc.moveDown(1);
+  }
+
+  signatureBlock(doc);
+  footer(doc, company);
+  doc.end();
+}
+
 module.exports = {
   generateVoucherPdf, generateProfitAndLossPdf, generateBalanceSheetPdf, generateTrialBalancePdf,
   generateInvoicePdf, generateAgingPdf, generateEmployeesPdf,
   generateCostCentersPdf, generateCashAccountsPdf, generateSuppliersPdf, generateClientsPdf,
-  generateVehiclesPdf,
+  generateVehiclesPdf, generateItemsPdf, generatePurchaseOrderPdf,
 };

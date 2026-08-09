@@ -1,0 +1,17 @@
+const router = require('express').Router();
+const ctrl = require('../controllers/purchaseOrderController');
+const { requireAuth, requireCompany } = require('../middleware/auth');
+const { requireMinRole } = require('../middleware/permissions');
+
+router.use(requireAuth, requireCompany);
+router.get('/', ctrl.list);
+router.get('/excel', ctrl.exportExcel);
+router.get('/:id', ctrl.get);
+router.get('/:id/pdf', ctrl.pdf);
+router.post('/', requireMinRole('accountant'), ctrl.create);
+router.put('/:id', requireMinRole('accountant'), ctrl.update);
+router.delete('/:id', requireMinRole('accountant'), ctrl.remove);
+router.post('/:id/convert', requireMinRole('accountant'), ctrl.convert);
+router.post('/:id/cancel', requireMinRole('admin'), ctrl.cancel);
+
+module.exports = router;
