@@ -15,7 +15,8 @@ module.exports = (sequelize, DataTypes) => {
     sku: { type: DataTypes.STRING(60), allowNull: true },
     name_en: { type: DataTypes.STRING(150), allowNull: false },
     name_ar: { type: DataTypes.STRING(150), allowNull: false },
-    category: { type: DataTypes.STRING(100) },
+    category: { type: DataTypes.STRING(100) }, // legacy free-text category, kept for old records
+    category_id: { type: DataTypes.UUID, allowNull: true }, // preferred going forward — links to a managed ItemCategory
     unit: { type: DataTypes.STRING(30), defaultValue: 'pcs' },
     // Names of the attributes that define this item's variants, e.g.
     // ["Color", "Size"] — purely drives the "add variant" UI so every variant

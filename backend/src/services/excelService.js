@@ -360,7 +360,7 @@ async function exportItems(res, company, rows) {
       const qty = Number(it.total_quantity_on_hand ?? it.quantity_on_hand) || 0;
       const cost = Number(it.cost_price) || 0;
       const value = it.total_value !== undefined ? Number(it.total_value) : qty * cost;
-      sheet.addRow([it.code, it.sku || '', it.name_en, it.name_ar, it.category || '', it.unit, it.variant_count || 0, qty, value, Number(it.selling_price) || 0]);
+      sheet.addRow([it.code, it.sku || '', it.name_en, it.name_ar, it.category_name || it.category || '', it.unit, it.variant_count || 0, qty, value, Number(it.selling_price) || 0]);
     });
     [9, 10].forEach((col) => { sheet.getColumn(col).numFmt = '#,##0.000'; });
     sheet.getColumn(8).numFmt = '#,##0.00';

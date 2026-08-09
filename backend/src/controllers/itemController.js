@@ -1,5 +1,5 @@
 const {
-  sequelize, Item, Account, InventoryTransaction, ItemBranchStock, Branch, Company, ItemVariant, ItemVariantBranchStock,
+  sequelize, Item, Account, InventoryTransaction, ItemBranchStock, Branch, Company, ItemVariant, ItemVariantBranchStock, ItemCategory,
 } = require('../models');
 const itemService = require('../services/itemService');
 const { generateItemsPdf, generateItemVariantsPdf } = require('../services/pdfService');
@@ -9,6 +9,7 @@ const accountInclude = [
   { model: Account, as: 'inventoryAccount' },
   { model: Account, as: 'incomeAccount' },
   { model: Account, as: 'cogsAccount' },
+  { model: ItemCategory, as: 'itemCategory' },
 ];
 
 // Merges each item's per-branch stock AND per-variant stock (pool + branch)
@@ -71,6 +72,10 @@ async function withBranchTotals(companyId, items) {
 
     return {
       ...json,
+      // Prefer the managed category (itemCategory) over the legacy free-text
+      // `category` string — old items that only ever had free text still
+      // display fine, new items link to a real, reusable ItemCategory.
+      category_name: json.itemCategory?.name_en || json.category || null,
       branch_quantity_on_hand: branchQty,
       variant_count: variantRow ? Number(variantRow.variant_count) : 0,
       variant_quantity_on_hand: variantQty + variantBranchQty,
@@ -89,7 +94,7 @@ exports.list = async (req, res) => {
   const withTotals = await withBranchTotals(req.companyId, items);
   if (q) {
     const needle = q.toLowerCase();
-    return res.json(withTotals.filter((i) => [i.name_en, i.name_ar, i.code, i.sku, i.category]
+    return res.json(withTotals.filter((i) => [i.name_en, i.name_ar, i.code, i.sku, i.category_name]
       .some((f) => String(f || '').toLowerCase().includes(needle))));
   }
   res.json(withTotals);

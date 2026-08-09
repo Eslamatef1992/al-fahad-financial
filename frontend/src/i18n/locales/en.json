@@ -339,7 +339,11 @@
     "manageVariants": "Manage Variants",
     "addVariant": "Add Variant",
     "noAttributesHint": "This item has no variant attributes defined yet. Edit the item to add attribute names (e.g. Color, Size) before adding variants.",
-    "adjustVariantHint": "Optionally scope this adjustment to one specific variant instead of the item as a whole."
+    "adjustVariantHint": "Optionally scope this adjustment to one specific variant instead of the item as a whole.",
+    "customUnit": "Other (type manually)...",
+    "addCategory": "Add New Category",
+    "newCategoryPlaceholder": "New category name",
+    "addCategoryHint": "Create a category here, then pick it from the Category dropdown above."
   },
   "stockTransfers": {
     "subtitle": "Move inventory between branches (or the unbranched pool), fully tracked and audited",

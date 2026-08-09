@@ -35,6 +35,7 @@ const StockTransfer = require('./StockTransfer')(sequelize, DataTypes);
 const StockTransferLine = require('./StockTransferLine')(sequelize, DataTypes);
 const ItemVariant = require('./ItemVariant')(sequelize, DataTypes);
 const ItemVariantBranchStock = require('./ItemVariantBranchStock')(sequelize, DataTypes);
+const ItemCategory = require('./ItemCategory')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -45,7 +46,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -145,6 +146,8 @@ RecurringInvoiceLine.belongsTo(Account, { foreignKey: 'account_id', as: 'account
 Item.belongsTo(Account, { foreignKey: 'inventory_account_id', as: 'inventoryAccount' });
 Item.belongsTo(Account, { foreignKey: 'income_account_id', as: 'incomeAccount' });
 Item.belongsTo(Account, { foreignKey: 'cogs_account_id', as: 'cogsAccount' });
+Item.belongsTo(ItemCategory, { foreignKey: 'category_id', as: 'itemCategory' });
+ItemCategory.hasMany(Item, { foreignKey: 'category_id', as: 'items' });
 Item.hasMany(InventoryTransaction, { foreignKey: 'item_id', as: 'transactions', onDelete: 'CASCADE' });
 InventoryTransaction.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
 InventoryTransaction.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
@@ -231,4 +234,5 @@ module.exports = {
   StockTransferLine,
   ItemVariant,
   ItemVariantBranchStock,
+  ItemCategory,
 };
