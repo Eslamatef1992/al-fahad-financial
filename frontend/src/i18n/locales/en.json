@@ -352,7 +352,11 @@
     "customUnit": "Other (type manually)...",
     "addCategory": "Add New Category",
     "newCategoryPlaceholder": "New category name",
-    "addCategoryHint": "Create a category here, then pick it from the Category dropdown above."
+    "addCategoryHint": "Create a category here, then pick it from the Category dropdown above.",
+    "image": "Item Image",
+    "uploadImage": "Upload",
+    "replaceImage": "Replace",
+    "imageHint": "Save the item first, then upload an optional photo for it."
   },
   "stockTransfers": {
     "subtitle": "Move inventory between branches (or the unbranched pool), fully tracked and audited",

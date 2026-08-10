@@ -18,6 +18,7 @@ module.exports = (sequelize, DataTypes) => {
     category: { type: DataTypes.STRING(100) }, // legacy free-text category, kept for old records
     category_id: { type: DataTypes.UUID, allowNull: true }, // preferred going forward — links to a managed ItemCategory
     unit: { type: DataTypes.STRING(30), defaultValue: 'pcs' },
+    image_url: { type: DataTypes.STRING(255), allowNull: true }, // optional product photo, stored as an uploaded file (see uploadImage)
     // Names of the attributes that define this item's variants, e.g.
     // ["Color", "Size"] — purely drives the "add variant" UI so every variant
     // of the same item is prompted for the same attribute set. Empty/absent

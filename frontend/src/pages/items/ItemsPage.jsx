@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Printer, Download, SlidersHorizontal, Layers, Tags, X } from 'lucide-react';
+import { Plus, Printer, Download, SlidersHorizontal, Layers, Tags, X, Upload, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api, { downloadFile, printFile } from '@/api/client';
+import api, { downloadFile, printFile, fileUrl } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
@@ -48,6 +48,7 @@ export default function ItemsPage() {
   const [variants, setVariants] = useState([]);
   const [variantForm, setVariantForm] = useState(emptyVariant);
   const [savingVariant, setSavingVariant] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const assetAccounts = accounts.filter((a) => !a.is_group && a.type === 'asset');
   const revenueAccounts = accounts.filter((a) => !a.is_group && a.type === 'revenue');
@@ -117,6 +118,33 @@ export default function ItemsPage() {
     } finally { setSaving(false); }
   };
 
+  const uploadImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !editing) return;
+    setUploadingImage(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const { data } = await api.post(`/items/${editing.id}/image`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setEditing(data);
+      toast.success(t('common.save'));
+      load();
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+  const removeImage = async () => {
+    if (!editing) return;
+    setUploadingImage(true);
+    try {
+      const { data } = await api.delete(`/items/${editing.id}/image`);
+      setEditing(data);
+      toast.success(t('common.save'));
+      load();
+    } finally { setUploadingImage(false); }
+  };
+
   const toggleActive = async (row) => {
     await api.put(`/items/${row.id}`, { is_active: !row.is_active });
     toast.success(row.is_active ? t('common.deactivated') : t('common.activated'));
@@ -174,6 +202,9 @@ export default function ItemsPage() {
   };
 
   const columns = [
+    { key: 'image_url', label: t('items.image'), render: (r) => r.image_url ? (
+      <img src={fileUrl(r.image_url)} alt="" className="w-8 h-8 rounded-lg object-cover" />
+    ) : <span className="text-slate-300">—</span> },
     { key: 'code', label: t('common.code') },
     { key: 'sku', label: t('items.sku'), render: (r) => r.sku || '—' },
     { key: 'name_en', label: t('common.nameEn') },
@@ -269,6 +300,28 @@ export default function ItemsPage() {
         </div>
         <div><label className="label">{t('common.nameEn')}</label><input required className="input" value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} /></div>
         <div><label className="label">{t('common.nameAr')}</label><input required dir="rtl" className="input" value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} /></div>
+
+        <div>
+          <label className="label">{t('items.image')}</label>
+          {editing ? (
+            <div className="flex items-center gap-3">
+              {editing.image_url ? (
+                <img src={fileUrl(editing.image_url)} alt="" className="w-14 h-14 rounded-xl object-cover border border-slate-200 dark:border-navy-700" />
+              ) : (
+                <div className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-navy-800 flex items-center justify-center text-slate-400 text-xs">{t('common.none')}</div>
+              )}
+              <label className="btn-ghost cursor-pointer !py-1.5">
+                <Upload size={14} /> {uploadingImage ? t('common.loading') : (editing.image_url ? t('items.replaceImage') : t('items.uploadImage'))}
+                <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" className="hidden" disabled={uploadingImage} onChange={uploadImage} />
+              </label>
+              {editing.image_url && (
+                <button type="button" onClick={removeImage} disabled={uploadingImage} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-red-500"><Trash2 size={15} /></button>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400">{t('items.imageHint')}</p>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">{t('items.category')}</label>

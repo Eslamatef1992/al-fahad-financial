@@ -2,6 +2,7 @@ const router = require('express').Router();
 const ctrl = require('../controllers/itemController');
 const { requireAuth, requireCompany } = require('../middleware/auth');
 const { requireMinRole } = require('../middleware/permissions');
+const { upload, withCategory } = require('../middleware/upload');
 
 router.use(requireAuth, requireCompany);
 router.get('/', ctrl.list);
@@ -15,6 +16,8 @@ router.get('/:id/variants/pdf', ctrl.variantsPdf);
 router.get('/:id/variants/excel', ctrl.variantsExcel);
 router.post('/', requireMinRole('accountant'), ctrl.create);
 router.put('/:id', requireMinRole('accountant'), ctrl.update);
+router.post('/:id/image', requireMinRole('accountant'), withCategory('item-images'), upload.single('file'), ctrl.uploadImage);
+router.delete('/:id/image', requireMinRole('accountant'), ctrl.removeImage);
 router.post('/:id/variants', requireMinRole('accountant'), ctrl.createVariant);
 router.put('/:id/variants/:variantId', requireMinRole('accountant'), ctrl.updateVariant);
 router.delete('/:id/variants/:variantId', requireMinRole('admin'), ctrl.removeVariant);

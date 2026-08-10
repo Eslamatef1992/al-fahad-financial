@@ -1,9 +1,12 @@
+const path = require('path');
+const fs = require('fs');
 const {
   sequelize, Item, Account, InventoryTransaction, ItemBranchStock, Branch, Company, ItemVariant, ItemVariantBranchStock, ItemCategory,
 } = require('../models');
 const itemService = require('../services/itemService');
 const { generateItemsPdf, generateItemVariantsPdf } = require('../services/pdfService');
 const { exportItems, exportItemVariants } = require('../services/excelService');
+const { toPublicPath } = require('../middleware/upload');
 
 const accountInclude = [
   { model: Account, as: 'inventoryAccount' },
@@ -115,6 +118,37 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   const item = await itemService.updateItem(req.companyId, req.params.id, req.body);
+  const withAccounts = await Item.findByPk(item.id, { include: accountInclude });
+  res.json(withAccounts);
+};
+
+// Uploads/replaces an item's optional product photo. Purely cosmetic (shown
+// in the items list and on the item form) — never required, and posting/
+// stock/ledger logic never reads it. Mirrors companyController.uploadLogo.
+exports.uploadImage = async (req, res) => {
+  const item = await Item.findOne({ where: { id: req.params.id, company_id: req.companyId } });
+  if (!item) return res.status(404).json({ message: 'Item not found' });
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+  if (item.image_url) {
+    const oldPath = path.join(__dirname, '..', item.image_url.replace(/^\/uploads\//, 'uploads/'));
+    fs.unlink(oldPath, () => {});
+  }
+
+  const image_url = toPublicPath(req.file, item.company_id, 'item-images');
+  await item.update({ image_url });
+  const withAccounts = await Item.findByPk(item.id, { include: accountInclude });
+  res.json(withAccounts);
+};
+
+exports.removeImage = async (req, res) => {
+  const item = await Item.findOne({ where: { id: req.params.id, company_id: req.companyId } });
+  if (!item) return res.status(404).json({ message: 'Item not found' });
+  if (item.image_url) {
+    const oldPath = path.join(__dirname, '..', item.image_url.replace(/^\/uploads\//, 'uploads/'));
+    fs.unlink(oldPath, () => {});
+  }
+  await item.update({ image_url: null });
   const withAccounts = await Item.findByPk(item.id, { include: accountInclude });
   res.json(withAccounts);
 };
