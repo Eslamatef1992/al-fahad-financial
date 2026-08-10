@@ -36,6 +36,7 @@ const StockTransferLine = require('./StockTransferLine')(sequelize, DataTypes);
 const ItemVariant = require('./ItemVariant')(sequelize, DataTypes);
 const ItemVariantBranchStock = require('./ItemVariantBranchStock')(sequelize, DataTypes);
 const ItemCategory = require('./ItemCategory')(sequelize, DataTypes);
+const DiscountCode = require('./DiscountCode')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -46,7 +47,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -126,10 +127,12 @@ Invoice.belongsTo(Account, { foreignKey: 'tax_account_id', as: 'taxAccount' });
 Invoice.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 
 Invoice.hasMany(InvoiceLine, { foreignKey: 'invoice_id', as: 'lines', onDelete: 'CASCADE' });
-InvoiceLine.belongsTo(Invoice, { foreignKey: 'invoice_id' });
+InvoiceLine.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
 InvoiceLine.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
 InvoiceLine.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
 InvoiceLine.belongsTo(ItemVariant, { foreignKey: 'variant_id', as: 'variant' });
+Invoice.belongsTo(DiscountCode, { foreignKey: 'discount_code_id', as: 'discountCode' });
+InvoiceLine.belongsTo(DiscountCode, { foreignKey: 'discount_code_id', as: 'discountCode' });
 
 Invoice.hasMany(InvoicePayment, { foreignKey: 'invoice_id', as: 'payments', onDelete: 'CASCADE' });
 InvoicePayment.belongsTo(Invoice, { foreignKey: 'invoice_id' });
@@ -235,4 +238,5 @@ module.exports = {
   ItemVariant,
   ItemVariantBranchStock,
   ItemCategory,
+  DiscountCode,
 };

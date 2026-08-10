@@ -730,8 +730,10 @@ function generateInvoicePdf(res, invoice, company) {
   });
 
   const balanceDue = Number(invoice.total) - Number(invoice.paid_total);
+  const discountAmount = Number(invoice.discount_amount || 0);
   totalsBox(doc, [
     { label: 'Subtotal', value: Number(invoice.subtotal).toFixed(3) },
+    ...(discountAmount > 0.0009 ? [{ label: `Discount${invoice.discountCode ? ` (${invoice.discountCode.code})` : ''}`, value: `-${discountAmount.toFixed(3)}`, color: DANGER }] : []),
     { label: 'Tax', value: Number(invoice.tax_total).toFixed(3) },
     { label: 'Total', value: `${Number(invoice.total).toFixed(3)} ${invoice.currency}` },
     { label: 'Paid', value: Number(invoice.paid_total).toFixed(3) },
@@ -942,6 +944,40 @@ function generateStockMovementPdf(res, item, rows, company) {
   doc.end();
 }
 
+function generateSoldByClientPdf(res, rows, company, { from, to } = {}) {
+  const doc = newDoc(res, 'sold-items-per-client.pdf');
+  const period = from || to ? `${from || '...'} to ${to || '...'}` : 'All dates';
+  header(doc, company, 'Sold Items Per Client', period);
+
+  const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0);
+  const totalQty = rows.reduce((s, r) => s + r.quantity_sold, 0);
+  metaCard(doc, [
+    { label: 'Rows', value: String(rows.length) },
+    { label: 'Total Qty Sold', value: totalQty.toFixed(2) },
+    { label: 'Total Revenue', value: totalRevenue.toFixed(3) },
+  ]);
+
+  table(doc, {
+    headers: [
+      { label: 'Client' }, { label: 'Item' }, { label: 'SKU' },
+      { label: 'Qty Sold', align: 'right' }, { label: 'Revenue', align: 'right' }, { label: 'Invoices', align: 'right' },
+    ],
+    colWidths: [130, 150, 70, 60, 75, 55],
+    rows: rows.map((r) => [
+      r.client_name, r.item_name, r.sku || '-',
+      Number(r.quantity_sold).toFixed(2), Number(r.revenue).toFixed(3), String(r.invoice_count),
+    ]),
+  });
+
+  totalsBox(doc, [
+    { label: 'Total Qty Sold', value: totalQty.toFixed(2) },
+    { label: 'Total Revenue', value: totalRevenue.toFixed(3) },
+  ], { width: 240 });
+
+  footer(doc, company);
+  doc.end();
+}
+
 function generatePurchaseOrderPdf(res, po, company) {
   const doc = newDoc(res, `${po.po_no}.pdf`);
   header(doc, company, po.po_no, `PURCHASE ORDER · ${po.date}`);
@@ -1011,4 +1047,5 @@ module.exports = {
   generateCostCentersPdf, generateCashAccountsPdf, generateSuppliersPdf, generateClientsPdf,
   generateVehiclesPdf, generateItemsPdf, generatePurchaseOrderPdf, generateBranchesPdf,
   generateStockTransfersPdf, generateItemVariantsPdf, generateStockValuationPdf, generateLowStockPdf, generateStockMovementPdf,
+  generateSoldByClientPdf,
 };

@@ -1,11 +1,11 @@
 const { Op } = require('sequelize');
-const { Item, ItemVariant, InventoryTransaction, Branch, Company } = require('../models');
+const { Item, ItemVariant, InventoryTransaction, Branch, Company, InvoiceLine, Invoice, Client } = require('../models');
 const itemService = require('../services/itemService');
 const {
-  generateStockValuationPdf, generateLowStockPdf, generateStockMovementPdf,
+  generateStockValuationPdf, generateLowStockPdf, generateStockMovementPdf, generateSoldByClientPdf,
 } = require('../services/pdfService');
 const {
-  exportStockValuation, exportLowStock, exportStockMovement,
+  exportStockValuation, exportLowStock, exportStockMovement, exportSoldByClient,
 } = require('../services/excelService');
 
 // One row per plain item, plus one row per variant (for items that have
@@ -169,4 +169,80 @@ exports.movementExcel = async (req, res) => {
   const rows = await buildMovementRows(req.companyId, { itemId: item_id, variantId: variant_id, branchId: branch_id, from, to });
   const company = await Company.findByPk(req.companyId);
   await exportStockMovement(res, company, item, rows);
+};
+
+// ---- Sold Items Per Client ----
+// One row per (client, item [, variant]) combination, aggregated across
+// every posted sales invoice line for that item sold to that client —
+// answers "who's buying what, and how much of it." Revenue is the
+// post-discount, pre-tax amount (line_subtotal), matching what the item
+// actually earned; quantity_sold and invoice_count let a business owner
+// spot both volume and repeat-purchase patterns per client.
+async function buildSoldByClientRows(companyId, { clientId, itemId, from, to }) {
+  const invoiceWhere = { company_id: companyId, type: 'sales', status: { [Op.in]: ['posted', 'partially_paid', 'paid'] } };
+  if (clientId) invoiceWhere.client_id = clientId;
+  if (from || to) invoiceWhere.date = { ...(from && { [Op.gte]: from }), ...(to && { [Op.lte]: to }) };
+
+  const lineWhere = { item_id: { [Op.ne]: null } };
+  if (itemId) lineWhere.item_id = itemId;
+
+  const lines = await InvoiceLine.findAll({
+    where: lineWhere,
+    include: [
+      { model: Invoice, as: 'invoice', required: true, where: invoiceWhere, include: [{ model: Client, as: 'client' }] },
+      { model: Item, as: 'item' },
+      { model: ItemVariant, as: 'variant' },
+    ],
+  });
+
+  const map = new Map();
+  for (const l of lines) {
+    const inv = l.invoice;
+    if (!inv) continue;
+    const key = `${inv.client_id}|${l.item_id}|${l.variant_id || ''}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        client_id: inv.client_id,
+        client_name: inv.client?.name_en || 'Unknown client',
+        item_id: l.item_id,
+        item_name: l.item?.name_en || l.description || 'Unknown item',
+        sku: l.variant?.sku || l.item?.sku || null,
+        variant_id: l.variant_id || null,
+        attributes: l.variant?.attributes || null,
+        quantity_sold: 0,
+        revenue: 0,
+        invoiceIds: new Set(),
+      });
+    }
+    const row = map.get(key);
+    row.quantity_sold += Number(l.quantity);
+    row.revenue += Number(l.line_subtotal);
+    row.invoiceIds.add(inv.id);
+  }
+
+  return [...map.values()]
+    .map((r) => ({ ...r, invoice_count: r.invoiceIds.size, invoiceIds: undefined }))
+    .sort((a, b) => a.client_name.localeCompare(b.client_name) || b.revenue - a.revenue);
+}
+
+exports.soldByClient = async (req, res) => {
+  const { client_id, item_id, from, to } = req.query;
+  const rows = await buildSoldByClientRows(req.companyId, { clientId: client_id, itemId: item_id, from, to });
+  const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0);
+  const totalQuantity = rows.reduce((s, r) => s + r.quantity_sold, 0);
+  res.json({ rows, total_revenue: totalRevenue, total_quantity: totalQuantity });
+};
+
+exports.soldByClientPdf = async (req, res) => {
+  const { client_id, item_id, from, to } = req.query;
+  const rows = await buildSoldByClientRows(req.companyId, { clientId: client_id, itemId: item_id, from, to });
+  const company = await Company.findByPk(req.companyId);
+  generateSoldByClientPdf(res, rows, company, { from, to });
+};
+
+exports.soldByClientExcel = async (req, res) => {
+  const { client_id, item_id, from, to } = req.query;
+  const rows = await buildSoldByClientRows(req.companyId, { clientId: client_id, itemId: item_id, from, to });
+  const company = await Company.findByPk(req.companyId);
+  await exportSoldByClient(res, company, rows, { from, to });
 };

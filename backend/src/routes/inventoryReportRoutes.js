@@ -16,4 +16,8 @@ router.get('/movement', ctrl.movement);
 router.get('/movement/pdf', ctrl.movementPdf);
 router.get('/movement/excel', ctrl.movementExcel);
 
+router.get('/sold-by-client', ctrl.soldByClient);
+router.get('/sold-by-client/pdf', ctrl.soldByClientPdf);
+router.get('/sold-by-client/excel', ctrl.soldByClientExcel);
+
 module.exports = router;

@@ -531,6 +531,32 @@ async function exportStockMovement(res, company, item, rows) {
   });
 }
 
+async function exportSoldByClient(res, company, rows, { from, to } = {}) {
+  const period = from || to ? `${from || '...'} to ${to || '...'}` : 'All dates';
+  await streamWorkbook(res, 'sold-items-per-client.xlsx', (wb) => {
+    const sheet = wb.addWorksheet('Sold Items Per Client');
+    addTitleBlock(sheet, `${company?.name_en || ''} — Sold Items Per Client`, period, 6);
+
+    sheet.columns = [
+      { header: 'Client', key: 'client', width: 26 },
+      { header: 'Item', key: 'item', width: 26 },
+      { header: 'SKU', key: 'sku', width: 16 },
+      { header: 'Qty Sold', key: 'qty', width: 12 },
+      { header: 'Revenue', key: 'revenue', width: 14 },
+      { header: 'Invoices', key: 'invoices', width: 10 },
+    ];
+    const headerRowIndex = sheet.lastRow.number + 1;
+    sheet.addRow(sheet.columns.map((c) => c.header));
+    styleHeaderRow(sheet.getRow(headerRowIndex));
+
+    rows.forEach((r) => {
+      sheet.addRow([r.client_name, r.item_name, r.sku || '', Number(r.quantity_sold), Number(r.revenue), r.invoice_count]);
+    });
+    sheet.getColumn(4).numFmt = '#,##0.00';
+    sheet.getColumn(5).numFmt = '#,##0.000';
+  });
+}
+
 async function exportPurchaseOrders(res, company, rows) {
   await streamWorkbook(res, `purchase-orders.xlsx`, (wb) => {
     const sheet = wb.addWorksheet('Purchase Orders');
@@ -586,4 +612,5 @@ module.exports = {
   exportCostCenters, exportCashAccounts, exportSuppliers, exportClients,
   exportVehicles, exportItems, exportPurchaseOrders, exportBranches, exportStockTransfers,
   exportItemVariants, exportStockValuation, exportLowStock, exportStockMovement,
+  exportSoldByClient,
 };

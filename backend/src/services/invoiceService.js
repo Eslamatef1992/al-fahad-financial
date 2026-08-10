@@ -1,6 +1,7 @@
 const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Voucher, VoucherLine, Item } = require('../models');
 const voucherService = require('./voucherService');
 const itemService = require('./itemService');
+const discountService = require('./discountService');
 
 const PREFIX = { sales: 'INV', purchase: 'BILL' };
 
@@ -12,30 +13,51 @@ async function nextInvoiceNo(companyId, type) {
   return `${PREFIX[type]}-${String(count + 1).padStart(6, '0')}`;
 }
 
+// `discount_amount`, if present on the line, is a pre-resolved dollar figure
+// (from discountService.resolveDiscounts) that's netted out of the raw
+// quantity*unit_price BEFORE tax — so line_subtotal/line_total are always
+// the post-discount amounts, and every other consumer (ledger posting,
+// COGS, reports, PDFs) just keeps working unmodified against them.
 function computeLine(l) {
   const quantity = Number(l.quantity ?? 1);
   const unit_price = Number(l.unit_price ?? 0);
   const tax_rate = Number(l.tax_rate ?? 0);
-  const line_subtotal = quantity * unit_price;
+  const discount_amount = Number(l.discount_amount ?? 0);
+  const raw_subtotal = quantity * unit_price;
+  const line_subtotal = Math.max(0, raw_subtotal - discount_amount);
   const line_tax = line_subtotal * (tax_rate / 100);
-  return { ...l, quantity, unit_price, tax_rate, line_subtotal, line_tax, line_total: line_subtotal + line_tax };
+  return { ...l, quantity, unit_price, tax_rate, discount_amount, line_subtotal, line_tax, line_total: line_subtotal + line_tax };
+}
+
+// Resolves any header-level or per-line discount_code against the raw lines,
+// then returns computed lines + totals, ready to persist. Shared by
+// createInvoice and the draft-edit path in invoiceController.update so both
+// apply discounts identically.
+async function buildInvoiceLines(companyId, { lines, discount_code, excludeInvoiceId }, t) {
+  const { perLineDiscount, perLineCodeId, discountCodeId, totalDiscount } = await discountService.resolveDiscounts(
+    companyId, { lines, discount_code, excludeInvoiceId }, t,
+  );
+  const computedLines = lines.map((l, i) => computeLine({ ...l, discount_amount: perLineDiscount[i], discount_code_id: perLineCodeId[i] }));
+  const subtotal = computedLines.reduce((s, l) => s + l.line_subtotal, 0);
+  const tax_total = computedLines.reduce((s, l) => s + l.line_tax, 0);
+  const total = subtotal + tax_total;
+  return { computedLines, subtotal, tax_total, total, discountCodeId, totalDiscount };
 }
 
 // Creates a draft invoice with computed line totals. No ledger impact yet.
 async function createInvoice(companyId, userId, payload) {
-  const { type, client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines } = payload;
+  const { type, client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines, discount_code } = payload;
 
   if (!['sales', 'purchase'].includes(type)) throw badRequest('Invoice type must be "sales" or "purchase"');
   if (type === 'sales' && !client_id) throw badRequest('client_id is required for sales invoices');
   if (type === 'purchase' && !supplier_id) throw badRequest('supplier_id is required for purchase invoices');
   if (!Array.isArray(lines) || lines.length === 0) throw badRequest('At least one line item is required');
 
-  const computedLines = lines.map(computeLine);
-  const subtotal = computedLines.reduce((s, l) => s + l.line_subtotal, 0);
-  const tax_total = computedLines.reduce((s, l) => s + l.line_tax, 0);
-  const total = subtotal + tax_total;
-
   return sequelize.transaction(async (t) => {
+    const { computedLines, subtotal, tax_total, total, discountCodeId, totalDiscount } = await buildInvoiceLines(
+      companyId, { lines, discount_code }, t,
+    );
+
     const invoice_no = await nextInvoiceNo(companyId, type);
     const invoice = await Invoice.create({
       company_id: companyId,
@@ -51,6 +73,8 @@ async function createInvoice(companyId, userId, payload) {
       tax_account_id: tax_account_id || null,
       currency: currency || 'KWD',
       notes,
+      discount_code_id: discountCodeId,
+      discount_amount: totalDiscount,
       subtotal,
       tax_total,
       total,
@@ -67,6 +91,8 @@ async function createInvoice(companyId, userId, payload) {
       quantity: l.quantity,
       unit_price: l.unit_price,
       tax_rate: l.tax_rate,
+      discount_code_id: l.discount_code_id || null,
+      discount_amount: l.discount_amount || 0,
       line_subtotal: l.line_subtotal,
       line_tax: l.line_tax,
       line_total: l.line_total,
@@ -273,4 +299,4 @@ async function cancelInvoice(companyId, invoiceId) {
   return invoice;
 }
 
-module.exports = { createInvoice, postInvoice, recordPayment, cancelInvoice, nextInvoiceNo, computeLine };
+module.exports = { createInvoice, postInvoice, recordPayment, cancelInvoice, nextInvoiceNo, computeLine, buildInvoiceLines };

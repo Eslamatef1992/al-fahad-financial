@@ -1,11 +1,11 @@
 const { Op } = require('sequelize');
-const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Branch, Company, Voucher, Item } = require('../models');
+const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Branch, Company, Voucher, Item, DiscountCode } = require('../models');
 const invoiceService = require('../services/invoiceService');
 const { generateInvoicePdf, generateAgingPdf } = require('../services/pdfService');
 const { exportInvoices } = require('../services/excelService');
 
-const lineInclude = [{ model: InvoiceLine, as: 'lines', include: [{ model: Account, as: 'account' }, { model: Item, as: 'item' }] }];
-const partyInclude = [{ model: Client, as: 'client' }, { model: Supplier, as: 'supplier' }, { model: CostCenter, as: 'costCenter' }, { model: Branch, as: 'branch' }];
+const lineInclude = [{ model: InvoiceLine, as: 'lines', include: [{ model: Account, as: 'account' }, { model: Item, as: 'item' }, { model: DiscountCode, as: 'discountCode' }] }];
+const partyInclude = [{ model: Client, as: 'client' }, { model: Supplier, as: 'supplier' }, { model: CostCenter, as: 'costCenter' }, { model: Branch, as: 'branch' }, { model: DiscountCode, as: 'discountCode' }];
 const paymentInclude = [{ model: InvoicePayment, as: 'payments', include: [{ model: Voucher, as: 'voucher', attributes: ['id', 'voucher_no', 'status'] }] }];
 
 exports.list = async (req, res) => {
@@ -42,15 +42,11 @@ exports.create = async (req, res) => {
 // found" once the first save had already replaced the row underneath it.
 // See the identical fix applied to voucherController.exports.update.
 exports.update = async (req, res) => {
-  const { client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines } = req.body;
+  const { client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines, discount_code } = req.body;
 
   if (!Array.isArray(lines) || lines.length === 0) {
     return res.status(400).json({ message: 'At least one line item is required' });
   }
-  const computedLines = lines.map(invoiceService.computeLine);
-  const subtotal = computedLines.reduce((s, l) => s + l.line_subtotal, 0);
-  const tax_total = computedLines.reduce((s, l) => s + l.line_tax, 0);
-  const total = subtotal + tax_total;
 
   const updated = await sequelize.transaction(async (t) => {
     const invoice = await Invoice.findOne({
@@ -63,6 +59,13 @@ exports.update = async (req, res) => {
     if (invoice.type === 'sales' && !client_id) { const e = new Error('client_id is required for sales invoices'); e.status = 400; throw e; }
     if (invoice.type === 'purchase' && !supplier_id) { const e = new Error('supplier_id is required for purchase invoices'); e.status = 400; throw e; }
 
+    // Same discount resolution path as createInvoice, excluding this
+    // invoice's own prior usage so re-saving with the same code it already
+    // had never incorrectly trips a usage-limit check.
+    const { computedLines, subtotal, tax_total, total, discountCodeId, totalDiscount } = await invoiceService.buildInvoiceLines(
+      req.companyId, { lines, discount_code, excludeInvoiceId: invoice.id }, t,
+    );
+
     await invoice.update({
       client_id: client_id || null,
       supplier_id: supplier_id || null,
@@ -74,6 +77,8 @@ exports.update = async (req, res) => {
       tax_account_id: tax_account_id || null,
       currency: currency || invoice.currency,
       notes,
+      discount_code_id: discountCodeId,
+      discount_amount: totalDiscount,
       subtotal,
       tax_total,
       total,
@@ -84,10 +89,13 @@ exports.update = async (req, res) => {
       invoice_id: invoice.id,
       account_id: l.account_id,
       item_id: l.item_id || null,
+      variant_id: l.variant_id || null,
       description: l.description || '',
       quantity: l.quantity,
       unit_price: l.unit_price,
       tax_rate: l.tax_rate,
+      discount_code_id: l.discount_code_id || null,
+      discount_amount: l.discount_amount || 0,
       line_subtotal: l.line_subtotal,
       line_tax: l.line_tax,
       line_total: l.line_total,

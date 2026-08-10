@@ -17,6 +17,8 @@ module.exports = (sequelize, DataTypes) => {
     tax_account_id: { type: DataTypes.UUID, allowNull: true }, // where line tax amounts post to, if any
     currency: { type: DataTypes.STRING(10), defaultValue: 'KWD' },
     notes: { type: DataTypes.TEXT },
+    discount_code_id: { type: DataTypes.UUID, allowNull: true }, // set only for an invoice-scoped code; its amount is allocated across lines
+    discount_amount: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 }, // total discount across the whole invoice (header + all line codes), for display
     subtotal: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     tax_total: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     total: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },

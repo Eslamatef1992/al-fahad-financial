@@ -30,7 +30,8 @@
     "purchaseOrders": "Purchase Orders",
     "items": "Inventory Items",
     "branches": "Branches",
-    "stockTransfers": "Stock Transfers"
+    "stockTransfers": "Stock Transfers",
+    "discountCodes": "Discount Codes"
   },
   "common": {
     "search": "Search...",
@@ -268,6 +269,14 @@
     "invoiceDeleted": "Invoice deleted",
     "revenueAccountPlaceholder": "Revenue account...",
     "expenseAccountPlaceholder": "Expense account...",
+    "discountCode": "Discount Code",
+    "discountCodePlaceholder": "Enter a code...",
+    "applyDiscount": "Apply",
+    "removeDiscount": "Remove",
+    "invoiceDiscountHint": "Applies to the whole invoice. Leave blank if you're applying codes on individual lines instead.",
+    "lineDiscountHint": "Applies only to this line",
+    "discountAppliedAmount": "-{{amount}} discount applied",
+    "discount": "Discount",
     "status": {
       "draft": "Draft",
       "posted": "Posted",
@@ -373,7 +382,34 @@
     "poolOnly": "Unbranched Pool Only",
     "selectItem": "Select an item to view its movement history",
     "noLowStock": "Nothing is currently below its reorder level.",
-    "totalValue": "Total Value"
+    "totalValue": "Total Value",
+    "soldByClient": "Sold Items Per Client",
+    "soldByClientSubtitle": "Which clients are buying which items, and how much",
+    "allClients": "All Clients",
+    "totalRevenue": "Total Revenue",
+    "totalQtySold": "Total Qty Sold",
+    "invoiceCount": "Invoices",
+    "noSales": "No sales found for this filter."
+  },
+  "discountCodes": {
+    "code": "Code",
+    "type": "Discount Type",
+    "percentage": "Percentage",
+    "fixed": "Fixed Amount",
+    "valuePercent": "Percentage (%)",
+    "valueAmount": "Amount",
+    "discount": "Discount",
+    "scope": "Applies To",
+    "scope_invoice": "Whole Invoice",
+    "scope_line": "Line Item",
+    "scopeHint": "Whole-invoice codes are entered once on the invoice; line-item codes are entered on an individual line.",
+    "usage": "Usage",
+    "unlimited": "Unlimited",
+    "minAmount": "Minimum Amount",
+    "noMinimum": "No minimum",
+    "expiry": "Expiry Date",
+    "noExpiry": "No expiry",
+    "maxRedemptions": "Max Uses"
   },
   "purchaseOrders": {
     "poNo": "PO No.",

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Download, Printer, Boxes, AlertTriangle, ArrowRightLeft, ScrollText } from 'lucide-react';
+import { Download, Printer, Boxes, AlertTriangle, ArrowRightLeft, ScrollText, Users } from 'lucide-react';
 import api, { downloadFile, printFile } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
@@ -12,6 +12,7 @@ const TABS = [
   { key: 'lowStock', icon: AlertTriangle },
   { key: 'movement', icon: ScrollText },
   { key: 'transferHistory', icon: ArrowRightLeft },
+  { key: 'soldByClient', icon: Users },
 ];
 
 export default function InventoryReportsPage() {
@@ -44,6 +45,7 @@ export default function InventoryReportsPage() {
       {tab === 'lowStock' && <LowStockTab branches={branches} />}
       {tab === 'movement' && <MovementTab branches={branches} />}
       {tab === 'transferHistory' && <TransferHistoryTab branches={branches} />}
+      {tab === 'soldByClient' && <SoldByClientTab />}
     </div>
   );
 }
@@ -330,6 +332,84 @@ function TransferHistoryTab({ branches }) {
           </tbody>
         </table>
       </motion.div>
+    </div>
+  );
+}
+
+function SoldByClientTab() {
+  const { t } = useTranslation();
+  const activeCompany = useCompanyStore((s) => s.activeCompany);
+  const currency = activeCompany?.base_currency || 'KWD';
+  const [clients, setClients] = useState([]);
+  const [clientId, setClientId] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [data, setData] = useState({ rows: [], total_revenue: 0, total_quantity: 0 });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => { if (activeCompany) api.get('/clients').then((r) => setClients(r.data)); }, [activeCompany]);
+
+  const load = () => {
+    setLoading(true);
+    api.get('/inventory-reports/sold-by-client', { params: { client_id: clientId, from, to } }).then((r) => setData(r.data)).finally(() => setLoading(false));
+  };
+  useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
+
+  return (
+    <div>
+      <p className="text-sm text-slate-500 mb-4">{t('inventoryReports.soldByClientSubtitle')}</p>
+      <div className="card p-4 mb-5 flex flex-wrap items-end gap-3">
+        <div className="min-w-[220px]">
+          <label className="label">{t('common.client')}</label>
+          <select className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+            <option value="">{t('inventoryReports.allClients')}</option>
+            {clients.map((c) => <option key={c.id} value={c.id}>{c.name_en}</option>)}
+          </select>
+        </div>
+        <div><label className="label">{t('reports.from')}</label><input type="date" className="input" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+        <div><label className="label">{t('reports.to')}</label><input type="date" className="input" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+        <button onClick={load} className="btn-primary">{t('reports.generate')}</button>
+        <button onClick={() => printFile('/inventory-reports/sold-by-client/pdf', { client_id: clientId, from, to })} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
+        <button onClick={() => downloadFile('/inventory-reports/sold-by-client/excel', { client_id: clientId, from, to }, 'sold-items-per-client.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
+      </div>
+
+      {!loading && data.rows.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+          <ReportKpiCard icon={Boxes} tone="navy" label={t('inventoryReports.totalQtySold')} value={Number(data.total_quantity).toFixed(2)} />
+          <ReportKpiCard icon={Users} tone="gold" label={t('inventoryReports.totalRevenue')} value={`${Number(data.total_revenue).toFixed(3)} ${currency}`} delay={0.05} />
+        </div>
+      )}
+
+      {!loading && data.rows.length === 0 && <p className="text-center text-slate-400 bg-slate-50 dark:bg-navy-800/40 rounded-xl p-6">{t('inventoryReports.noSales')}</p>}
+
+      {!loading && data.rows.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-navy-800">
+                <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('common.client')}</th>
+                <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('items.item')}</th>
+                <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('items.sku')}</th>
+                <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('inventoryReports.totalQtySold')}</th>
+                <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('inventoryReports.totalRevenue')}</th>
+                <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('inventoryReports.invoiceCount')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((r, i) => (
+                <tr key={`${r.client_id}-${r.item_id}-${r.variant_id || 'x'}-${i}`} className="border-b border-slate-50 dark:border-navy-800/60 last:border-0">
+                  <td className="px-4 py-3 font-medium">{r.client_name}</td>
+                  <td className="px-4 py-3">{r.item_name}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-400">{r.sku || '-'}</td>
+                  <td className="px-4 py-3 text-end">{Number(r.quantity_sold).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-end font-semibold">{Number(r.revenue).toFixed(3)}</td>
+                  <td className="px-4 py-3 text-end">{r.invoice_count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
+      )}
     </div>
   );
 }

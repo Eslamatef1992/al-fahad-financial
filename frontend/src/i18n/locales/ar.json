@@ -30,7 +30,8 @@
     "purchaseOrders": "أوامر الشراء",
     "items": "أصناف المخزون",
     "branches": "الفروع",
-    "stockTransfers": "تحويلات المخزون"
+    "stockTransfers": "تحويلات المخزون",
+    "discountCodes": "أكواد الخصم"
   },
   "common": {
     "search": "بحث...",
@@ -268,6 +269,14 @@
     "invoiceDeleted": "تم حذف الفاتورة",
     "revenueAccountPlaceholder": "حساب الإيرادات...",
     "expenseAccountPlaceholder": "حساب المصروفات...",
+    "discountCode": "كود الخصم",
+    "discountCodePlaceholder": "أدخل الكود...",
+    "applyDiscount": "تطبيق",
+    "removeDiscount": "إزالة",
+    "invoiceDiscountHint": "يُطبَّق على الفاتورة بالكامل. اتركه فارغاً إذا كنت ستطبق أكواداً على أصناف منفردة بدلاً من ذلك.",
+    "lineDiscountHint": "يُطبَّق على هذا الصنف فقط",
+    "discountAppliedAmount": "تم تطبيق خصم -{{amount}}",
+    "discount": "الخصم",
     "status": {
       "draft": "مسودة",
       "posted": "مرحّلة",
@@ -373,7 +382,34 @@
     "poolOnly": "المخزون غير المرتبط بفرع فقط",
     "selectItem": "اختر صنفًا لعرض سجل حركته",
     "noLowStock": "لا يوجد حاليًا أي صنف وصل إلى حد إعادة الطلب.",
-    "totalValue": "إجمالي القيمة"
+    "totalValue": "إجمالي القيمة",
+    "soldByClient": "المبيعات حسب العميل",
+    "soldByClientSubtitle": "ما الذي يشتريه كل عميل ومقدار ذلك",
+    "allClients": "كل العملاء",
+    "totalRevenue": "إجمالي الإيرادات",
+    "totalQtySold": "إجمالي الكمية المباعة",
+    "invoiceCount": "عدد الفواتير",
+    "noSales": "لا توجد مبيعات مطابقة لهذا الفلتر."
+  },
+  "discountCodes": {
+    "code": "الكود",
+    "type": "نوع الخصم",
+    "percentage": "نسبة مئوية",
+    "fixed": "مبلغ ثابت",
+    "valuePercent": "النسبة (%)",
+    "valueAmount": "المبلغ",
+    "discount": "الخصم",
+    "scope": "يُطبَّق على",
+    "scope_invoice": "الفاتورة بالكامل",
+    "scope_line": "صنف واحد",
+    "scopeHint": "أكواد الفاتورة بالكامل تُدخل مرة واحدة على الفاتورة؛ أكواد الصنف تُدخل على صنف منفرد.",
+    "usage": "الاستخدام",
+    "unlimited": "غير محدود",
+    "minAmount": "الحد الأدنى للمبلغ",
+    "noMinimum": "لا يوجد حد أدنى",
+    "expiry": "تاريخ الانتهاء",
+    "noExpiry": "بدون انتهاء",
+    "maxRedemptions": "الحد الأقصى للاستخدام"
   },
   "purchaseOrders": {
     "poNo": "رقم أمر الشراء",

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, BookText, Receipt, ScrollText, Users, Truck, UsersRound,
   Landmark, Wallet, PieChart, Building2, ChevronsLeft, UserCog, ShieldCheck,
-  FileText, FileMinus, RefreshCw, Boxes, ClipboardList, ArrowRightLeft,
+  FileText, FileMinus, RefreshCw, Boxes, ClipboardList, ArrowRightLeft, Percent,
 } from 'lucide-react';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -19,6 +19,7 @@ const NAV = [
   { to: '/purchase-orders', icon: ClipboardList, key: 'purchaseOrders' },
   { to: '/items', icon: Boxes, key: 'items' },
   { to: '/stock-transfers', icon: ArrowRightLeft, key: 'stockTransfers' },
+  { to: '/discount-codes', icon: Percent, key: 'discountCodes' },
   { to: '/vouchers', icon: Receipt, key: 'vouchers' },
   { to: '/ledger', icon: ScrollText, key: 'ledger' },
   { to: '/clients', icon: Users, key: 'clients' },

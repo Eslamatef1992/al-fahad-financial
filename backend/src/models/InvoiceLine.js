@@ -9,6 +9,8 @@ module.exports = (sequelize, DataTypes) => {
     quantity: { type: DataTypes.DECIMAL(12, 3), defaultValue: 1 },
     unit_price: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     tax_rate: { type: DataTypes.DECIMAL(5, 2), defaultValue: 0 }, // percent, e.g. 5.00
+    discount_code_id: { type: DataTypes.UUID, allowNull: true }, // set only when a line-scoped code was applied directly to this line
+    discount_amount: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 }, // this line's share of discount (own code, or an allocated slice of an invoice-level code)
     line_subtotal: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     line_tax: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     line_total: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
