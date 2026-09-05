@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Save, Tag, X } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Tag, X, CalendarClock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 
-const emptyLine = () => ({ account_id: '', item_id: '', description: '', quantity: 1, unit_price: '', tax_rate: 0, discount_code: '', discount_preview: null, discount_error: '' });
+const emptyLine = () => ({
+  account_id: '', item_id: '', description: '', quantity: 1, unit_price: '', tax_rate: 0,
+  discount_code: '', discount_preview: null, discount_error: '', is_booked: false, delivery_date: '',
+});
 
 // Splits `totalDiscount` across `weights` proportionally, fixing rounding
 // drift on the last non-zero-weight entry — mirrors discountService's
@@ -85,6 +88,8 @@ export default function InvoiceFormPage() {
         discount_code: l.discountCode?.code || '',
         discount_preview: l.discountCode ? { code: l.discountCode.code, discount_amount: Number(l.discount_amount || 0) } : null,
         discount_error: '',
+        is_booked: !!l.is_booked,
+        delivery_date: l.delivery_date || '',
       })));
       setLoading(false);
     });
@@ -167,8 +172,11 @@ export default function InvoiceFormPage() {
         unit_price: l.unit_price,
         tax_rate: l.tax_rate,
         discount_code: l.discount_code?.trim() || undefined,
+        is_booked: type === 'sales' && !!l.item_id && l.is_booked,
+        delivery_date: type === 'sales' && !!l.item_id && l.is_booked ? l.delivery_date : undefined,
       }));
     if (validLines.length === 0) return toast.error(t('invoices.addLineItemPrompt'));
+    if (validLines.some((l) => l.is_booked && !l.delivery_date)) return toast.error(t('invoices.bookedNeedsDate'));
 
     setSaving(true);
     try {
@@ -287,6 +295,30 @@ export default function InvoiceFormPage() {
                   <div className="col-span-1 text-sm py-2 text-end font-semibold">{computed[idx].total.toFixed(2)}</div>
                   <button type="button" onClick={() => removeLine(idx)} className="col-span-1 p-2 rounded-lg hover:bg-red-50 text-red-500 justify-self-center"><Trash2 size={15} /></button>
                 </div>
+
+                {type === 'sales' && line.item_id && (
+                  <div className="flex items-center gap-2 mt-2 ps-1">
+                    <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="rounded"
+                        checked={line.is_booked}
+                        onChange={(e) => updateLine(idx, { is_booked: e.target.checked, delivery_date: e.target.checked ? line.delivery_date : '' })}
+                      />
+                      <CalendarClock size={13} className="text-slate-400" />
+                      {t('invoices.bookForLater')}
+                    </label>
+                    {line.is_booked && (
+                      <input
+                        required
+                        type="date"
+                        className="input !py-1.5 !w-auto text-xs"
+                        value={line.delivery_date}
+                        onChange={(e) => updateLine(idx, { delivery_date: e.target.value })}
+                      />
+                    )}
+                  </div>
+                )}
 
                 {!hasHeaderDiscount && (
                   <div className="flex items-center gap-2 mt-2 ps-1">

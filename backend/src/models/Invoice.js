@@ -31,6 +31,12 @@ module.exports = (sequelize, DataTypes) => {
     posting_voucher_id: { type: DataTypes.UUID, allowNull: true }, // the journal voucher created when posted (for cancellation)
     created_by: { type: DataTypes.UUID, allowNull: true },
     posted_at: { type: DataTypes.DATE, allowNull: true },
+    // Set when this invoice was rung up from the POS screen rather than the
+    // regular back-office Sales Invoices page. A POS sale is a normal sales
+    // Invoice underneath — same posting/payment pipeline — just tagged with
+    // where it came from and which cashier shift it belongs to.
+    channel: { type: DataTypes.ENUM('backoffice', 'pos'), defaultValue: 'backoffice' },
+    pos_shift_id: { type: DataTypes.UUID, allowNull: true },
   }, {
     tableName: 'invoices',
     indexes: [{ unique: true, fields: ['company_id', 'type', 'invoice_no'] }],

@@ -8,6 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
 import usePermissions from '@/hooks/usePermissions';
+import useFinancialDefaults from '@/hooks/useFinancialDefaults';
 
 const empty = {
   name_en: '', name_ar: '', category_id: '', unit: 'pcs', unit_id: '', sku: '', variant_attributes: [],
@@ -21,6 +22,7 @@ export default function ItemsPage() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const { canCreateEdit, canDelete } = usePermissions();
+  const financialDefaults = useFinancialDefaults();
   const [items, setItems] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -72,7 +74,16 @@ export default function ItemsPage() {
     }
   }, [activeCompany, showInactive]);
 
-  const openNew = () => { setEditing(null); setForm(empty); setAttrInput(''); setNewCategoryName(''); setNewUnitName(''); setOpen(true); };
+  const openNew = () => {
+    setEditing(null);
+    setForm({
+      ...empty,
+      inventory_account_id: financialDefaults.item_inventory_account_id || '',
+      income_account_id: financialDefaults.item_income_account_id || '',
+      cogs_account_id: financialDefaults.item_cogs_account_id || '',
+    });
+    setAttrInput(''); setNewCategoryName(''); setNewUnitName(''); setOpen(true);
+  };
   const openEdit = (row) => {
     setEditing(row);
     setForm({
@@ -238,6 +249,12 @@ export default function ItemsPage() {
         </span>
       );
     } },
+    { key: 'booked_quantity', label: t('items.booked'), render: (r) => (
+      Number(r.booked_quantity) > 0
+        ? <span className="text-amber-600 font-medium">{Number(r.booked_quantity).toFixed(2)}</span>
+        : <span className="text-slate-300">—</span>
+    ) },
+    { key: 'available_quantity', label: t('items.available'), render: (r) => Number(r.available_quantity ?? r.total_quantity_on_hand).toFixed(2) },
     { key: 'value', label: t('items.stockValue'), render: (r) => Number(r.total_value ?? (Number(r.quantity_on_hand) * Number(r.cost_price))).toFixed(3) },
     { key: 'selling_price', label: t('items.sellingPrice'), render: (r) => Number(r.selling_price).toFixed(3) },
     { key: 'is_active', label: t('common.status'), render: (r) => (

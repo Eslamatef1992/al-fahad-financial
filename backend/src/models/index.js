@@ -38,6 +38,9 @@ const ItemVariantBranchStock = require('./ItemVariantBranchStock')(sequelize, Da
 const ItemCategory = require('./ItemCategory')(sequelize, DataTypes);
 const DiscountCode = require('./DiscountCode')(sequelize, DataTypes);
 const Unit = require('./Unit')(sequelize, DataTypes);
+const FinancialSetting = require('./FinancialSetting')(sequelize, DataTypes);
+const ItemBooking = require('./ItemBooking')(sequelize, DataTypes);
+const PosShift = require('./PosShift')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -48,7 +51,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit, FinancialSetting, ItemBooking, PosShift];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -136,6 +139,12 @@ Invoice.belongsTo(DiscountCode, { foreignKey: 'discount_code_id', as: 'discountC
 InvoiceLine.belongsTo(DiscountCode, { foreignKey: 'discount_code_id', as: 'discountCode' });
 
 Invoice.hasMany(InvoicePayment, { foreignKey: 'invoice_id', as: 'payments', onDelete: 'CASCADE' });
+
+// POS shifts
+PosShift.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
+PosShift.belongsTo(User, { foreignKey: 'cashier_id', as: 'cashier' });
+Invoice.belongsTo(PosShift, { foreignKey: 'pos_shift_id', as: 'posShift' });
+PosShift.hasMany(Invoice, { foreignKey: 'pos_shift_id', as: 'sales' });
 InvoicePayment.belongsTo(Invoice, { foreignKey: 'invoice_id' });
 InvoicePayment.belongsTo(Voucher, { foreignKey: 'voucher_id', as: 'voucher' });
 
@@ -160,6 +169,18 @@ Unit.belongsTo(Unit, { foreignKey: 'base_unit_id', as: 'baseUnit' });
 Unit.hasMany(Unit, { foreignKey: 'base_unit_id', as: 'derivedUnits' });
 Item.belongsTo(Unit, { foreignKey: 'unit_id', as: 'itemUnit' });
 Unit.hasMany(Item, { foreignKey: 'unit_id', as: 'items' });
+
+// Item Bookings — quantity reserved from a "booked" sales invoice line,
+// still counted in on-hand inventory until fulfilled (delivered).
+ItemBooking.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
+Item.hasMany(ItemBooking, { foreignKey: 'item_id', as: 'bookings' });
+ItemBooking.belongsTo(ItemVariant, { foreignKey: 'variant_id', as: 'variant' });
+ItemBooking.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
+ItemBooking.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
+ItemBooking.belongsTo(InvoiceLine, { foreignKey: 'invoice_line_id', as: 'invoiceLine' });
+ItemBooking.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
+ItemBooking.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+InvoiceLine.hasOne(ItemBooking, { foreignKey: 'invoice_line_id', as: 'booking' });
 Item.hasMany(InventoryTransaction, { foreignKey: 'item_id', as: 'transactions', onDelete: 'CASCADE' });
 InventoryTransaction.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
 InventoryTransaction.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
@@ -249,4 +270,7 @@ module.exports = {
   ItemCategory,
   DiscountCode,
   Unit,
+  FinancialSetting,
+  ItemBooking,
+  PosShift,
 };

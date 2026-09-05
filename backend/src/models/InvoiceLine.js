@@ -15,5 +15,13 @@ module.exports = (sequelize, DataTypes) => {
     line_tax: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     line_total: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     line_order: { type: DataTypes.INTEGER, defaultValue: 0 },
+    // "Booked" sales line: the client bought this item but wants it delivered
+    // later (a specific date), so it must stay counted in on-hand inventory
+    // until then. When true, posting this invoice does NOT issue stock/COGS —
+    // it creates an ItemBooking instead, fulfilled later via a separate
+    // action once the item actually leaves the warehouse. No effect on
+    // purchase lines or on any line that isn't linked to an Item.
+    is_booked: { type: DataTypes.BOOLEAN, defaultValue: false },
+    delivery_date: { type: DataTypes.DATEONLY, allowNull: true },
   }, { tableName: 'invoice_lines' });
 };

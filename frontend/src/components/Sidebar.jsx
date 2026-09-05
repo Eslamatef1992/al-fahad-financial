@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, BookText, Receipt, ScrollText, Users, Truck, UsersRound,
   Landmark, Wallet, PieChart, Building2, ChevronsLeft, UserCog, ShieldCheck,
-  FileText, FileMinus, RefreshCw, Boxes, ClipboardList, ArrowRightLeft, Percent, Ruler,
+  FileText, FileMinus, RefreshCw, Boxes, ClipboardList, ArrowRightLeft, Percent, Ruler, Settings2, CalendarClock, ShoppingCart, UserCheck,
 } from 'lucide-react';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -12,6 +12,7 @@ import usePermissions from '@/hooks/usePermissions';
 
 const NAV = [
   { to: '/', icon: LayoutDashboard, key: 'dashboard', end: true },
+  { to: '/pos', icon: ShoppingCart, key: 'pos' },
   { to: '/chart-of-accounts', icon: BookText, key: 'chartOfAccounts' },
   { to: '/invoices/sales', icon: FileText, key: 'salesInvoices' },
   { to: '/invoices/purchase', icon: FileMinus, key: 'purchaseInvoices' },
@@ -19,6 +20,7 @@ const NAV = [
   { to: '/purchase-orders', icon: ClipboardList, key: 'purchaseOrders' },
   { to: '/items', icon: Boxes, key: 'items' },
   { to: '/units', icon: Ruler, key: 'units' },
+  { to: '/bookings', icon: CalendarClock, key: 'bookings' },
   { to: '/stock-transfers', icon: ArrowRightLeft, key: 'stockTransfers' },
   { to: '/discount-codes', icon: Percent, key: 'discountCodes' },
   { to: '/vouchers', icon: Receipt, key: 'vouchers' },
@@ -105,17 +107,41 @@ export default function Sidebar() {
           </>
         )}
         {isCompanyAdmin && (
-          <NavLink
-            to="/audit-log"
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                isActive ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`
-            }
-          >
-            <ShieldCheck size={18} className="shrink-0" />
-            {!sidebarCollapsed && <span className="truncate">{t('nav.auditLog')}</span>}
-          </NavLink>
+          <>
+            <NavLink
+              to="/audit-log"
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`
+              }
+            >
+              <ShieldCheck size={18} className="shrink-0" />
+              {!sidebarCollapsed && <span className="truncate">{t('nav.auditLog')}</span>}
+            </NavLink>
+            <NavLink
+              to="/financial-settings"
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`
+              }
+            >
+              <Settings2 size={18} className="shrink-0" />
+              {!sidebarCollapsed && <span className="truncate">{t('nav.financialSettings')}</span>}
+            </NavLink>
+            <NavLink
+              to="/pos-cashiers"
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`
+              }
+            >
+              <UserCheck size={18} className="shrink-0" />
+              {!sidebarCollapsed && <span className="truncate">{t('nav.posCashiers')}</span>}
+            </NavLink>
+          </>
         )}
       </nav>
 

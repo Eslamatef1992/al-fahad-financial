@@ -4,6 +4,7 @@ const {
   sequelize, Item, Account, InventoryTransaction, ItemBranchStock, Branch, Company, ItemVariant, ItemVariantBranchStock, ItemCategory, Unit,
 } = require('../models');
 const itemService = require('../services/itemService');
+const bookingService = require('../services/bookingService');
 const { generateItemsPdf, generateItemVariantsPdf } = require('../services/pdfService');
 const { exportItems, exportItemVariants } = require('../services/excelService');
 const { toPublicPath } = require('../middleware/upload');
@@ -60,6 +61,7 @@ async function withBranchTotals(companyId, items) {
     raw: true,
   });
   const byItemVariantBranch = new Map(variantBranchAgg.map((r) => [r.item_id, r]));
+  const bookedByItem = await bookingService.bookedQuantitiesByItem(companyId);
 
   return items.map((it) => {
     const json = it.toJSON ? it.toJSON() : it;
@@ -73,9 +75,13 @@ async function withBranchTotals(companyId, items) {
     const variantValue = variantRow ? Number(variantRow.variant_value) : 0;
     const variantBranchQty = variantBranchRow ? Number(variantBranchRow.variant_branch_qty) : 0;
     const variantBranchValue = variantBranchRow ? Number(variantBranchRow.variant_branch_value) : 0;
+    const totalOnHand = Number(json.quantity_on_hand) + branchQty + variantQty + variantBranchQty;
+    const bookedQty = bookedByItem.get(json.id) || 0;
 
     return {
       ...json,
+      booked_quantity: bookedQty,
+      available_quantity: totalOnHand - bookedQty,
       // Prefer the managed category (itemCategory) over the legacy free-text
       // `category` string — old items that only ever had free text still
       // display fine, new items link to a real, reusable ItemCategory.
@@ -89,7 +95,7 @@ async function withBranchTotals(companyId, items) {
       branch_quantity_on_hand: branchQty,
       variant_count: variantRow ? Number(variantRow.variant_count) : 0,
       variant_quantity_on_hand: variantQty + variantBranchQty,
-      total_quantity_on_hand: Number(json.quantity_on_hand) + branchQty + variantQty + variantBranchQty,
+      total_quantity_on_hand: totalOnHand,
       total_value: Number(json.quantity_on_hand) * Number(json.cost_price) + branchValue + variantValue + variantBranchValue,
     };
   });

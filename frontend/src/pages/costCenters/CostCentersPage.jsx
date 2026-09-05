@@ -9,6 +9,7 @@ import SlideOver from '@/components/SlideOver';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import AccountPicker from '@/components/AccountPicker';
 import usePermissions from '@/hooks/usePermissions';
+import useFinancialDefaults from '@/hooks/useFinancialDefaults';
 import CostCenterTreeNode from './CostCenterTreeNode';
 
 const empty = { code: '', name_en: '', name_ar: '', parent_id: null, parent_account_id: null };
@@ -17,6 +18,7 @@ export default function CostCentersPage() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const { canManageStructure } = usePermissions();
+  const financialDefaults = useFinancialDefaults();
   const [tree, setTree] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -28,7 +30,7 @@ export default function CostCentersPage() {
   const load = () => { setLoading(true); api.get('/cost-centers/tree').then((r) => setTree(r.data)).finally(() => setLoading(false)); };
   useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
 
-  const openNew = (parent = null) => { setEditing(null); setForm({ ...empty, parent_id: parent?.id || null }); setOpen(true); };
+  const openNew = (parent = null) => { setEditing(null); setForm({ ...empty, parent_id: parent?.id || null, parent_account_id: financialDefaults.cost_center_parent_account_id || null }); setOpen(true); };
   const openEdit = (node) => { setEditing(node); setForm({ ...empty, ...node, parent_account_id: node.account?.parent_id || null }); setOpen(true); };
 
   const submit = async (e) => {

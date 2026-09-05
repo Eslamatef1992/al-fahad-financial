@@ -9,6 +9,7 @@ import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
 import AccountPicker from '@/components/AccountPicker';
 import usePermissions from '@/hooks/usePermissions';
+import useFinancialDefaults from '@/hooks/useFinancialDefaults';
 
 const empty = { code: '', name_en: '', name_ar: '', phone: '', email: '', address: '', tax_no: '', credit_limit: 0, opening_balance: 0, parent_account_id: null };
 
@@ -16,6 +17,7 @@ export default function ClientsPage() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const { canCreateEdit, canDelete } = usePermissions();
+  const financialDefaults = useFinancialDefaults();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
@@ -30,7 +32,7 @@ export default function ClientsPage() {
   };
   useEffect(() => { if (activeCompany) load(); }, [activeCompany, showInactive]);
 
-  const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm({ ...empty, parent_account_id: financialDefaults.client_parent_account_id || null }); setOpen(true); };
   const openEdit = (row) => { setEditing(row); setForm({ ...row, parent_account_id: row.account?.parent_id || null }); setOpen(true); };
 
   const submit = async (e) => {

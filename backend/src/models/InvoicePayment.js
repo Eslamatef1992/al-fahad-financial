@@ -8,5 +8,9 @@ module.exports = (sequelize, DataTypes) => {
     amount: { type: DataTypes.DECIMAL(18, 3), allowNull: false },
     date: { type: DataTypes.DATEONLY, allowNull: false },
     notes: { type: DataTypes.TEXT },
+    // How this payment was tendered. Defaults to 'cash' so every payment
+    // recorded before this field existed reads exactly as before.
+    payment_method: { type: DataTypes.ENUM('cash', 'knet', 'bank', 'other'), defaultValue: 'cash' },
+    reference: { type: DataTypes.STRING(60) }, // e.g. Knet approval/reference code
   }, { tableName: 'invoice_payments' });
 };

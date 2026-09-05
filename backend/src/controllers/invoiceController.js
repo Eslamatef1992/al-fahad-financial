@@ -100,6 +100,8 @@ exports.update = async (req, res) => {
       line_tax: l.line_tax,
       line_total: l.line_total,
       line_order: idx,
+      is_booked: !!l.is_booked,
+      delivery_date: l.is_booked ? l.delivery_date : null,
     }, { transaction: t })));
 
     return invoice;

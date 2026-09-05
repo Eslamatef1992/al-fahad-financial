@@ -11,6 +11,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import AccountPicker from '@/components/AccountPicker';
 import EmployeeLeaveDialog from './EmployeeLeaveDialog';
 import usePermissions from '@/hooks/usePermissions';
+import useFinancialDefaults from '@/hooks/useFinancialDefaults';
 
 const empty = {
   name_en: '', name_ar: '', national_id: '', nationality: '', phone: '', email: '',
@@ -26,6 +27,7 @@ export default function EmployeesPage() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const { canCreateEdit, canDelete } = usePermissions();
+  const financialDefaults = useFinancialDefaults();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -81,7 +83,11 @@ export default function EmployeesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
-  const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm({
+    ...empty,
+    parent_account_id: financialDefaults.employee_parent_account_id || null,
+    deduction_parent_account_id: financialDefaults.employee_deduction_parent_account_id || null,
+  }); setOpen(true); };
   const openEdit = (row) => { setEditing(row); setForm({ ...empty, ...row, parent_account_id: row.account?.parent_id || null, deduction_parent_account_id: row.deductionAccount?.parent_id || null }); setOpen(true); };
 
   const submit = async (e) => {

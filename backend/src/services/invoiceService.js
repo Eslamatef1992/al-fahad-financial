@@ -1,4 +1,4 @@
-const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Voucher, VoucherLine, Item } = require('../models');
+const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Voucher, VoucherLine, Item, ItemBooking } = require('../models');
 const voucherService = require('./voucherService');
 const itemService = require('./itemService');
 const discountService = require('./discountService');
@@ -46,12 +46,16 @@ async function buildInvoiceLines(companyId, { lines, discount_code, excludeInvoi
 
 // Creates a draft invoice with computed line totals. No ledger impact yet.
 async function createInvoice(companyId, userId, payload) {
-  const { type, client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines, discount_code } = payload;
+  const { type, client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines, discount_code, channel, pos_shift_id } = payload;
 
   if (!['sales', 'purchase'].includes(type)) throw badRequest('Invoice type must be "sales" or "purchase"');
   if (type === 'sales' && !client_id) throw badRequest('client_id is required for sales invoices');
   if (type === 'purchase' && !supplier_id) throw badRequest('supplier_id is required for purchase invoices');
   if (!Array.isArray(lines) || lines.length === 0) throw badRequest('At least one line item is required');
+  for (const l of lines) {
+    if (l.is_booked && !l.item_id) throw badRequest('Only a line linked to an inventory item can be booked for later delivery');
+    if (l.is_booked && !l.delivery_date) throw badRequest('A booked line requires a delivery date');
+  }
 
   return sequelize.transaction(async (t) => {
     const { computedLines, subtotal, tax_total, total, discountCodeId, totalDiscount } = await buildInvoiceLines(
@@ -80,6 +84,8 @@ async function createInvoice(companyId, userId, payload) {
       total,
       status: 'draft',
       created_by: userId,
+      channel: channel === 'pos' ? 'pos' : 'backoffice',
+      pos_shift_id: channel === 'pos' ? (pos_shift_id || null) : null,
     }, { transaction: t });
 
     await Promise.all(computedLines.map((l, idx) => InvoiceLine.create({
@@ -97,6 +103,8 @@ async function createInvoice(companyId, userId, payload) {
       line_tax: l.line_tax,
       line_total: l.line_total,
       line_order: idx,
+      is_booked: !!l.is_booked,
+      delivery_date: l.is_booked ? l.delivery_date : null,
     }, { transaction: t })));
 
     return invoice;
@@ -174,6 +182,29 @@ async function postInvoice(companyId, invoiceId, userId) {
     if (invoice.type === 'sales') {
       for (const l of invoice.lines) {
         if (!l.item_id) continue;
+
+        // Booked lines stay in on-hand inventory — no stock is issued (and no
+        // COGS posted) until the reservation is fulfilled later. This is the
+        // one point where a "booked for future delivery" sale diverges from
+        // an ordinary one: the invoice still posts revenue/AR normally, but
+        // inventory doesn't move until delivery actually happens.
+        if (l.is_booked) {
+          await ItemBooking.create({
+            company_id: companyId,
+            item_id: l.item_id,
+            variant_id: l.variant_id || null,
+            branch_id: invoice.branch_id || null,
+            invoice_id: invoice.id,
+            invoice_line_id: l.id,
+            client_id: invoice.client_id || null,
+            quantity: Number(l.quantity),
+            delivery_date: l.delivery_date || null,
+            status: 'pending',
+            created_by: userId,
+          }, { transaction: t });
+          continue;
+        }
+
         const { item, cogsAmount } = await itemService.issueStock(companyId, l.item_id, {
           quantity: Number(l.quantity),
           date: invoice.date,
@@ -235,7 +266,7 @@ async function postInvoice(companyId, invoiceId, userId) {
 // Records a payment against a posted invoice by creating + posting a
 // receipt (sales) or payment (purchase) voucher that moves cash against the
 // client/supplier control account, then updates the invoice's paid status.
-async function recordPayment(companyId, invoiceId, userId, { amount, date, cash_account_id, notes }) {
+async function recordPayment(companyId, invoiceId, userId, { amount, date, cash_account_id, notes, payment_method, reference }) {
   const invoice = await Invoice.findOne({
     where: { id: invoiceId, company_id: companyId },
     include: [{ model: Client, as: 'client' }, { model: Supplier, as: 'supplier' }],
@@ -276,6 +307,8 @@ async function recordPayment(companyId, invoiceId, userId, { amount, date, cash_
     amount: payAmount,
     date: date || new Date().toISOString().slice(0, 10),
     notes,
+    payment_method: payment_method || 'cash',
+    reference: reference || null,
   });
 
   const newPaidTotal = Number(invoice.paid_total) + payAmount;
@@ -295,6 +328,13 @@ async function cancelInvoice(companyId, invoiceId) {
   if (invoice.posting_voucher_id) {
     await voucherService.cancelVoucher(companyId, invoice.posting_voucher_id);
   }
+  // Release any still-pending reservations this invoice created — they never
+  // touched stock, so there's nothing to reverse, just mark them cancelled
+  // so they stop showing up as booked.
+  await ItemBooking.update(
+    { status: 'cancelled' },
+    { where: { invoice_id: invoice.id, status: 'pending' } },
+  );
   await invoice.update({ status: 'cancelled' });
   return invoice;
 }
