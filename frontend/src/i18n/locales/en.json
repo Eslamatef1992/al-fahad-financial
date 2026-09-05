@@ -469,6 +469,8 @@
     "creditNeedsClient": "Select a client to sell on credit",
     "tendered": "Tendered",
     "tenderMismatch": "Tendered amount must equal the total due",
+    "knetReferencePlaceholder": "Knet reference / approval number",
+    "knetReferenceRequired": "Enter the Knet reference number",
     "completeSale": "Complete Sale",
     "cashierPermissions": "POS Cashier Access",
     "cashierPermissionsHint": "Set who can use the POS till and what a cashier-level user is allowed to do beyond ringing up ordinary sales. Admins and accountants always have full POS access automatically.",

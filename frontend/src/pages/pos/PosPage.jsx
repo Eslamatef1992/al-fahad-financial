@@ -39,7 +39,7 @@ export default function PosPage() {
   const [held, setHeld] = useState([]);
   const [payOpen, setPayOpen] = useState(false);
   const [paying, setPaying] = useState(false);
-  const [tender, setTender] = useState({ cash: '', knet: '', credit: '' });
+  const [tender, setTender] = useState({ cash: '', knet: '', credit: '', knetReference: '' });
   const [closeOpen, setCloseOpen] = useState(false);
   const [countedCash, setCountedCash] = useState('');
   const [voidTarget, setVoidTarget] = useState(null);
@@ -212,16 +212,17 @@ export default function PosPage() {
   const tenderTotal = Number(tender.cash || 0) + Number(tender.knet || 0) + Number(tender.credit || 0);
   const submitPayment = async () => {
     if (Math.abs(tenderTotal - total) > 0.001) return toast.error(t('pos.tenderMismatch'));
+    if (Number(tender.knet) > 0 && !tender.knetReference.trim()) return toast.error(t('pos.knetReferenceRequired'));
     setPaying(true);
     try {
       const payments = [];
       if (Number(tender.cash) > 0) payments.push({ method: 'cash', amount: Number(tender.cash) });
-      if (Number(tender.knet) > 0) payments.push({ method: 'knet', amount: Number(tender.knet) });
+      if (Number(tender.knet) > 0) payments.push({ method: 'knet', amount: Number(tender.knet), reference: tender.knetReference.trim() });
       if (Number(tender.credit) > 0) payments.push({ method: 'credit', amount: Number(tender.credit) });
       await api.post('/pos/sales', { client_id: clientId || null, action: 'complete', lines: buildLines(), payments, delivery_date: deliveryDate || null, delivery_address: deliveryAddress || null });
       toast.success(t('pos.saleCompleted'));
       setPayOpen(false);
-      setTender({ cash: '', knet: '', credit: '' });
+      setTender({ cash: '', knet: '', credit: '', knetReference: '' });
       clearCart();
     } catch (e) { /* toast handled globally */ }
     finally { setPaying(false); }
@@ -411,6 +412,14 @@ export default function PosPage() {
                 <div>
                   <label className="label flex items-center gap-1"><Landmark size={13} />{t('pos.knet')}</label>
                   <input type="number" step="0.001" className="input" value={tender.knet} onChange={(e) => setTender({ ...tender, knet: e.target.value })} />
+                  {Number(tender.knet) > 0 && (
+                    <input
+                      className="input mt-1.5"
+                      value={tender.knetReference}
+                      onChange={(e) => setTender({ ...tender, knetReference: e.target.value })}
+                      placeholder={t('pos.knetReferencePlaceholder')}
+                    />
+                  )}
                 </div>
                 {canCredit && (
                   <div>
