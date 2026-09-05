@@ -36,7 +36,8 @@
     "financialSettings": "Financial Configuration",
     "bookings": "Booked Items",
     "pos": "Point of Sale",
-    "posCashiers": "POS Cashier Access"
+    "posCashiers": "POS Cashier Access",
+    "damages": "Damages"
   },
   "common": {
     "search": "Search...",
@@ -98,7 +99,9 @@
     "showingRange": "Showing {{from}}-{{to}} of {{total}}",
     "pageOf": "Page {{page}} of {{count}}",
     "branch": "Branch",
-    "allBranches": "All Branches"
+    "allBranches": "All Branches",
+    "deleted": "Deleted",
+    "error": "Something went wrong"
   },
   "branches": {
     "subtitle": "Optional locations for tracking sales, invoices, and reporting by branch",
@@ -277,6 +280,7 @@
     "discountCode": "Discount Code",
     "discountCodePlaceholder": "Enter a code...",
     "bookForLater": "Book for later delivery",
+    "bookForLaterNeedsItem": "Pick an inventory item above to book this line for later delivery",
     "bookedNeedsDate": "A booked line needs a delivery date",
     "applyDiscount": "Apply",
     "removeDiscount": "Remove",
@@ -352,6 +356,7 @@
     "variantAttributesPlaceholder": "e.g. Color, Size",
     "variantAttributesHint": "Names of the attributes that define this item's variants (e.g. Color, Size). Leave empty if this item has no variants.",
     "variantsOpeningHint": "Opening stock is set per variant — add variants below after saving.",
+    "noVariant": "No variant (whole item)",
     "manageVariants": "Manage Variants",
     "addVariant": "Add Variant",
     "noAttributesHint": "This item has no variant attributes defined yet. Edit the item to add attribute names (e.g. Color, Size) before adding variants.",
@@ -402,7 +407,27 @@
     "itemCogsDefault": "Default COGS Account for New Items",
     "posCashDefault": "Default Cash Account for POS Payments",
     "posKnetDefault": "Default Knet Account for POS Payments",
-    "cashControlDefault": "Default Linked Account for New Cash/Bank Registers"
+    "cashControlDefault": "Default Linked Account for New Cash/Bank Registers",
+    "damageExpenseDefault": "Default Expense Account for Cleared Damages"
+  },
+  "damages": {
+    "pageHint": "Log damaged inventory (transport, warehouse, manufacturing defects, customer returns) and write it off. Reporting a damage doesn't touch stock yet — Clear actually removes the quantity from inventory and posts the loss.",
+    "report": "Report Damage",
+    "reported": "Damage reported",
+    "clear": "Clear",
+    "cleared": "Damage cleared and written off",
+    "confirmClear": "Clear this damage? The quantity will be removed from stock and its cost posted as a loss. This cannot be undone.",
+    "type": "Damage Type",
+    "type_transport": "Transport",
+    "type_warehouse": "Warehouse",
+    "type_manufacturing_defect": "Manufacturing Defect",
+    "type_customer_return": "Customer Return",
+    "type_water_damage": "Water Damage",
+    "type_other": "Other",
+    "status_reported": "Reported",
+    "status_cleared": "Cleared",
+    "status_all": "All",
+    "reportedBy": "Reported By"
   },
   "pos": {
     "noAccess": "You don't have POS access yet. Ask your admin to grant it from POS Cashier Access.",
@@ -445,18 +470,36 @@
     "role_cashier": "Cashier (limited)",
     "role_operator": "Operator (full access)",
     "canVoid": "Can Void Sales",
-    "canCreditSale": "Can Sell on Credit"
+    "canCreditSale": "Can Sell on Credit",
+    "searchFullInventory": "Search the full inventory",
+    "invoicesByDate": "Invoices By Date",
+    "customerSearchPlaceholder": "Search by customer name or phone...",
+    "refund": "Refund",
+    "confirmRefund": "Refund {{invoice}} in full? Payments and the sale's ledger entries are reversed and stock is restored. This cannot be undone.",
+    "refundReason": "Reason (optional)",
+    "refunded": "Sale refunded",
+    "status_draft": "Held",
+    "status_posted": "Unpaid",
+    "status_partially_paid": "Partially Paid",
+    "status_paid": "Paid",
+    "status_cancelled": "Cancelled / Refunded",
+    "newCustomer": "New Customer",
+    "searchCustomerHint": "Search by name or phone...",
+    "phoneRequiredHint": "Required — used to reach the customer about delivery",
+    "quickClientRequired": "Name and phone number are both required",
+    "customerAdded": "Customer added"
   },
   "bookings": {
     "pageHint": "Items sold but not yet delivered — the client wants them on a specific later date, so the stock stays fully counted in inventory (see the Booked/Available columns on the Items page) until you mark it delivered here.",
     "deliveryDate": "Delivery Date",
     "fulfill": "Mark Delivered",
-    "cancel": "Cancel Booking",
+    "release": "Release",
+    "confirmRelease": "Release this booking? The reserved quantity goes back to normal, sellable stock — the original invoice is not changed.",
     "fulfilled": "Marked as delivered — stock issued",
-    "cancelled": "Booking cancelled",
+    "released": "Booking released — stock is available again",
     "status_pending": "Pending",
     "status_fulfilled": "Fulfilled",
-    "status_cancelled": "Cancelled",
+    "status_cancelled": "Released",
     "status_all": "All"
   },
   "stockTransfers": {

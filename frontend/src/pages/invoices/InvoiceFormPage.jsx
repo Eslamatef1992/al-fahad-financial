@@ -319,6 +319,12 @@ export default function InvoiceFormPage() {
                     )}
                   </div>
                 )}
+                {type === 'sales' && !line.item_id && (
+                  <p className="flex items-center gap-1.5 text-xs text-slate-400 mt-2 ps-1">
+                    <CalendarClock size={13} />
+                    {t('invoices.bookForLaterNeedsItem')}
+                  </p>
+                )}
 
                 {!hasHeaderDiscount && (
                   <div className="flex items-center gap-2 mt-2 ps-1">

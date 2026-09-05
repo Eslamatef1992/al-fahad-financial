@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, Unlock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import usePermissions from '@/hooks/usePermissions';
 
 export default function BookingsPage() {
@@ -16,6 +17,7 @@ export default function BookingsPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('pending');
+  const [releaseTarget, setReleaseTarget] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -28,9 +30,15 @@ export default function BookingsPage() {
     toast.success(t('bookings.fulfilled'));
     load();
   };
-  const cancel = async (row) => {
-    await api.post(`/bookings/${row.id}/cancel`);
-    toast.success(t('bookings.cancelled'));
+  // "Release" clears the reservation without ever touching stock — a booking
+  // never removes stock from on-hand in the first place (see items.booked /
+  // items.available), so releasing it just stops counting the quantity as
+  // held and it goes back to being ordinary, sellable stock. The original
+  // sales invoice/line is untouched either way.
+  const release = async () => {
+    await api.post(`/bookings/${releaseTarget.id}/cancel`);
+    toast.success(t('bookings.released'));
+    setReleaseTarget(null);
     load();
   };
 
@@ -75,12 +83,20 @@ export default function BookingsPage() {
             <button onClick={() => fulfill(row)} title={t('bookings.fulfill')} className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950 text-emerald-500">
               <CheckCircle2 size={15} />
             </button>
-            <button onClick={() => cancel(row)} title={t('bookings.cancel')} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-red-500">
-              <XCircle size={15} />
+            <button onClick={() => setReleaseTarget(row)} title={t('bookings.release')} className="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950 text-amber-500">
+              <Unlock size={15} />
             </button>
           </>
         ) : null}
         pageSize={25}
+      />
+      <ConfirmDialog
+        open={!!releaseTarget}
+        onCancel={() => setReleaseTarget(null)}
+        onConfirm={release}
+        message={t('bookings.confirmRelease')}
+        confirmLabel={t('bookings.release')}
+        variant="primary"
       />
     </div>
   );

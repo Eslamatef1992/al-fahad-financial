@@ -41,6 +41,7 @@ app.use('/api/units', require('./routes/unitRoutes'));
 app.use('/api/financial-settings', require('./routes/financialSettingRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/pos', require('./routes/posRoutes'));
+app.use('/api/damages', require('./routes/damageRoutes'));
 app.use('/api/discount-codes', require('./routes/discountCodeRoutes'));
 app.use('/api/purchase-orders', require('./routes/purchaseOrderRoutes'));
 app.use('/api/branches', require('./routes/branchRoutes'));

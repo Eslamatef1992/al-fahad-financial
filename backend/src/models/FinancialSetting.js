@@ -32,6 +32,9 @@ module.exports = (sequelize, DataTypes) => {
     // the admin can (and for a second register, should) still pick a
     // different account before saving.
     cash_control_account_id: { type: DataTypes.UUID, allowNull: true },
+    // Default expense account a cleared/written-off Damages entry posts its
+    // loss to (falls back to the item's own COGS account if left unset).
+    damage_expense_account_id: { type: DataTypes.UUID, allowNull: true },
   }, {
     tableName: 'financial_settings',
   });

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, BookText, Receipt, ScrollText, Users, Truck, UsersRound,
   Landmark, Wallet, PieChart, Building2, ChevronsLeft, UserCog, ShieldCheck,
-  FileText, FileMinus, RefreshCw, Boxes, ClipboardList, ArrowRightLeft, Percent, Ruler, Settings2, CalendarClock, ShoppingCart, UserCheck,
+  FileText, FileMinus, RefreshCw, Boxes, ClipboardList, ArrowRightLeft, Percent, Ruler, Settings2, CalendarClock, ShoppingCart, UserCheck, AlertTriangle,
 } from 'lucide-react';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -140,6 +140,17 @@ export default function Sidebar() {
             >
               <UserCheck size={18} className="shrink-0" />
               {!sidebarCollapsed && <span className="truncate">{t('nav.posCashiers')}</span>}
+            </NavLink>
+            <NavLink
+              to="/damages"
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`
+              }
+            >
+              <AlertTriangle size={18} className="shrink-0" />
+              {!sidebarCollapsed && <span className="truncate">{t('nav.damages')}</span>}
             </NavLink>
           </>
         )}

@@ -41,6 +41,7 @@ const Unit = require('./Unit')(sequelize, DataTypes);
 const FinancialSetting = require('./FinancialSetting')(sequelize, DataTypes);
 const ItemBooking = require('./ItemBooking')(sequelize, DataTypes);
 const PosShift = require('./PosShift')(sequelize, DataTypes);
+const ItemDamage = require('./ItemDamage')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -51,7 +52,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit, FinancialSetting, ItemBooking, PosShift];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit, FinancialSetting, ItemBooking, PosShift, ItemDamage];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -184,6 +185,15 @@ InvoiceLine.hasOne(ItemBooking, { foreignKey: 'invoice_line_id', as: 'booking' }
 Item.hasMany(InventoryTransaction, { foreignKey: 'item_id', as: 'transactions', onDelete: 'CASCADE' });
 InventoryTransaction.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
 InventoryTransaction.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
+
+// Item Damages — a written-off quantity, removed from sellable stock once
+// "cleared" (see ItemDamage.js).
+ItemDamage.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
+Item.hasMany(ItemDamage, { foreignKey: 'item_id', as: 'damages' });
+ItemDamage.belongsTo(ItemVariant, { foreignKey: 'variant_id', as: 'variant' });
+ItemDamage.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
+ItemDamage.belongsTo(User, { foreignKey: 'reported_by', as: 'reporter' });
+ItemDamage.belongsTo(User, { foreignKey: 'cleared_by', as: 'clearedByUser' });
 InventoryTransaction.belongsTo(ItemVariant, { foreignKey: 'variant_id', as: 'variant' });
 
 // Item Variants — trackable Color/Size/etc. combinations, each with its own
@@ -273,4 +283,5 @@ module.exports = {
   FinancialSetting,
   ItemBooking,
   PosShift,
+  ItemDamage,
 };

@@ -37,6 +37,14 @@ module.exports = (sequelize, DataTypes) => {
     // where it came from and which cashier shift it belongs to.
     channel: { type: DataTypes.ENUM('backoffice', 'pos'), defaultValue: 'backoffice' },
     pos_shift_id: { type: DataTypes.UUID, allowNull: true },
+    // A refunded sale reuses status:'cancelled' (its GL/stock effect is the
+    // same either way — fully reversed) rather than adding a new ENUM value,
+    // since altering an existing Postgres ENUM type under the production
+    // sync({alter:true}) path is fragile. These fields are what distinguish
+    // "refunded" from a plain pre-payment void/cancel.
+    refunded_at: { type: DataTypes.DATE, allowNull: true },
+    refund_reason: { type: DataTypes.STRING(255), allowNull: true },
+    refunded_by: { type: DataTypes.UUID, allowNull: true },
   }, {
     tableName: 'invoices',
     indexes: [{ unique: true, fields: ['company_id', 'type', 'invoice_no'] }],

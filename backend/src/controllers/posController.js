@@ -57,6 +57,17 @@ exports.voidSale = async (req, res) => {
   res.json(result);
 };
 
+exports.salesHistory = async (req, res) => {
+  const rows = await posService.salesHistory(req.companyId, req.query);
+  res.json(rows);
+};
+
+exports.refundSale = async (req, res) => {
+  const profile = await profileFor(req);
+  const result = await posService.refundSale(req.companyId, req.user.id, profile, req.params.id, req.body || {});
+  res.json(result);
+};
+
 // ---- Cashier permission management (company admin) ----
 
 exports.listCashiers = async (req, res) => {

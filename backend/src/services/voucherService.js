@@ -111,9 +111,13 @@ async function postVoucher(companyId, voucherId, externalT) {
   return externalT ? run(externalT) : sequelize.transaction(run);
 }
 
-// Cancels a posted voucher by creating reversing ledger entries (never deletes history).
-async function cancelVoucher(companyId, voucherId) {
-  return sequelize.transaction(async (t) => {
+// Cancels a posted voucher by creating reversing ledger entries (never deletes
+// history). Same optional externalT pattern as createVoucher/postVoucher, so
+// callers that need this to be part of a larger atomic operation (e.g. a
+// refund that reverses several vouchers and restores stock together) can
+// pass their own transaction instead of getting a separate one.
+async function cancelVoucher(companyId, voucherId, externalT) {
+  const run = async (t) => {
     const voucher = await Voucher.findOne({
       where: { id: voucherId, company_id: companyId },
       include: [{ model: VoucherLine, as: 'lines' }],
@@ -137,7 +141,9 @@ async function cancelVoucher(companyId, voucherId) {
 
     await voucher.update({ status: 'cancelled' }, { transaction: t });
     return voucher;
-  });
+  };
+
+  return externalT ? run(externalT) : sequelize.transaction(run);
 }
 
 module.exports = { createVoucher, postVoucher, cancelVoucher, nextVoucherNo };

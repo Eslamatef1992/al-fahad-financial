@@ -21,6 +21,7 @@ const FIELDS = [
   'pos_cash_account_id',
   'pos_knet_account_id',
   'cash_control_account_id',
+  'damage_expense_account_id',
 ];
 
 export default function FinancialSettingsPage() {
@@ -101,6 +102,11 @@ export default function FinancialSettingsPage() {
         <div className="card p-5 space-y-4">
           <h3 className="font-semibold text-sm uppercase tracking-wide text-slate-500">{t('nav.cashControl')}</h3>
           <AccountPicker value={form.cash_control_account_id} onChange={set('cash_control_account_id')} label={t('financialSettings.cashControlDefault')} />
+        </div>
+
+        <div className="card p-5 space-y-4">
+          <h3 className="font-semibold text-sm uppercase tracking-wide text-slate-500">{t('nav.damages')}</h3>
+          <AccountPicker value={form.damage_expense_account_id} onChange={set('damage_expense_account_id')} label={t('financialSettings.damageExpenseDefault')} />
         </div>
       </div>
 

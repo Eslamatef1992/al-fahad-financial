@@ -1,4 +1,4 @@
-const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Voucher, VoucherLine, Item, ItemBooking } = require('../models');
+const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Voucher, VoucherLine, Item, ItemBooking, InventoryTransaction } = require('../models');
 const voucherService = require('./voucherService');
 const itemService = require('./itemService');
 const discountService = require('./discountService');
@@ -339,4 +339,104 @@ async function cancelInvoice(companyId, invoiceId) {
   return invoice;
 }
 
-module.exports = { createInvoice, postInvoice, recordPayment, cancelInvoice, nextInvoiceNo, computeLine, buildInvoiceLines };
+// Refunds a paid (or partially paid) sales invoice: reverses every payment
+// voucher, reverses the main posting voucher (which undoes AR/Revenue/Tax
+// AND the COGS/Inventory pair in one shot, since postInvoice put them on the
+// same voucher), and restores physical stock line by line — all inside one
+// atomic transaction so a failure partway through leaves nothing reversed.
+//
+// Booked lines are handled by their reservation state: a still-pending
+// booking never issued stock, so it's simply released like a plain cancel.
+// A booking that was already FULFILLED issued stock through its own
+// separate delivery voucher (see bookingService.fulfillBooking) that this
+// function has no reliable way to trace back to and reverse safely, so a
+// refund is blocked outright when any of the invoice's bookings already
+// shipped — that delivery needs to be reversed manually first.
+//
+// Stock is restored at the EXACT unit cost it was issued at (read back from
+// the InventoryTransaction row postInvoice created), not the item's current
+// average cost, so the refund is a true undo of the original sale rather
+// than a fresh receipt that would skew the weighted-average cost basis.
+//
+// Deliberately full-invoice only (no partial-quantity refunds) — a bounded,
+// safe MVP; partial refunds would need proportional tax/COGS splitting.
+async function refundInvoice(companyId, userId, invoiceId, { reason } = {}) {
+  return sequelize.transaction(async (t) => {
+    const invoice = await Invoice.findOne({
+      where: { id: invoiceId, company_id: companyId },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+    if (!invoice) throw notFound();
+    if (invoice.type !== 'sales') throw badRequest('Only sales invoices can be refunded');
+    if (!['paid', 'partially_paid'].includes(invoice.status)) {
+      throw badRequest('Only a paid or partially paid invoice can be refunded');
+    }
+
+    const lines = await InvoiceLine.findAll({ where: { invoice_id: invoice.id }, transaction: t });
+    const bookings = await ItemBooking.findAll({ where: { invoice_id: invoice.id }, transaction: t });
+    if (bookings.some((b) => b.status === 'fulfilled')) {
+      throw badRequest('This sale has an item that was already delivered from a booking — reverse that delivery manually before refunding.');
+    }
+
+    // 1. Reverse every payment voucher (cash/knet/etc already collected).
+    const payments = await InvoicePayment.findAll({ where: { invoice_id: invoice.id }, transaction: t });
+    for (const p of payments) {
+      if (p.voucher_id) await voucherService.cancelVoucher(companyId, p.voucher_id, t);
+    }
+
+    // 2. Reverse the main posting voucher — undoes AR/Revenue/Tax and
+    // COGS/Inventory together, since they were posted on the same voucher.
+    if (invoice.posting_voucher_id) {
+      await voucherService.cancelVoucher(companyId, invoice.posting_voucher_id, t);
+    }
+
+    // 3. Restore physical stock for each line that actually issued it.
+    for (const l of lines) {
+      if (!l.item_id) continue;
+      if (l.is_booked) continue; // still-pending: nothing was ever issued
+
+      const movement = await InventoryTransaction.findOne({
+        where: {
+          reference_type: 'invoice', reference_id: invoice.id, item_id: l.item_id,
+          variant_id: l.variant_id || null, type: 'sale',
+        },
+        transaction: t,
+      });
+      const unitCost = movement ? Number(movement.unit_cost) : 0;
+
+      await itemService.receiveStock(companyId, l.item_id, {
+        quantity: Number(l.quantity),
+        unitCost,
+        date: new Date().toISOString().slice(0, 10),
+        referenceType: 'invoice',
+        referenceId: invoice.id,
+        userId,
+        notes: `Refund of ${invoice.invoice_no}`,
+        type: 'adjustment', // InventoryTransaction.type is a Postgres ENUM — reuse 'adjustment'
+        // rather than adding a new enum value (risky under production's sync({alter:true})).
+        // The notes/reference_type/reference_id fields make this movement traceable as a refund.
+        branchId: invoice.branch_id,
+        variantId: l.variant_id,
+      }, t);
+    }
+
+    // Release any still-pending reservations, same as a plain cancel.
+    await ItemBooking.update(
+      { status: 'cancelled' },
+      { where: { invoice_id: invoice.id, status: 'pending' }, transaction: t },
+    );
+
+    await invoice.update({
+      status: 'cancelled',
+      paid_total: 0,
+      refunded_at: new Date(),
+      refund_reason: reason || null,
+      refunded_by: userId || null,
+    }, { transaction: t });
+
+    return invoice;
+  });
+}
+
+module.exports = { createInvoice, postInvoice, recordPayment, cancelInvoice, refundInvoice, nextInvoiceNo, computeLine, buildInvoiceLines };

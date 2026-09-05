@@ -19,7 +19,7 @@ function forbidden(message) { const e = new Error(message || 'Not permitted'); e
 // UserCompany) can access POS regardless of their accounting role — this is
 // how a low-privilege till user (no chart-of-accounts/voucher access) is
 // meant to be set up.
-const POS_ACTIONS = ['void', 'credit_sale'];
+const POS_ACTIONS = ['void', 'credit_sale', 'refund'];
 
 async function getPosProfile(companyId, userId, isSuperAdmin, companyRole) {
   const uc = await UserCompany.findOne({ where: { company_id: companyId, user_id: userId } });
@@ -219,6 +219,61 @@ async function heldSales(companyId, userId) {
   });
 }
 
+// Backs the POS toolbar's "Invoices By Date" + "Customer" lookup: every
+// completed (non-draft) POS-channel sale, filterable by date range, a
+// specific client, status, or a free-text `q` that matches an invoice number
+// or a customer's name/phone — so a cashier can find "the sale for the guy
+// who called about his phone number" without leaving the POS screen.
+async function salesHistory(companyId, { date_from, date_to, client_id, status, q } = {}) {
+  const where = { company_id: companyId, channel: 'pos' };
+  where.status = status && status !== 'all' ? status : { [Op.ne]: 'draft' };
+  if (client_id) where.client_id = client_id;
+  if (date_from || date_to) {
+    where.date = {};
+    if (date_from) where.date[Op.gte] = date_from;
+    if (date_to) where.date[Op.lte] = date_to;
+  }
+  if (q) {
+    const matchingClients = await Client.findAll({
+      where: {
+        company_id: companyId,
+        [Op.or]: [
+          { phone: { [Op.iLike]: `%${q}%` } },
+          { name_en: { [Op.iLike]: `%${q}%` } },
+          { name_ar: { [Op.iLike]: `%${q}%` } },
+        ],
+      },
+      attributes: ['id'],
+    });
+    const clientIds = matchingClients.map((c) => c.id);
+    where[Op.or] = [
+      { invoice_no: { [Op.iLike]: `%${q}%` } },
+      ...(clientIds.length ? [{ client_id: { [Op.in]: clientIds } }] : []),
+    ];
+  }
+
+  return Invoice.findAll({
+    where,
+    order: [['date', 'DESC'], ['created_at', 'DESC']],
+    include: [
+      { association: 'client' },
+      { model: InvoiceLine, as: 'lines' },
+      { model: InvoicePayment, as: 'payments' },
+    ],
+  });
+}
+
+// Refund: reverses a completed POS sale in full — see
+// invoiceService.refundInvoice for the actual reversal mechanics (payments,
+// posting voucher, stock). This layer only adds the POS permission gate and
+// scopes the lookup to this company's POS sales.
+async function refundSale(companyId, userId, posProfile, invoiceId, { reason } = {}) {
+  if (!posProfile.can('refund')) throw forbidden('You are not permitted to process refunds');
+  const invoice = await Invoice.findOne({ where: { id: invoiceId, company_id: companyId, channel: 'pos' } });
+  if (!invoice) throw notFound('Sale not found');
+  return invoiceService.refundInvoice(companyId, userId, invoiceId, { reason });
+}
+
 module.exports = {
   POS_ACTIONS,
   getPosProfile,
@@ -229,5 +284,7 @@ module.exports = {
   createSale,
   voidSale,
   heldSales,
+  salesHistory,
+  refundSale,
   creditOutstanding,
 };

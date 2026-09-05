@@ -3,17 +3,20 @@ import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, PauseCircle, XCircle, Lock, Unlock, CreditCard, Banknote, Landmark, Users,
+  CalendarClock, RotateCcw, UserPlus, X,
 } from 'lucide-react';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import useFinancialDefaults from '@/hooks/useFinancialDefaults';
 
 const money = (n) => Number(n || 0).toFixed(3);
 
 export default function PosPage() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
+  const financialDefaults = useFinancialDefaults();
 
   const [access, setAccess] = useState(null); // { level, posPermissions, shift }
   const [loadingAccess, setLoadingAccess] = useState(true);
@@ -27,6 +30,10 @@ export default function PosPage() {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]); // { item, quantity, unit_price }
   const [clientId, setClientId] = useState('');
+  const [clientSearch, setClientSearch] = useState('');
+  const [newClientOpen, setNewClientOpen] = useState(false);
+  const [newClient, setNewClient] = useState({ name_en: '', phone: '' });
+  const [savingClient, setSavingClient] = useState(false);
   const [held, setHeld] = useState([]);
   const [payOpen, setPayOpen] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -34,6 +41,14 @@ export default function PosPage() {
   const [closeOpen, setCloseOpen] = useState(false);
   const [countedCash, setCountedCash] = useState('');
   const [voidTarget, setVoidTarget] = useState(null);
+
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyRows, setHistoryRows] = useState([]);
+  const [historyFilters, setHistoryFilters] = useState({ date_from: '', date_to: '', q: '' });
+  const [refundTarget, setRefundTarget] = useState(null);
+  const [refundReason, setRefundReason] = useState('');
+  const [refunding, setRefunding] = useState(false);
 
   const loadAccess = () => {
     setLoadingAccess(true);
@@ -60,6 +75,58 @@ export default function PosPage() {
   const total = useMemo(() => cart.reduce((s, l) => s + Number(l.quantity) * Number(l.unit_price), 0), [cart]);
   const canCredit = access?.level === 'operator' || access?.posPermissions?.includes('credit_sale');
   const canVoid = access?.level === 'operator' || access?.posPermissions?.includes('void');
+  const canRefund = access?.level === 'operator' || access?.posPermissions?.includes('refund');
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch) return clients;
+    const q = clientSearch.toLowerCase();
+    return clients.filter((c) => c.name_en?.toLowerCase().includes(q) || c.name_ar?.includes(q) || c.phone?.includes(clientSearch));
+  }, [clients, clientSearch]);
+
+  const createQuickClient = async () => {
+    if (!newClient.name_en.trim() || !newClient.phone.trim()) {
+      toast.error(t('pos.quickClientRequired'));
+      return;
+    }
+    setSavingClient(true);
+    try {
+      const { data } = await api.post('/clients', {
+        name_en: newClient.name_en.trim(),
+        name_ar: newClient.name_en.trim(),
+        phone: newClient.phone.trim(),
+        parent_account_id: financialDefaults.client_parent_account_id || null,
+      });
+      setClients((prev) => [...prev, data]);
+      setClientId(data.id);
+      setClientSearch('');
+      setNewClient({ name_en: '', phone: '' });
+      setNewClientOpen(false);
+      toast.success(t('pos.customerAdded'));
+    } catch (e) { /* toast handled globally */ }
+    finally { setSavingClient(false); }
+  };
+
+  const loadHistory = () => {
+    setHistoryLoading(true);
+    const params = {};
+    if (historyFilters.date_from) params.date_from = historyFilters.date_from;
+    if (historyFilters.date_to) params.date_to = historyFilters.date_to;
+    if (historyFilters.q) params.q = historyFilters.q;
+    api.get('/pos/sales/history', { params }).then((r) => setHistoryRows(r.data)).finally(() => setHistoryLoading(false));
+  };
+  const openHistory = () => { setHistoryOpen(true); loadHistory(); };
+
+  const confirmRefund = async () => {
+    setRefunding(true);
+    try {
+      await api.post(`/pos/sales/${refundTarget.id}/refund`, { reason: refundReason || undefined });
+      toast.success(t('pos.refunded'));
+      setRefundTarget(null);
+      setRefundReason('');
+      loadHistory();
+    } catch (e) { /* toast handled globally */ }
+    finally { setRefunding(false); }
+  };
 
   const addToCart = (item) => {
     if (Number(item.available_quantity) <= 0) return toast.error(t('pos.outOfStock'));
@@ -203,9 +270,16 @@ export default function PosPage() {
         actions={<button onClick={() => setCloseOpen(true)} className="btn-ghost flex items-center gap-2"><Lock size={15} />{t('pos.closeShift')}</button>}
       />
 
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <button onClick={openHistory} className="btn-ghost flex items-center gap-1.5 text-sm"><CalendarClock size={15} />{t('pos.invoicesByDate')}</button>
+        <button onClick={openHistory} className="btn-ghost flex items-center gap-1.5 text-sm"><Users size={15} />{t('common.client')}</button>
+        {canRefund && <button onClick={openHistory} className="btn-ghost flex items-center gap-1.5 text-sm"><RotateCcw size={15} />{t('pos.refund')}</button>}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Products */}
         <div className="lg:col-span-2 space-y-3">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('pos.searchFullInventory')}</p>
           <div className="relative">
             <Search size={16} className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400" />
             <input className="input ps-9" placeholder={t('pos.searchProducts')} value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -226,6 +300,9 @@ export default function PosPage() {
                     {Number(p.available_quantity)} {t('pos.available')}
                   </span>
                 </div>
+                {Number(p.booked_quantity) > 0 && (
+                  <p className="text-[11px] text-amber-500 mt-1">{Number(p.booked_quantity)} {t('items.booked')}</p>
+                )}
               </button>
             ))}
             {!products.length && <p className="col-span-full text-center text-sm text-slate-400 py-8">{t('pos.noProducts')}</p>}
@@ -251,10 +328,21 @@ export default function PosPage() {
           <p className="font-bold text-navy-900 dark:text-white mb-3 flex items-center gap-2"><ShoppingCart size={16} />{t('pos.cart')}</p>
 
           <div className="mb-3">
-            <label className="label flex items-center gap-1"><Users size={13} />{t('common.client')}</label>
+            <div className="flex items-center justify-between">
+              <label className="label flex items-center gap-1"><Users size={13} />{t('common.client')}</label>
+              <button type="button" onClick={() => setNewClientOpen(true)} className="text-xs font-semibold text-navy-900 dark:text-white flex items-center gap-1 mb-1.5">
+                <UserPlus size={13} />{t('pos.newCustomer')}
+              </button>
+            </div>
+            <input
+              className="input mb-1.5 text-sm"
+              placeholder={t('pos.searchCustomerHint')}
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+            />
             <select className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
               <option value="">{t('pos.walkIn')}</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.name_en}</option>)}
+              {filteredClients.map((c) => <option key={c.id} value={c.id}>{c.name_en}{c.phone ? ` — ${c.phone}` : ''}</option>)}
             </select>
           </div>
 
@@ -351,6 +439,98 @@ export default function PosPage() {
         message={t('pos.confirmVoid')}
         confirmLabel={t('pos.void')}
       />
+
+      {/* New customer quick-add */}
+      {newClientOpen && (
+        <>
+          <div className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40" onClick={() => setNewClientOpen(false)} />
+          <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
+            <div className="card p-6 max-w-sm w-full">
+              <div className="flex items-center justify-between mb-4">
+                <p className="font-bold text-lg text-navy-900 dark:text-white flex items-center gap-2"><UserPlus size={18} />{t('pos.newCustomer')}</p>
+                <button onClick={() => setNewClientOpen(false)}><X size={18} /></button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="label">{t('common.nameEn')}</label>
+                  <input className="input" value={newClient.name_en} onChange={(e) => setNewClient({ ...newClient, name_en: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label">{t('common.phone')}</label>
+                  <input className="input" value={newClient.phone} onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })} placeholder={t('pos.phoneRequiredHint')} />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2 mt-6">
+                <button onClick={() => setNewClientOpen(false)} className="btn-ghost">{t('common.cancel')}</button>
+                <button onClick={createQuickClient} disabled={savingClient} className="btn-primary">{savingClient ? t('common.loading') : t('common.save')}</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Sales history: Invoices By Date + Customer search + Refund */}
+      {historyOpen && (
+        <>
+          <div className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40" onClick={() => setHistoryOpen(false)} />
+          <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
+            <div className="card p-6 max-w-3xl w-full max-h-[85vh] flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <p className="font-bold text-lg text-navy-900 dark:text-white flex items-center gap-2"><CalendarClock size={18} />{t('pos.invoicesByDate')}</p>
+                <button onClick={() => setHistoryOpen(false)}><X size={18} /></button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
+                <input type="date" className="input" value={historyFilters.date_from} onChange={(e) => setHistoryFilters({ ...historyFilters, date_from: e.target.value })} />
+                <input type="date" className="input" value={historyFilters.date_to} onChange={(e) => setHistoryFilters({ ...historyFilters, date_to: e.target.value })} />
+                <input className="input sm:col-span-1" placeholder={t('pos.customerSearchPlaceholder')} value={historyFilters.q} onChange={(e) => setHistoryFilters({ ...historyFilters, q: e.target.value })} />
+                <button onClick={loadHistory} className="btn-primary">{t('common.applyFilters')}</button>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2">
+                {historyLoading && <p className="text-center text-sm text-slate-400 py-6">{t('common.loading')}</p>}
+                {!historyLoading && !historyRows.length && <p className="text-center text-sm text-slate-400 py-6">{t('common.noData')}</p>}
+                {!historyLoading && historyRows.map((row) => (
+                  <div key={row.id} className="flex items-center justify-between gap-3 border-b border-slate-100 dark:border-navy-800 pb-2 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-medium text-navy-900 dark:text-white">{row.invoice_no} — {row.date}</p>
+                      <p className="text-xs text-slate-400 truncate">{row.client ? `${row.client.name_en}${row.client.phone ? ' — ' + row.client.phone : ''}` : t('pos.walkIn')}</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="font-semibold text-navy-900 dark:text-white">{money(row.total)}</span>
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${row.status === 'cancelled' ? 'bg-slate-100 text-slate-400' : row.status === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                        {t(`pos.status_${row.status}`)}
+                      </span>
+                      {canRefund && ['paid', 'partially_paid'].includes(row.status) && (
+                        <button onClick={() => setRefundTarget(row)} title={t('pos.refund')} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-red-500">
+                          <RotateCcw size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Refund confirm */}
+      {!!refundTarget && (
+        <>
+          <div className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40" onClick={() => setRefundTarget(null)} />
+          <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
+            <div className="card p-6 max-w-sm w-full">
+              <p className="font-bold text-lg text-navy-900 dark:text-white mb-2">{t('pos.refund')}</p>
+              <p className="text-sm text-slate-500 mb-4">{t('pos.confirmRefund', { invoice: refundTarget.invoice_no })}</p>
+              <label className="label">{t('pos.refundReason')}</label>
+              <textarea className="input" rows={2} value={refundReason} onChange={(e) => setRefundReason(e.target.value)} />
+              <div className="flex items-center justify-end gap-2 mt-6">
+                <button onClick={() => setRefundTarget(null)} className="btn-ghost">{t('common.cancel')}</button>
+                <button onClick={confirmRefund} disabled={refunding} className="btn-primary">{refunding ? t('common.loading') : t('pos.refund')}</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

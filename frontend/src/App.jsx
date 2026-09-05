@@ -44,6 +44,7 @@ import FinancialSettingsPage from '@/pages/financialSettings/FinancialSettingsPa
 import BookingsPage from '@/pages/bookings/BookingsPage';
 import PosPage from '@/pages/pos/PosPage';
 import PosCashiersPage from '@/pages/pos/PosCashiersPage';
+import DamagesPage from '@/pages/damages/DamagesPage';
 
 export default function App() {
   const theme = useUiStore((s) => s.theme);
@@ -94,6 +95,7 @@ export default function App() {
           <Route path="/bookings" element={<BookingsPage />} />
           <Route path="/pos" element={<PosPage />} />
           <Route path="/pos-cashiers" element={<PosCashiersPage />} />
+          <Route path="/damages" element={<DamagesPage />} />
           <Route path="/stock-transfers" element={<StockTransfersPage />} />
           <Route path="/discount-codes" element={<DiscountCodesPage />} />
           <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
