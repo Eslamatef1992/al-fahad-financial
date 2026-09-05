@@ -39,6 +39,7 @@ import BranchesPage from '@/pages/branches/BranchesPage';
 import StockTransfersPage from '@/pages/stockTransfers/StockTransfersPage';
 import InventoryReportsPage from '@/pages/reports/InventoryReportsPage';
 import DiscountCodesPage from '@/pages/discountCodes/DiscountCodesPage';
+import UnitsPage from '@/pages/units/UnitsPage';
 
 export default function App() {
   const theme = useUiStore((s) => s.theme);
@@ -84,6 +85,7 @@ export default function App() {
           <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
           <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
           <Route path="/items" element={<ItemsPage />} />
+          <Route path="/units" element={<UnitsPage />} />
           <Route path="/stock-transfers" element={<StockTransfersPage />} />
           <Route path="/discount-codes" element={<DiscountCodesPage />} />
           <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />

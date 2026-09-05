@@ -1,6 +1,6 @@
 const {
   sequelize, Item, InventoryTransaction, Account, ItemBranchStock, StockTransfer, StockTransferLine, Branch,
-  ItemVariant, ItemVariantBranchStock, ItemCategory,
+  ItemVariant, ItemVariantBranchStock, ItemCategory, Unit,
 } = require('../models');
 
 function badRequest(message) { const e = new Error(message); e.status = 400; return e; }
@@ -28,6 +28,12 @@ async function validateCategory(companyId, categoryId, t) {
   const category = await ItemCategory.findOne({ where: { id: categoryId, company_id: companyId }, transaction: t });
   if (!category) throw badRequest('Invalid category');
   return category;
+}
+
+async function validateUnit(companyId, unitId, t) {
+  const unit = await Unit.findOne({ where: { id: unitId, company_id: companyId }, transaction: t });
+  if (!unit) throw badRequest('Invalid unit');
+  return unit;
 }
 
 async function validateBranch(companyId, branchId, t) {
@@ -116,7 +122,7 @@ async function resolveTarget(companyId, itemId, { branchId, variantId }, t) {
 // the balance is traceable from day one, exactly like any other stock change.
 async function createItem(companyId, userId, payload) {
   const {
-    name_en, name_ar, category, category_id, unit, sku, variant_attributes, inventory_account_id, income_account_id, cogs_account_id,
+    name_en, name_ar, category, category_id, unit, unit_id, sku, variant_attributes, inventory_account_id, income_account_id, cogs_account_id,
     selling_price, reorder_level, opening_quantity, opening_cost,
   } = payload;
 
@@ -130,6 +136,7 @@ async function createItem(companyId, userId, payload) {
     await validateAccount(companyId, income_account_id, 'revenue', 'Income account', t);
     await validateAccount(companyId, cogs_account_id, 'expense', 'COGS account', t);
     if (category_id) await validateCategory(companyId, category_id, t);
+    if (unit_id) await validateUnit(companyId, unit_id, t);
 
     const code = await nextItemCode(companyId);
     const qty = Number(opening_quantity || 0);
@@ -144,6 +151,7 @@ async function createItem(companyId, userId, payload) {
       category: category || null,
       category_id: category_id || null,
       unit: unit || 'pcs',
+      unit_id: unit_id || null,
       variant_attributes: Array.isArray(variant_attributes) ? variant_attributes : [],
       inventory_account_id,
       income_account_id,
@@ -177,7 +185,7 @@ async function createItem(companyId, userId, payload) {
 // Editable fields only — quantity_on_hand and cost_price are system-maintained
 // and can only change via receiveStock/issueStock/adjustStock below.
 async function updateItem(companyId, itemId, payload) {
-  const { name_en, name_ar, category, category_id, unit, sku, variant_attributes, inventory_account_id, income_account_id, cogs_account_id, selling_price, reorder_level, is_active } = payload;
+  const { name_en, name_ar, category, category_id, unit, unit_id, sku, variant_attributes, inventory_account_id, income_account_id, cogs_account_id, selling_price, reorder_level, is_active } = payload;
 
   return sequelize.transaction(async (t) => {
     const item = await Item.findOne({ where: { id: itemId, company_id: companyId }, transaction: t });
@@ -195,6 +203,9 @@ async function updateItem(companyId, itemId, payload) {
     if (category_id && category_id !== item.category_id) {
       await validateCategory(companyId, category_id, t);
     }
+    if (unit_id && unit_id !== item.unit_id) {
+      await validateUnit(companyId, unit_id, t);
+    }
 
     await item.update({
       name_en: name_en ?? item.name_en,
@@ -202,6 +213,7 @@ async function updateItem(companyId, itemId, payload) {
       category: category ?? item.category,
       category_id: category_id !== undefined ? (category_id || null) : item.category_id,
       unit: unit ?? item.unit,
+      unit_id: unit_id !== undefined ? (unit_id || null) : item.unit_id,
       sku: sku !== undefined ? (sku || null) : item.sku,
       variant_attributes: Array.isArray(variant_attributes) ? variant_attributes : item.variant_attributes,
       inventory_account_id: inventory_account_id || item.inventory_account_id,

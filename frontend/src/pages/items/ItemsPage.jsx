@@ -10,15 +10,12 @@ import SlideOver from '@/components/SlideOver';
 import usePermissions from '@/hooks/usePermissions';
 
 const empty = {
-  name_en: '', name_ar: '', category_id: '', unit: 'pcs', sku: '', variant_attributes: [],
+  name_en: '', name_ar: '', category_id: '', unit: 'pcs', unit_id: '', sku: '', variant_attributes: [],
   inventory_account_id: '', income_account_id: '', cogs_account_id: '',
   selling_price: 0, reorder_level: 0, opening_quantity: 0, opening_cost: 0,
 };
 
 const emptyVariant = { sku: '', attributes: {}, opening_quantity: 0, opening_cost: 0 };
-
-const DEFAULT_UNITS = ['pcs', 'kg', 'g', 'box', 'carton', 'dozen', 'liter', 'ml', 'meter', 'cm', 'pack', 'roll', 'pair', 'set', 'bag', 'bottle'];
-const CUSTOM_UNIT = '__custom__';
 
 export default function ItemsPage() {
   const { t } = useTranslation();
@@ -30,9 +27,14 @@ export default function ItemsPage() {
   const [categories, setCategories] = useState([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
-  const [customUnit, setCustomUnit] = useState(false);
+  const [units, setUnits] = useState([]);
+  const [newUnitName, setNewUnitName] = useState('');
+  const [addingUnit, setAddingUnit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterUnit, setFilterUnit] = useState('');
+  const [lowStockOnly, setLowStockOnly] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(empty);
@@ -59,32 +61,29 @@ export default function ItemsPage() {
     api.get('/items', { params: showInactive ? { status: 'all' } : {} }).then((r) => setItems(r.data)).finally(() => setLoading(false));
   };
   const loadCategories = () => api.get('/item-categories').then((r) => setCategories(r.data));
+  const loadUnits = () => api.get('/units').then((r) => setUnits(r.data));
   useEffect(() => {
     if (activeCompany) {
       load();
       api.get('/accounts').then((r) => setAccounts(r.data));
       api.get('/branches').then((r) => setBranches(r.data));
       loadCategories();
+      loadUnits();
     }
   }, [activeCompany, showInactive]);
 
-  const unitOptions = useMemo(
-    () => Array.from(new Set([...DEFAULT_UNITS, ...items.map((i) => i.unit).filter(Boolean)])).sort(),
-    [items]
-  );
-
-  const openNew = () => { setEditing(null); setForm(empty); setAttrInput(''); setCustomUnit(false); setNewCategoryName(''); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm(empty); setAttrInput(''); setNewCategoryName(''); setNewUnitName(''); setOpen(true); };
   const openEdit = (row) => {
     setEditing(row);
     setForm({
-      name_en: row.name_en, name_ar: row.name_ar, category_id: row.category_id || '', unit: row.unit,
+      name_en: row.name_en, name_ar: row.name_ar, category_id: row.category_id || '', unit: row.unit, unit_id: row.unit_id || '',
       sku: row.sku || '', variant_attributes: row.variant_attributes || [],
       inventory_account_id: row.inventory_account_id, income_account_id: row.income_account_id, cogs_account_id: row.cogs_account_id,
       selling_price: row.selling_price, reorder_level: row.reorder_level, opening_quantity: 0, opening_cost: 0,
     });
     setAttrInput('');
-    setCustomUnit(row.unit && !unitOptions.includes(row.unit));
     setNewCategoryName('');
+    setNewUnitName('');
     setOpen(true);
   };
 
@@ -99,6 +98,23 @@ export default function ItemsPage() {
       setNewCategoryName('');
       toast.success(t('common.save'));
     } finally { setAddingCategory(false); }
+  };
+
+  const selectUnit = (unitId) => {
+    const chosen = units.find((u) => u.id === unitId);
+    setForm((f) => ({ ...f, unit_id: unitId, unit: chosen ? chosen.name_en : f.unit }));
+  };
+  const addUnit = async () => {
+    const name = newUnitName.trim();
+    if (!name) return;
+    setAddingUnit(true);
+    try {
+      const { data } = await api.post('/units', { name_en: name });
+      setUnits((prev) => [...prev, data].sort((a, b) => a.name_en.localeCompare(b.name_en)));
+      setForm((f) => ({ ...f, unit_id: data.id, unit: data.name_en }));
+      setNewUnitName('');
+      toast.success(t('common.save'));
+    } finally { setAddingUnit(false); }
   };
 
   const addAttrName = () => {
@@ -209,7 +225,9 @@ export default function ItemsPage() {
     { key: 'sku', label: t('items.sku'), render: (r) => r.sku || '—' },
     { key: 'name_en', label: t('common.nameEn') },
     { key: 'category', label: t('items.category'), render: (r) => r.category_name || '—' },
-    { key: 'unit', label: t('items.unit') },
+    { key: 'unit', label: t('items.unit'), render: (r) => (
+      <span title={r.unit_conversion || undefined}>{r.unit_name || r.unit}</span>
+    ) },
     { key: 'variants', label: t('items.variants'), render: (r) => (r.variant_count > 0 ? `${r.variant_count} ${t('items.variantsCount')}` : '—') },
     { key: 'quantity_on_hand', label: t('items.stockOnHand'), render: (r) => {
       const total = Number(r.total_quantity_on_hand ?? r.quantity_on_hand);
@@ -229,6 +247,16 @@ export default function ItemsPage() {
     ) },
   ];
 
+  const filteredItems = useMemo(() => items.filter((r) => {
+    if (filterCategory && r.category_id !== filterCategory) return false;
+    if (filterUnit && r.unit_id !== filterUnit) return false;
+    if (lowStockOnly) {
+      const total = Number(r.total_quantity_on_hand ?? r.quantity_on_hand);
+      if (!(Number(r.reorder_level) > 0 && total <= Number(r.reorder_level))) return false;
+    }
+    return true;
+  }), [items, filterCategory, filterUnit, lowStockOnly]);
+
   return (
     <div>
       <PageHeader
@@ -241,13 +269,27 @@ export default function ItemsPage() {
           </div>
         }
       />
-      <label className="flex items-center gap-2 text-sm text-slate-500 mb-3 cursor-pointer w-fit">
-        <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="rounded" />
-        {t('common.showInactive')}
-      </label>
+      <div className="flex flex-wrap items-center gap-3 mb-3">
+        <label className="flex items-center gap-2 text-sm text-slate-500 cursor-pointer w-fit">
+          <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="rounded" />
+          {t('common.showInactive')}
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-500 cursor-pointer w-fit">
+          <input type="checkbox" checked={lowStockOnly} onChange={(e) => setLowStockOnly(e.target.checked)} className="rounded" />
+          {t('items.lowStockOnly')}
+        </label>
+        <select className="input !py-1.5 !w-auto text-sm" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+          <option value="">{t('items.allCategories')}</option>
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.name_en}</option>)}
+        </select>
+        <select className="input !py-1.5 !w-auto text-sm" value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)}>
+          <option value="">{t('items.allUnits')}</option>
+          {units.map((u) => <option key={u.id} value={u.id}>{u.name_en}</option>)}
+        </select>
+      </div>
       <DataTable
         columns={columns}
-        data={items}
+        data={filteredItems}
         loading={loading}
         onEdit={canCreateEdit ? openEdit : undefined}
         onToggleActive={canDelete ? toggleActive : undefined}
@@ -278,25 +320,29 @@ export default function ItemsPage() {
           </div>
           <div>
             <label className="label">{t('items.unit')}</label>
-            {!customUnit ? (
-              <select
-                className="input"
-                value={form.unit}
-                onChange={(e) => {
-                  if (e.target.value === CUSTOM_UNIT) { setCustomUnit(true); setForm({ ...form, unit: '' }); }
-                  else setForm({ ...form, unit: e.target.value });
-                }}
-              >
-                {unitOptions.map((u) => <option key={u} value={u}>{u}</option>)}
-                <option value={CUSTOM_UNIT}>{t('items.customUnit')}</option>
-              </select>
-            ) : (
-              <div className="flex gap-2">
-                <input required autoFocus className="input" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="pcs, kg, box..." />
-                <button type="button" onClick={() => { setCustomUnit(false); setForm({ ...form, unit: unitOptions[0] || 'pcs' }); }} className="btn-ghost shrink-0 !px-2"><X size={14} /></button>
-              </div>
-            )}
+            <select className="input" value={form.unit_id} onChange={(e) => selectUnit(e.target.value)}>
+              <option value="">{t('common.select')}</option>
+              {units.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name_en}{u.base_unit_id ? ` (1 = ${Number(u.conversion_factor)} ${u.baseUnit?.name_en || ''})` : ''}
+                </option>
+              ))}
+            </select>
           </div>
+        </div>
+        <div>
+          <label className="label">{t('items.addUnit')}</label>
+          <div className="flex gap-2">
+            <input
+              className="input"
+              value={newUnitName}
+              onChange={(e) => setNewUnitName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addUnit(); } }}
+              placeholder={t('items.newUnitPlaceholder')}
+            />
+            <button type="button" onClick={addUnit} disabled={addingUnit || !newUnitName.trim()} className="btn-ghost shrink-0">{t('common.add')}</button>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">{t('items.addUnitHint')}</p>
         </div>
         <div><label className="label">{t('common.nameEn')}</label><input required className="input" value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} /></div>
         <div><label className="label">{t('common.nameAr')}</label><input required dir="rtl" className="input" value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} /></div>

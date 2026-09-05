@@ -31,7 +31,8 @@
     "items": "Inventory Items",
     "branches": "Branches",
     "stockTransfers": "Stock Transfers",
-    "discountCodes": "Discount Codes"
+    "discountCodes": "Discount Codes",
+    "units": "Units"
   },
   "common": {
     "search": "Search...",
@@ -349,14 +350,29 @@
     "addVariant": "Add Variant",
     "noAttributesHint": "This item has no variant attributes defined yet. Edit the item to add attribute names (e.g. Color, Size) before adding variants.",
     "adjustVariantHint": "Optionally scope this adjustment to one specific variant instead of the item as a whole.",
-    "customUnit": "Other (type manually)...",
     "addCategory": "Add New Category",
     "newCategoryPlaceholder": "New category name",
     "addCategoryHint": "Create a category here, then pick it from the Category dropdown above.",
+    "addUnit": "Add New Unit",
+    "newUnitPlaceholder": "New unit name",
+    "addUnitHint": "Create a plain unit here, then pick it above. To define a conversion (e.g. 1 Roll = 50 Meter), edit it from the Units page.",
+    "allCategories": "All Categories",
+    "allUnits": "All Units",
+    "lowStockOnly": "Low stock only",
     "image": "Item Image",
     "uploadImage": "Upload",
     "replaceImage": "Replace",
     "imageHint": "Save the item first, then upload an optional photo for it."
+  },
+  "units": {
+    "pageHint": "Define units of measure once and reuse them across items. Give a unit a base unit + conversion factor to record what it actually represents — e.g. 1 Roll = 50 Meter, 1 Box = 12 Piece.",
+    "conversion": "Conversion",
+    "baseUnit": "Base unit",
+    "baseUnitOptional": "Base Unit (optional)",
+    "noneIsBaseUnit": "None — this is a base unit",
+    "baseUnitHint": "Leave as None if this unit stands on its own (e.g. Piece, Meter, Kilogram). Pick a base unit to define a conversion (e.g. this unit is \"Roll\", base is \"Meter\").",
+    "conversionFactor": "Conversion Factor",
+    "conversionFactorHint": "How many {{base}} make up one {{unit}}."
   },
   "stockTransfers": {
     "subtitle": "Move inventory between branches (or the unbranched pool), fully tracked and audited",

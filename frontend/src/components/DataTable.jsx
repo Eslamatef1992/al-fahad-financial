@@ -80,7 +80,7 @@ export default function DataTable({ columns, data, loading, onEdit, onDelete, on
                     <div className="inline-flex items-center gap-1">
                       {extraActions?.(row)}
                       {onEdit && (
-                        <button onClick={() => onEdit(row)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 text-slate-500">
+                        <button onClick={() => onEdit(row)} title={t('common.edit')} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 text-slate-500">
                           <Pencil size={15} />
                         </button>
                       )}
@@ -94,7 +94,7 @@ export default function DataTable({ columns, data, loading, onEdit, onDelete, on
                         </button>
                       )}
                       {onDelete && (
-                        <button onClick={() => onDelete(row)} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-red-500">
+                        <button onClick={() => onDelete(row)} title={t('common.delete')} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-red-500">
                           <Trash2 size={15} />
                         </button>
                       )}

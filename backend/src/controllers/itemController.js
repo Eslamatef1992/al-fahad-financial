@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const {
-  sequelize, Item, Account, InventoryTransaction, ItemBranchStock, Branch, Company, ItemVariant, ItemVariantBranchStock, ItemCategory,
+  sequelize, Item, Account, InventoryTransaction, ItemBranchStock, Branch, Company, ItemVariant, ItemVariantBranchStock, ItemCategory, Unit,
 } = require('../models');
 const itemService = require('../services/itemService');
 const { generateItemsPdf, generateItemVariantsPdf } = require('../services/pdfService');
@@ -13,6 +13,7 @@ const accountInclude = [
   { model: Account, as: 'incomeAccount' },
   { model: Account, as: 'cogsAccount' },
   { model: ItemCategory, as: 'itemCategory' },
+  { model: Unit, as: 'itemUnit', include: [{ model: Unit, as: 'baseUnit' }] },
 ];
 
 // Merges each item's per-branch stock AND per-variant stock (pool + branch)
@@ -79,6 +80,12 @@ async function withBranchTotals(companyId, items) {
       // `category` string — old items that only ever had free text still
       // display fine, new items link to a real, reusable ItemCategory.
       category_name: json.itemCategory?.name_en || json.category || null,
+      // Same pattern for units: prefer the managed Unit (with its conversion
+      // info) over the legacy free-text `unit` string.
+      unit_name: json.itemUnit?.name_en || json.unit || null,
+      unit_conversion: json.itemUnit?.base_unit_id
+        ? `1 ${json.itemUnit.name_en} = ${Number(json.itemUnit.conversion_factor)} ${json.itemUnit.baseUnit?.name_en || ''}`.trim()
+        : null,
       branch_quantity_on_hand: branchQty,
       variant_count: variantRow ? Number(variantRow.variant_count) : 0,
       variant_quantity_on_hand: variantQty + variantBranchQty,
@@ -97,7 +104,7 @@ exports.list = async (req, res) => {
   const withTotals = await withBranchTotals(req.companyId, items);
   if (q) {
     const needle = q.toLowerCase();
-    return res.json(withTotals.filter((i) => [i.name_en, i.name_ar, i.code, i.sku, i.category_name]
+    return res.json(withTotals.filter((i) => [i.name_en, i.name_ar, i.code, i.sku, i.category_name, i.unit_name]
       .some((f) => String(f || '').toLowerCase().includes(needle))));
   }
   res.json(withTotals);

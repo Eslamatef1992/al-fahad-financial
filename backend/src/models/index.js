@@ -37,6 +37,7 @@ const ItemVariant = require('./ItemVariant')(sequelize, DataTypes);
 const ItemVariantBranchStock = require('./ItemVariantBranchStock')(sequelize, DataTypes);
 const ItemCategory = require('./ItemCategory')(sequelize, DataTypes);
 const DiscountCode = require('./DiscountCode')(sequelize, DataTypes);
+const Unit = require('./Unit')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -47,7 +48,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -151,6 +152,14 @@ Item.belongsTo(Account, { foreignKey: 'income_account_id', as: 'incomeAccount' }
 Item.belongsTo(Account, { foreignKey: 'cogs_account_id', as: 'cogsAccount' });
 Item.belongsTo(ItemCategory, { foreignKey: 'category_id', as: 'itemCategory' });
 ItemCategory.hasMany(Item, { foreignKey: 'category_id', as: 'items' });
+
+// Units of measure — a derived unit (e.g. "Box", "Roll") optionally converts
+// into a base unit (e.g. "Piece", "Meter") via conversion_factor. Self
+// reference is intentionally kept to one level (see unitController).
+Unit.belongsTo(Unit, { foreignKey: 'base_unit_id', as: 'baseUnit' });
+Unit.hasMany(Unit, { foreignKey: 'base_unit_id', as: 'derivedUnits' });
+Item.belongsTo(Unit, { foreignKey: 'unit_id', as: 'itemUnit' });
+Unit.hasMany(Item, { foreignKey: 'unit_id', as: 'items' });
 Item.hasMany(InventoryTransaction, { foreignKey: 'item_id', as: 'transactions', onDelete: 'CASCADE' });
 InventoryTransaction.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
 InventoryTransaction.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
@@ -239,4 +248,5 @@ module.exports = {
   ItemVariantBranchStock,
   ItemCategory,
   DiscountCode,
+  Unit,
 };
