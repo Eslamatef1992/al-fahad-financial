@@ -20,6 +20,7 @@ const FIELDS = [
   'item_cogs_account_id',
   'pos_cash_account_id',
   'pos_knet_account_id',
+  'cash_control_account_id',
 ];
 
 export default function FinancialSettingsPage() {
@@ -95,6 +96,11 @@ export default function FinancialSettingsPage() {
           <h3 className="font-semibold text-sm uppercase tracking-wide text-slate-500">{t('nav.pos')}</h3>
           <AccountPicker value={form.pos_cash_account_id} onChange={set('pos_cash_account_id')} label={t('financialSettings.posCashDefault')} />
           <AccountPicker value={form.pos_knet_account_id} onChange={set('pos_knet_account_id')} label={t('financialSettings.posKnetDefault')} />
+        </div>
+
+        <div className="card p-5 space-y-4">
+          <h3 className="font-semibold text-sm uppercase tracking-wide text-slate-500">{t('nav.cashControl')}</h3>
+          <AccountPicker value={form.cash_control_account_id} onChange={set('cash_control_account_id')} label={t('financialSettings.cashControlDefault')} />
         </div>
       </div>
 

@@ -14,6 +14,7 @@ const FIELDS = [
   'item_cogs_account_id',
   'pos_cash_account_id',
   'pos_knet_account_id',
+  'cash_control_account_id',
 ];
 
 exports.get = async (req, res) => {

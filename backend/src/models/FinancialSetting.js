@@ -27,6 +27,11 @@ module.exports = (sequelize, DataTypes) => {
     // register), exactly like the account fields above.
     pos_cash_account_id: { type: DataTypes.UUID, allowNull: true },
     pos_knet_account_id: { type: DataTypes.UUID, allowNull: true },
+    // Default GL account new Cash Control registers (cash/bank/petty cash)
+    // link to. Same pre-fill-only convenience as every other field here —
+    // the admin can (and for a second register, should) still pick a
+    // different account before saving.
+    cash_control_account_id: { type: DataTypes.UUID, allowNull: true },
   }, {
     tableName: 'financial_settings',
   });

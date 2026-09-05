@@ -401,7 +401,8 @@
     "itemIncomeDefault": "Default Income Account for New Items",
     "itemCogsDefault": "Default COGS Account for New Items",
     "posCashDefault": "Default Cash Account for POS Payments",
-    "posKnetDefault": "Default Knet Account for POS Payments"
+    "posKnetDefault": "Default Knet Account for POS Payments",
+    "cashControlDefault": "Default Linked Account for New Cash/Bank Registers"
   },
   "pos": {
     "noAccess": "You don't have POS access yet. Ask your admin to grant it from POS Cashier Access.",

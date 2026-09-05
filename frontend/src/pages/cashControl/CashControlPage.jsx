@@ -9,6 +9,7 @@ import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import usePermissions from '@/hooks/usePermissions';
+import useFinancialDefaults from '@/hooks/useFinancialDefaults';
 
 const empty = { name_en: '', name_ar: '', type: 'cash', account_id: '', bank_name: '', iban: '', currency: 'KWD' };
 
@@ -16,6 +17,7 @@ export default function CashControlPage() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const { canCreateEdit, canDelete } = usePermissions();
+  const financialDefaults = useFinancialDefaults();
   const [items, setItems] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,11 @@ export default function CashControlPage() {
   };
   useEffect(() => { if (activeCompany) load(); }, [activeCompany]);
 
-  const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
+  const openNew = () => {
+    setEditing(null);
+    setForm({ ...empty, account_id: financialDefaults.cash_control_account_id || '' });
+    setOpen(true);
+  };
   const openEdit = (row) => { setEditing(row); setForm(row); setOpen(true); };
 
   const submit = async (e) => {
