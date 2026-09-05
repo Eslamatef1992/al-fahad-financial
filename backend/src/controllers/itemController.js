@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const { Op } = require('sequelize');
 const {
   sequelize, Item, Account, InventoryTransaction, ItemBranchStock, Branch, Company, ItemVariant, ItemVariantBranchStock, ItemCategory, Unit,
 } = require('../models');
@@ -23,14 +24,19 @@ const accountInclude = [
 // company is actively using. Companies/items that never touch branches or
 // variants simply never have any of those rows, so every extra field is 0 and
 // total_quantity_on_hand always equals quantity_on_hand — no behavior change.
-async function withBranchTotals(companyId, items) {
+// branchId, when given, scopes stock/value/booked to ONLY that branch (used
+// by the Items list's branch filter) instead of the company-wide total
+// across the unbranched pool + every branch + every variant. Omitting it
+// keeps the original company-wide behavior exactly as before.
+async function withBranchTotals(companyId, items, branchId) {
+  const branchWhere = { company_id: companyId, ...(branchId ? { branch_id: branchId } : {}) };
   const branchAgg = await ItemBranchStock.findAll({
     attributes: [
       'item_id',
       [sequelize.fn('SUM', sequelize.col('quantity_on_hand')), 'branch_qty'],
       [sequelize.fn('SUM', sequelize.literal('quantity_on_hand * cost_price')), 'branch_value'],
     ],
-    where: { company_id: companyId },
+    where: branchWhere,
     group: ['item_id'],
     raw: true,
   });
@@ -55,13 +61,13 @@ async function withBranchTotals(companyId, items) {
       [sequelize.fn('SUM', sequelize.col('ItemVariantBranchStock.quantity_on_hand')), 'variant_branch_qty'],
       [sequelize.fn('SUM', sequelize.literal('"ItemVariantBranchStock"."quantity_on_hand" * "ItemVariantBranchStock"."cost_price"')), 'variant_branch_value'],
     ],
-    where: { company_id: companyId },
+    where: branchWhere,
     include: [{ model: ItemVariant, as: 'variant', attributes: [] }],
     group: ['variant.item_id'],
     raw: true,
   });
   const byItemVariantBranch = new Map(variantBranchAgg.map((r) => [r.item_id, r]));
-  const bookedByItem = await bookingService.bookedQuantitiesByItem(companyId);
+  const bookedByItem = await bookingService.bookedQuantitiesByItem(companyId, branchId);
 
   return items.map((it) => {
     const json = it.toJSON ? it.toJSON() : it;
@@ -75,7 +81,12 @@ async function withBranchTotals(companyId, items) {
     const variantValue = variantRow ? Number(variantRow.variant_value) : 0;
     const variantBranchQty = variantBranchRow ? Number(variantBranchRow.variant_branch_qty) : 0;
     const variantBranchValue = variantBranchRow ? Number(variantBranchRow.variant_branch_value) : 0;
-    const totalOnHand = Number(json.quantity_on_hand) + branchQty + variantQty + variantBranchQty;
+    // When scoped to a specific branch, "on hand" means stock physically at
+    // that branch only (its own item stock + its own variant stock) — the
+    // unbranched pool and other branches don't count as available there.
+    const totalOnHand = branchId
+      ? branchQty + variantBranchQty
+      : Number(json.quantity_on_hand) + branchQty + variantQty + variantBranchQty;
     const bookedQty = bookedByItem.get(json.id) || 0;
 
     return {
@@ -96,24 +107,51 @@ async function withBranchTotals(companyId, items) {
       variant_count: variantRow ? Number(variantRow.variant_count) : 0,
       variant_quantity_on_hand: variantQty + variantBranchQty,
       total_quantity_on_hand: totalOnHand,
-      total_value: Number(json.quantity_on_hand) * Number(json.cost_price) + branchValue + variantValue + variantBranchValue,
+      total_value: branchId
+        ? branchValue + variantBranchValue
+        : Number(json.quantity_on_hand) * Number(json.cost_price) + branchValue + variantValue + variantBranchValue,
     };
   });
 }
 
-exports.list = async (req, res) => {
-  const { q, status } = req.query;
-  const where = { company_id: req.companyId };
+// Shared query builder used by list/pdf/excel so every export can respect
+// exactly the same filters as what's on screen: status (active/inactive/all),
+// category, unit, branch (see withBranchTotals above), a created-date range,
+// low-stock-only, booked-only, and the free-text search box.
+async function queryItems(companyId, query) {
+  const {
+    q, status, category_id, unit_id, branch_id, date_from, date_to, low_stock, booked_only,
+  } = query;
+
+  const where = { company_id: companyId };
   if (status !== 'all') where.is_active = status === 'inactive' ? false : true;
+  if (category_id) where.category_id = category_id;
+  if (unit_id) where.unit_id = unit_id;
+  if (date_from || date_to) {
+    where.createdAt = {};
+    if (date_from) where.createdAt[Op.gte] = new Date(`${date_from}T00:00:00.000Z`);
+    if (date_to) where.createdAt[Op.lte] = new Date(`${date_to}T23:59:59.999Z`);
+  }
 
   const items = await Item.findAll({ where, include: accountInclude, order: [['createdAt', 'DESC']] });
-  const withTotals = await withBranchTotals(req.companyId, items);
+  let withTotals = await withBranchTotals(companyId, items, branch_id || null);
+
+  if (low_stock === 'true' || low_stock === true) {
+    withTotals = withTotals.filter((i) => Number(i.reorder_level) > 0 && Number(i.total_quantity_on_hand) <= Number(i.reorder_level));
+  }
+  if (booked_only === 'true' || booked_only === true) {
+    withTotals = withTotals.filter((i) => Number(i.booked_quantity) > 0);
+  }
   if (q) {
     const needle = q.toLowerCase();
-    return res.json(withTotals.filter((i) => [i.name_en, i.name_ar, i.code, i.sku, i.category_name, i.unit_name]
-      .some((f) => String(f || '').toLowerCase().includes(needle))));
+    withTotals = withTotals.filter((i) => [i.name_en, i.name_ar, i.code, i.sku, i.category_name, i.unit_name]
+      .some((f) => String(f || '').toLowerCase().includes(needle)));
   }
-  res.json(withTotals);
+  return withTotals;
+}
+
+exports.list = async (req, res) => {
+  res.json(await queryItems(req.companyId, req.query));
 };
 
 exports.get = async (req, res) => {
@@ -206,15 +244,13 @@ exports.transactions = async (req, res) => {
 };
 
 exports.pdf = async (req, res) => {
-  const rows = await Item.findAll({ where: { company_id: req.companyId, is_active: true }, include: accountInclude, order: [['code', 'ASC']] });
-  const withTotals = await withBranchTotals(req.companyId, rows);
+  const withTotals = (await queryItems(req.companyId, { status: 'active', ...req.query })).sort((a, b) => String(a.code).localeCompare(b.code));
   const company = await Company.findByPk(req.companyId);
   generateItemsPdf(res, withTotals, company);
 };
 
 exports.exportExcel = async (req, res) => {
-  const rows = await Item.findAll({ where: { company_id: req.companyId, is_active: true }, include: accountInclude, order: [['code', 'ASC']] });
-  const withTotals = await withBranchTotals(req.companyId, rows);
+  const withTotals = (await queryItems(req.companyId, { status: 'active', ...req.query })).sort((a, b) => String(a.code).localeCompare(b.code));
   const company = await Company.findByPk(req.companyId);
   await exportItems(res, company, withTotals);
 };

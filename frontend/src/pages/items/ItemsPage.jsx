@@ -36,7 +36,11 @@ export default function ItemsPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [filterCategory, setFilterCategory] = useState('');
   const [filterUnit, setFilterUnit] = useState('');
+  const [filterBranch, setFilterBranch] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [bookedOnly, setBookedOnly] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(empty);
@@ -60,7 +64,11 @@ export default function ItemsPage() {
 
   const load = () => {
     setLoading(true);
-    api.get('/items', { params: showInactive ? { status: 'all' } : {} }).then((r) => setItems(r.data)).finally(() => setLoading(false));
+    const params = { ...(showInactive ? { status: 'all' } : {}) };
+    if (filterBranch) params.branch_id = filterBranch;
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+    api.get('/items', { params }).then((r) => setItems(r.data)).finally(() => setLoading(false));
   };
   const loadCategories = () => api.get('/item-categories').then((r) => setCategories(r.data));
   const loadUnits = () => api.get('/units').then((r) => setUnits(r.data));
@@ -72,7 +80,20 @@ export default function ItemsPage() {
       loadCategories();
       loadUnits();
     }
-  }, [activeCompany, showInactive]);
+  }, [activeCompany, showInactive, filterBranch, dateFrom, dateTo]);
+
+  const exportParams = () => {
+    const params = {};
+    if (filterCategory) params.category_id = filterCategory;
+    if (filterUnit) params.unit_id = filterUnit;
+    if (filterBranch) params.branch_id = filterBranch;
+    if (lowStockOnly) params.low_stock = 'true';
+    if (bookedOnly) params.booked_only = 'true';
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+    if (showInactive) params.status = 'all';
+    return params;
+  };
 
   const openNew = () => {
     setEditing(null);
@@ -271,8 +292,9 @@ export default function ItemsPage() {
       const total = Number(r.total_quantity_on_hand ?? r.quantity_on_hand);
       if (!(Number(r.reorder_level) > 0 && total <= Number(r.reorder_level))) return false;
     }
+    if (bookedOnly && !(Number(r.booked_quantity) > 0)) return false;
     return true;
-  }), [items, filterCategory, filterUnit, lowStockOnly]);
+  }), [items, filterCategory, filterUnit, lowStockOnly, bookedOnly]);
 
   return (
     <div>
@@ -280,8 +302,8 @@ export default function ItemsPage() {
         title={t('nav.items')}
         actions={
           <div className="flex items-center gap-2">
-            <button onClick={() => printFile('/items/pdf', {})} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
-            <button onClick={() => downloadFile('/items/excel', {}, 'items.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
+            <button onClick={() => printFile('/items/pdf', exportParams())} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
+            <button onClick={() => downloadFile('/items/excel', exportParams(), 'items.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
             {canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>}
           </div>
         }
@@ -295,6 +317,10 @@ export default function ItemsPage() {
           <input type="checkbox" checked={lowStockOnly} onChange={(e) => setLowStockOnly(e.target.checked)} className="rounded" />
           {t('items.lowStockOnly')}
         </label>
+        <label className="flex items-center gap-2 text-sm text-slate-500 cursor-pointer w-fit">
+          <input type="checkbox" checked={bookedOnly} onChange={(e) => setBookedOnly(e.target.checked)} className="rounded" />
+          {t('items.bookedOnly')}
+        </label>
         <select className="input !py-1.5 !w-auto text-sm" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
           <option value="">{t('items.allCategories')}</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.name_en}</option>)}
@@ -303,7 +329,19 @@ export default function ItemsPage() {
           <option value="">{t('items.allUnits')}</option>
           {units.map((u) => <option key={u.id} value={u.id}>{u.name_en}</option>)}
         </select>
+        <select className="input !py-1.5 !w-auto text-sm" value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)}>
+          <option value="">{t('items.allBranches')}</option>
+          {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
+        </select>
+        <div className="flex items-center gap-1.5">
+          <input type="date" className="input !py-1.5 !w-auto text-sm" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title={t('items.addedFrom')} />
+          <span className="text-slate-400 text-sm">{t('common.to')}</span>
+          <input type="date" className="input !py-1.5 !w-auto text-sm" value={dateTo} onChange={(e) => setDateTo(e.target.value)} title={t('items.addedTo')} />
+        </div>
       </div>
+      {filterBranch && (
+        <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950 rounded-lg px-3 py-2 mb-3 w-fit">{t('items.branchFilterHint')}</p>
+      )}
       <DataTable
         columns={columns}
         data={filteredItems}

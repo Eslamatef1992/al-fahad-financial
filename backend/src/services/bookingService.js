@@ -62,10 +62,15 @@ async function cancelBooking(companyId, bookingId) {
 // Per-item booked-quantity totals (status='pending' only) — merged into the
 // Items list/report alongside on-hand stock so "booked" vs. "available"
 // (on-hand minus booked) is visible at a glance.
-async function bookedQuantitiesByItem(companyId) {
+// Pass branchId to scope the total to bookings reserved at that specific
+// branch only (used by the Items list's branch filter) — omit it for the
+// company-wide total used everywhere else.
+async function bookedQuantitiesByItem(companyId, branchId) {
+  const where = { company_id: companyId, status: 'pending' };
+  if (branchId) where.branch_id = branchId;
   const rows = await ItemBooking.findAll({
     attributes: ['item_id', [sequelize.fn('SUM', sequelize.col('quantity')), 'booked_qty']],
-    where: { company_id: companyId, status: 'pending' },
+    where,
     group: ['item_id'],
     raw: true,
   });
