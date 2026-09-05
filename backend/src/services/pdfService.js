@@ -712,7 +712,13 @@ function generateInvoicePdf(res, invoice, company) {
     { label: 'Due Date', value: invoice.due_date || '-' },
     { label: 'Reference', value: invoice.reference_no || '-' },
     ...(invoice.branch ? [{ label: 'Branch', value: `${invoice.branch.code} - ${invoice.branch.name_en}` }] : []),
+    ...(invoice.delivery_date ? [{ label: 'Delivery Date', value: invoice.delivery_date }] : []),
   ]);
+
+  if (invoice.delivery_address) {
+    drawBidi(doc, `Delivery Address: ${invoice.delivery_address}`, 40, doc.y, { fontSize: 9, color: GRAY, width: doc.page.width - 80 });
+    doc.moveDown(0.5);
+  }
 
   table(doc, {
     headers: [
@@ -865,6 +871,37 @@ function generateItemVariantsPdf(res, item, rows, company) {
         v.is_active ? 'Active' : 'Inactive',
       ];
     }),
+  });
+
+  footer(doc, company);
+  doc.end();
+}
+
+// rows are sales Invoices with delivery_date set, one row per invoice
+// (regardless of how many lines it has) — the schedule is about the trip,
+// not the line items, so a driver working from this printout sees exactly
+// one stop per delivery.
+function generateDeliverySchedulePdf(res, rows, company) {
+  const doc = newDoc(res, 'delivery-schedule.pdf');
+  header(doc, company, 'Delivery Schedule', `${rows.length} deliveries`);
+
+  metaCard(doc, [{ label: 'Deliveries', value: String(rows.length) }]);
+
+  table(doc, {
+    headers: [
+      { label: 'Delivery Date' }, { label: 'Invoice' }, { label: 'Client' }, { label: 'Phone' },
+      { label: 'Address' }, { label: 'Total', align: 'right' }, { label: 'Status' },
+    ],
+    colWidths: [65, 70, 100, 70, 130, 60, 55],
+    rows: rows.map((inv) => [
+      inv.delivery_date || '-',
+      inv.invoice_no,
+      inv.client?.name_en || '-',
+      inv.client?.phone || '-',
+      inv.delivery_address || inv.client?.address || '-',
+      Number(inv.total).toFixed(3),
+      inv.status,
+    ]),
   });
 
   footer(doc, company);
@@ -1047,5 +1084,5 @@ module.exports = {
   generateCostCentersPdf, generateCashAccountsPdf, generateSuppliersPdf, generateClientsPdf,
   generateVehiclesPdf, generateItemsPdf, generatePurchaseOrderPdf, generateBranchesPdf,
   generateStockTransfersPdf, generateItemVariantsPdf, generateStockValuationPdf, generateLowStockPdf, generateStockMovementPdf,
-  generateSoldByClientPdf,
+  generateSoldByClientPdf, generateDeliverySchedulePdf,
 };

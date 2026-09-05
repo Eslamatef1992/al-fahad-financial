@@ -31,6 +31,8 @@ export default function PosPage() {
   const [cart, setCart] = useState([]); // { item, quantity, unit_price }
   const [clientId, setClientId] = useState('');
   const [clientSearch, setClientSearch] = useState('');
+  const [deliveryDate, setDeliveryDate] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [newClient, setNewClient] = useState({ name_en: '', phone: '' });
   const [savingClient, setSavingClient] = useState(false);
@@ -148,7 +150,15 @@ export default function PosPage() {
     }).filter((l) => l.quantity > 0));
   };
   const removeLine = (itemId) => setCart((prev) => prev.filter((l) => l.item.id !== itemId));
-  const clearCart = () => { setCart([]); setClientId(''); };
+  const clearCart = () => { setCart([]); setClientId(''); setDeliveryDate(''); setDeliveryAddress(''); };
+
+  // Picking a client prefills the delivery address from their record, but
+  // never overwrites an address already typed for this sale.
+  const pickClient = (id) => {
+    const client = clients.find((c) => c.id === id);
+    setClientId(id);
+    setDeliveryAddress((prev) => (!prev && client?.address ? client.address : prev));
+  };
 
   const openShift = async () => {
     try {
@@ -179,7 +189,7 @@ export default function PosPage() {
   const hold = async () => {
     if (!cart.length) return;
     try {
-      await api.post('/pos/sales', { client_id: clientId || null, action: 'hold', lines: buildLines() });
+      await api.post('/pos/sales', { client_id: clientId || null, action: 'hold', lines: buildLines(), delivery_date: deliveryDate || null, delivery_address: deliveryAddress || null });
       toast.success(t('pos.saleHeld'));
       clearCart();
       loadHeld();
@@ -193,6 +203,8 @@ export default function PosPage() {
       unit_price: Number(l.unit_price),
     })));
     setClientId(sale.client_id || '');
+    setDeliveryDate(sale.delivery_date || '');
+    setDeliveryAddress(sale.delivery_address || '');
     voidHeldSilently(sale.id);
   };
   const voidHeldSilently = async (id) => { try { await api.post(`/pos/sales/${id}/void`); loadHeld(); } catch (e) {} };
@@ -206,7 +218,7 @@ export default function PosPage() {
       if (Number(tender.cash) > 0) payments.push({ method: 'cash', amount: Number(tender.cash) });
       if (Number(tender.knet) > 0) payments.push({ method: 'knet', amount: Number(tender.knet) });
       if (Number(tender.credit) > 0) payments.push({ method: 'credit', amount: Number(tender.credit) });
-      await api.post('/pos/sales', { client_id: clientId || null, action: 'complete', lines: buildLines(), payments });
+      await api.post('/pos/sales', { client_id: clientId || null, action: 'complete', lines: buildLines(), payments, delivery_date: deliveryDate || null, delivery_address: deliveryAddress || null });
       toast.success(t('pos.saleCompleted'));
       setPayOpen(false);
       setTender({ cash: '', knet: '', credit: '' });
@@ -340,10 +352,17 @@ export default function PosPage() {
               value={clientSearch}
               onChange={(e) => setClientSearch(e.target.value)}
             />
-            <select className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+            <select className="input" value={clientId} onChange={(e) => pickClient(e.target.value)}>
               <option value="">{t('pos.walkIn')}</option>
               {filteredClients.map((c) => <option key={c.id} value={c.id}>{c.name_en}{c.phone ? ` — ${c.phone}` : ''}</option>)}
             </select>
+          </div>
+
+          <div className="mb-3">
+            <label className="label flex items-center gap-1"><CalendarClock size={13} />{t('invoices.deliveryDate')}</label>
+            <input type="date" className="input mb-1.5" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
+            <label className="label">{t('invoices.deliveryAddress')}</label>
+            <textarea className="input" rows={2} value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder={t('invoices.deliveryAddressHint')} />
           </div>
 
           <div className="flex-1 overflow-y-auto max-h-[35vh] space-y-2 mb-3">
@@ -493,6 +512,7 @@ export default function PosPage() {
                     <div className="min-w-0">
                       <p className="font-medium text-navy-900 dark:text-white">{row.invoice_no} — {row.date}</p>
                       <p className="text-xs text-slate-400 truncate">{row.client ? `${row.client.name_en}${row.client.phone ? ' — ' + row.client.phone : ''}` : t('pos.walkIn')}</p>
+                      {row.delivery_date && <p className="text-xs text-amber-500 truncate">{t('invoices.deliveryDate')}: {row.delivery_date}</p>}
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="font-semibold text-navy-900 dark:text-white">{money(row.total)}</span>

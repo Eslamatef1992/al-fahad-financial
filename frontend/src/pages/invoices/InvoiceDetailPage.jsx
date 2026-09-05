@@ -94,6 +94,8 @@ export default function InvoiceDetailPage() {
         <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.total')}</p><p className="text-sm mt-1 font-bold">{Number(invoice.total).toFixed(3)}</p></div>
         <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.balanceDue')}</p><p className={`text-sm mt-1 font-bold ${balance > 0.001 ? 'text-red-500' : 'text-emerald-600'}`}>{balance.toFixed(3)}</p></div>
         {invoice.branch && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.branch')}</p><p className="text-sm mt-1 font-medium">{invoice.branch.code} - {invoice.branch.name_en}</p></div>}
+        {invoice.delivery_date && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.deliveryDate')}</p><p className="text-sm mt-1 font-medium">{invoice.delivery_date}</p></div>}
+        {invoice.delivery_address && <div className="col-span-2"><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.deliveryAddress')}</p><p className="text-sm mt-1 font-medium whitespace-pre-wrap">{invoice.delivery_address}</p></div>}
         {Number(invoice.discount_amount) > 0.0009 && (
           <div>
             <p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.discount')}</p>

@@ -37,7 +37,8 @@
     "bookings": "Booked Items",
     "pos": "Point of Sale",
     "posCashiers": "POS Cashier Access",
-    "damages": "Damages"
+    "damages": "Damages",
+    "deliverySchedule": "Delivery Schedule"
   },
   "common": {
     "search": "Search...",
@@ -281,6 +282,9 @@
     "discountCodePlaceholder": "Enter a code...",
     "bookForLater": "Book for later delivery",
     "bookForLaterNeedsItem": "Pick an inventory item above to book this line for later delivery",
+    "deliveryDate": "Delivery Date",
+    "deliveryAddress": "Delivery Address",
+    "deliveryAddressHint": "Where this order should be delivered (prefilled from the client's address, editable)",
     "bookedNeedsDate": "A booked line needs a delivery date",
     "applyDiscount": "Apply",
     "removeDiscount": "Remove",
@@ -409,6 +413,9 @@
     "posKnetDefault": "Default Knet Account for POS Payments",
     "cashControlDefault": "Default Linked Account for New Cash/Bank Registers",
     "damageExpenseDefault": "Default Expense Account for Cleared Damages"
+  },
+  "deliverySchedule": {
+    "pageHint": "Every sales invoice with a delivery date set — whether or not the item is formally booked — sorted soonest first, so it reads like a dispatcher's route sheet."
   },
   "damages": {
     "pageHint": "Log damaged inventory (transport, warehouse, manufacturing defects, customer returns) and write it off. Reporting a damage doesn't touch stock yet — Clear actually removes the quantity from inventory and posts the loss.",

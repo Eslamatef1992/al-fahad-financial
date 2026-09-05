@@ -51,6 +51,7 @@ export default function InvoiceFormPage() {
     client_id: '', supplier_id: '', date: new Date().toISOString().slice(0, 10), due_date: '',
     cost_center_id: '', branch_id: '', reference_no: '', notes: '',
     discount_code: '', discount_preview: null, discount_error: '',
+    delivery_date: '', delivery_address: '',
   });
   const [lines, setLines] = useState([emptyLine()]);
   const [applyingDiscount, setApplyingDiscount] = useState(false);
@@ -81,6 +82,8 @@ export default function InvoiceFormPage() {
         discount_code: inv.discountCode?.code || '',
         discount_preview: inv.discountCode ? { code: inv.discountCode.code, discount_amount: Number(inv.discount_amount || 0) } : null,
         discount_error: '',
+        delivery_date: inv.delivery_date || '',
+        delivery_address: inv.delivery_address || '',
       });
       setLines(inv.lines.map((l) => ({
         account_id: l.account_id, item_id: l.item_id || '', description: l.description || '',
@@ -94,6 +97,18 @@ export default function InvoiceFormPage() {
       setLoading(false);
     });
   }, [activeCompany, isEdit, id]);
+
+  // Picking a client prefills the delivery address from their record, but
+  // only when the field is still empty — an address the user already typed
+  // or edited for this specific delivery is never silently overwritten.
+  const pickClient = (clientId) => {
+    const client = clients.find((c) => c.id === clientId);
+    setHeader((h) => ({
+      ...h,
+      client_id: clientId,
+      delivery_address: !h.delivery_address && client?.address ? client.address : h.delivery_address,
+    }));
+  };
 
   const updateLine = (idx, patch) => setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   // Picking a stock item auto-fills the description, price, and destination
@@ -191,6 +206,8 @@ export default function InvoiceFormPage() {
         reference_no: header.reference_no,
         notes: header.notes,
         discount_code: header.discount_code?.trim() || undefined,
+        delivery_date: type === 'sales' ? (header.delivery_date || undefined) : undefined,
+        delivery_address: type === 'sales' ? (header.delivery_address || undefined) : undefined,
         lines: validLines,
       };
       if (isEdit) {
@@ -218,7 +235,12 @@ export default function InvoiceFormPage() {
         <div className="card p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">{type === 'sales' ? t('common.client') : t('common.supplier')}</label>
-            <select required className="input" value={header[partyKey]} onChange={(e) => setHeader({ ...header, [partyKey]: e.target.value })}>
+            <select
+              required
+              className="input"
+              value={header[partyKey]}
+              onChange={(e) => (type === 'sales' ? pickClient(e.target.value) : setHeader({ ...header, [partyKey]: e.target.value }))}
+            >
               <option value="">{t('common.select')}</option>
               {(type === 'sales' ? clients : suppliers).map((p) => <option key={p.id} value={p.id}>{p.name_en}</option>)}
             </select>
@@ -226,6 +248,18 @@ export default function InvoiceFormPage() {
           <div><label className="label">{t('common.referenceNo')}</label><input className="input" value={header.reference_no} onChange={(e) => setHeader({ ...header, reference_no: e.target.value })} /></div>
           <div><label className="label">{t('common.date')}</label><input required type="date" className="input" value={header.date} onChange={(e) => setHeader({ ...header, date: e.target.value })} /></div>
           <div><label className="label">{t('common.dueDate')}</label><input type="date" className="input" value={header.due_date} onChange={(e) => setHeader({ ...header, due_date: e.target.value })} /></div>
+          {type === 'sales' && (
+            <>
+              <div>
+                <label className="label flex items-center gap-1"><CalendarClock size={13} />{t('invoices.deliveryDate')}</label>
+                <input type="date" className="input" value={header.delivery_date} onChange={(e) => setHeader({ ...header, delivery_date: e.target.value })} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="label">{t('invoices.deliveryAddress')}</label>
+                <textarea className="input" rows={2} value={header.delivery_address} onChange={(e) => setHeader({ ...header, delivery_address: e.target.value })} placeholder={t('invoices.deliveryAddressHint')} />
+              </div>
+            </>
+          )}
           <div>
             <label className="label">{t('vouchers.costCenter')}</label>
             <select className="input" value={header.cost_center_id} onChange={(e) => setHeader({ ...header, cost_center_id: e.target.value })}>

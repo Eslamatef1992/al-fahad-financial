@@ -45,6 +45,7 @@ import BookingsPage from '@/pages/bookings/BookingsPage';
 import PosPage from '@/pages/pos/PosPage';
 import PosCashiersPage from '@/pages/pos/PosCashiersPage';
 import DamagesPage from '@/pages/damages/DamagesPage';
+import DeliverySchedulePage from '@/pages/deliverySchedule/DeliverySchedulePage';
 
 export default function App() {
   const theme = useUiStore((s) => s.theme);
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="/pos" element={<PosPage />} />
           <Route path="/pos-cashiers" element={<PosCashiersPage />} />
           <Route path="/damages" element={<DamagesPage />} />
+          <Route path="/delivery-schedule" element={<DeliverySchedulePage />} />
           <Route path="/stock-transfers" element={<StockTransfersPage />} />
           <Route path="/discount-codes" element={<DiscountCodesPage />} />
           <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />

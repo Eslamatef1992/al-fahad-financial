@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Branch, Company, Voucher, Item, DiscountCode } = require('../models');
 const invoiceService = require('../services/invoiceService');
-const { generateInvoicePdf, generateAgingPdf } = require('../services/pdfService');
+const { generateInvoicePdf, generateAgingPdf, generateDeliverySchedulePdf } = require('../services/pdfService');
 const { exportInvoices } = require('../services/excelService');
 
 const lineInclude = [{ model: InvoiceLine, as: 'lines', include: [{ model: Account, as: 'account' }, { model: Item, as: 'item' }, { model: DiscountCode, as: 'discountCode' }] }];
@@ -42,7 +42,7 @@ exports.create = async (req, res) => {
 // found" once the first save had already replaced the row underneath it.
 // See the identical fix applied to voucherController.exports.update.
 exports.update = async (req, res) => {
-  const { client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines, discount_code } = req.body;
+  const { client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines, discount_code, delivery_date, delivery_address } = req.body;
 
   if (!Array.isArray(lines) || lines.length === 0) {
     return res.status(400).json({ message: 'At least one line item is required' });
@@ -82,6 +82,8 @@ exports.update = async (req, res) => {
       subtotal,
       tax_total,
       total,
+      delivery_date: delivery_date || null,
+      delivery_address: delivery_address || null,
     }, { transaction: t });
 
     await InvoiceLine.destroy({ where: { invoice_id: invoice.id }, transaction: t });
@@ -200,4 +202,34 @@ exports.agingPdf = async (req, res) => {
   const aging = await computeAging(req.companyId, req.query.type);
   const company = await Company.findByPk(req.companyId);
   generateAgingPdf(res, aging, company);
+};
+
+// Delivery Schedule: every sales invoice with a delivery_date set, regardless
+// of status or whether any of its lines are formally "booked" — a plain
+// on-hand sale can carry a delivery date/address just as well as a booked
+// one. One row per invoice, sorted soonest-first, so it reads like a
+// dispatcher's route sheet rather than an accounting report.
+async function queryDeliverySchedule(companyId, { date_from, date_to, status, branch_id } = {}) {
+  const where = { company_id: companyId, type: 'sales', delivery_date: { [Op.ne]: null } };
+  if (status && status !== 'all') where.status = status;
+  if (branch_id) where.branch_id = branch_id;
+  if (date_from || date_to) {
+    where.delivery_date = { [Op.ne]: null, ...(date_from && { [Op.gte]: date_from }), ...(date_to && { [Op.lte]: date_to }) };
+  }
+  return Invoice.findAll({
+    where,
+    include: partyInclude,
+    order: [['delivery_date', 'ASC'], ['createdAt', 'ASC']],
+  });
+}
+
+exports.deliverySchedule = async (req, res) => {
+  const rows = await queryDeliverySchedule(req.companyId, req.query);
+  res.json(rows);
+};
+
+exports.deliverySchedulePdf = async (req, res) => {
+  const rows = await queryDeliverySchedule(req.companyId, req.query);
+  const company = await Company.findByPk(req.companyId);
+  generateDeliverySchedulePdf(res, rows, company);
 };

@@ -21,6 +21,7 @@ const NAV = [
   { to: '/items', icon: Boxes, key: 'items' },
   { to: '/units', icon: Ruler, key: 'units' },
   { to: '/bookings', icon: CalendarClock, key: 'bookings' },
+  { to: '/delivery-schedule', icon: Truck, key: 'deliverySchedule' },
   { to: '/stock-transfers', icon: ArrowRightLeft, key: 'stockTransfers' },
   { to: '/discount-codes', icon: Percent, key: 'discountCodes' },
   { to: '/vouchers', icon: Receipt, key: 'vouchers' },

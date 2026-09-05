@@ -8,6 +8,8 @@ router.get('/', ctrl.list);
 router.get('/excel', ctrl.exportExcel);
 router.get('/aging', ctrl.aging);
 router.get('/aging/pdf', ctrl.agingPdf);
+router.get('/delivery-schedule', ctrl.deliverySchedule);
+router.get('/delivery-schedule/pdf', ctrl.deliverySchedulePdf);
 router.get('/:id', ctrl.get);
 router.get('/:id/pdf', ctrl.pdf);
 router.post('/', requireMinRole('accountant'), ctrl.create);

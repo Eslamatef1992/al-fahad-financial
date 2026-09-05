@@ -1767,6 +1767,63 @@ async function main() {
   await damageController.remove(damageRemoveReq, damageRemoveRes);
   check('damageController.remove deletes a reported (not cleared) damage via route wiring', damageRemoveRes._body.id === damageReport3.id);
 
+  // ==== Delivery Date / Address (Sales Invoice + POS) + Delivery Schedule ====
+
+  const deliveryClient = await Client.create({ company_id: company.id, code: 'DELCL', name_en: 'Delivery Client', name_ar: 'عميل التوصيل', account_id: ar.id, address: '123 Client Street' });
+
+  const deliveryInvoice = await invoiceService.createInvoice(company.id, user.id, {
+    type: 'sales', client_id: deliveryClient.id, date: '2026-04-10',
+    delivery_date: '2026-04-20', delivery_address: 'Warehouse Drop-off, Bay 3',
+    lines: [{ account_id: revenue.id, description: 'Queen Mattress', quantity: 1, unit_price: 150 }],
+  });
+  check('createInvoice persists delivery_date and delivery_address', deliveryInvoice.delivery_date === '2026-04-20' && deliveryInvoice.delivery_address === 'Warehouse Drop-off, Bay 3');
+
+  const updateDeliveryReq = {
+    companyId: company.id,
+    params: { id: deliveryInvoice.id },
+    body: {
+      client_id: deliveryClient.id, date: '2026-04-10',
+      delivery_date: '2026-04-22', delivery_address: 'Updated Address',
+      lines: [{ account_id: revenue.id, description: 'Queen Mattress', quantity: 1, unit_price: 150 }],
+    },
+  };
+  const updateDeliveryRes = fakeRes();
+  await invoiceController.update(updateDeliveryReq, updateDeliveryRes);
+  check('invoiceController.update persists delivery_date/delivery_address changes', updateDeliveryRes._body.delivery_date === '2026-04-22' && updateDeliveryRes._body.delivery_address === 'Updated Address');
+
+  const noDeliveryInvoice = await invoiceService.createInvoice(company.id, user.id, {
+    type: 'sales', client_id: deliveryClient.id, date: '2026-04-10',
+    lines: [{ account_id: revenue.id, description: 'Pillow', quantity: 1, unit_price: 10 }],
+  });
+  check('createInvoice without a delivery_date leaves it null', noDeliveryInvoice.delivery_date === null);
+
+  // -- POS: delivery_date/delivery_address flow through posService.createSale --
+  await posService.openShift(company.id, cashierUser.id, { branch_id: branchA.id, opening_float: 0 }).catch(() => {});
+  const posDeliverySale = await posService.createSale(company.id, cashierUser.id, cashierProfile3, {
+    client_id: deliveryClient.id, action: 'hold',
+    delivery_date: '2026-04-25', delivery_address: 'Customer Home Address',
+    lines: [{ account_id: revenue.id, item_id: posItem.id, quantity: 1, unit_price: 10 }],
+  });
+  check('POS createSale persists delivery_date/delivery_address on the invoice', posDeliverySale.delivery_date === '2026-04-25' && posDeliverySale.delivery_address === 'Customer Home Address');
+
+  // -- Delivery Schedule --
+  const scheduleReq = { companyId: company.id, query: {} };
+  const scheduleRes = fakeRes();
+  await invoiceController.deliverySchedule(scheduleReq, scheduleRes);
+  check('deliverySchedule includes invoices with a delivery_date set', scheduleRes._body.some((r) => r.id === deliveryInvoice.id) && scheduleRes._body.some((r) => r.id === posDeliverySale.id));
+  check('deliverySchedule excludes invoices without a delivery_date', scheduleRes._body.every((r) => r.id !== noDeliveryInvoice.id));
+  check('deliverySchedule sorts by delivery_date ascending', new Date(scheduleRes._body[0].delivery_date) <= new Date(scheduleRes._body[scheduleRes._body.length - 1].delivery_date));
+
+  const scheduleRangeReq = { companyId: company.id, query: { date_from: '2026-04-21', date_to: '2026-04-23' } };
+  const scheduleRangeRes = fakeRes();
+  await invoiceController.deliverySchedule(scheduleRangeReq, scheduleRangeRes);
+  check('deliverySchedule date range filter narrows to matching deliveries only', scheduleRangeRes._body.length === 1 && scheduleRangeRes._body[0].id === deliveryInvoice.id);
+
+  const scheduleStatusReq = { companyId: company.id, query: { status: 'draft' } };
+  const scheduleStatusRes = fakeRes();
+  await invoiceController.deliverySchedule(scheduleStatusReq, scheduleStatusRes);
+  check('deliverySchedule status filter returns only matching-status deliveries', scheduleStatusRes._body.every((r) => r.status === 'draft') && scheduleStatusRes._body.length > 0);
+
   // ---- Summary ----
   console.log(`\n${pass} PASS / ${fail} FAIL (${pass + fail} total checks)`);
   if (failures.length) {

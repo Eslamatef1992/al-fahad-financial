@@ -15,6 +15,14 @@ module.exports = (sequelize, DataTypes) => {
     cost_center_id: { type: DataTypes.UUID, allowNull: true },
     branch_id: { type: DataTypes.UUID, allowNull: true },
     tax_account_id: { type: DataTypes.UUID, allowNull: true }, // where line tax amounts post to, if any
+    // When this order should be delivered to the client — independent of the
+    // per-line "book for later" reservation (which holds stock). A sale can
+    // carry a delivery date/address without reserving stock at all (e.g. it
+    // ships from on-hand inventory next week), and a booked line can still
+    // carry its own separate delivery_date for exactly when its reservation
+    // is fulfilled. This pair is what the Delivery Schedule report reads.
+    delivery_date: { type: DataTypes.DATEONLY, allowNull: true },
+    delivery_address: { type: DataTypes.TEXT, allowNull: true },
     currency: { type: DataTypes.STRING(10), defaultValue: 'KWD' },
     notes: { type: DataTypes.TEXT },
     discount_code_id: { type: DataTypes.UUID, allowNull: true }, // set only for an invoice-scoped code; its amount is allocated across lines
