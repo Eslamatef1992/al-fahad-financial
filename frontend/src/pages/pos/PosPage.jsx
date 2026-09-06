@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, PauseCircle, XCircle, Lock, Unlock, CreditCard, Banknote, Landmark, Users,
-  CalendarClock, RotateCcw, UserPlus, X,
+  CalendarClock, RotateCcw, UserPlus, X, FileText, Boxes, Factory, Ticket, PieChart, Tag,
 } from 'lucide-react';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
@@ -13,8 +14,26 @@ import useFinancialDefaults from '@/hooks/useFinancialDefaults';
 
 const money = (n) => Number(n || 0).toFixed(3);
 
+// One square button in the right-side action rail: icon on top, tiny label
+// below, with an optional small count badge (e.g. number of held invoices).
+function RailButton({ icon: Icon, label, onClick, badge }) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative card p-2 flex flex-col items-center justify-center gap-1 hover:shadow-md transition-shadow text-center"
+    >
+      <Icon size={18} className="text-navy-900 dark:text-white" />
+      <span className="text-[9px] font-medium text-slate-500 leading-tight">{label}</span>
+      {!!badge && (
+        <span className="absolute top-1 end-1 bg-red-500 text-white text-[9px] leading-none rounded-full w-4 h-4 flex items-center justify-center">{badge}</span>
+      )}
+    </button>
+  );
+}
+
 export default function PosPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const financialDefaults = useFinancialDefaults();
 
@@ -52,6 +71,20 @@ export default function PosPage() {
   const [refundReason, setRefundReason] = useState('');
   const [refunding, setRefunding] = useState(false);
 
+  // Redesigned rail: main area now shows the invoice line-items table instead
+  // of a product grid. Items get added either by typing/scanning a code into
+  // the always-visible box below, or via the Inventory icon's search popup.
+  const [codeEntry, setCodeEntry] = useState('');
+  const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [heldOpen, setHeldOpen] = useState(false);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [couponsOpen, setCouponsOpen] = useState(false);
+  const [discountCodes, setDiscountCodes] = useState([]);
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountPreview, setDiscountPreview] = useState(null);
+  const [discountError, setDiscountError] = useState('');
+  const [applyingDiscount, setApplyingDiscount] = useState(false);
+
   const loadAccess = () => {
     setLoadingAccess(true);
     api.get('/pos/me').then((r) => setAccess(r.data)).finally(() => setLoadingAccess(false));
@@ -78,6 +111,7 @@ export default function PosPage() {
   }, [query, access?.shift]);
 
   const total = useMemo(() => cart.reduce((s, l) => s + Number(l.quantity) * Number(l.unit_price), 0), [cart]);
+  const netTotal = discountPreview ? Math.max(total - Number(discountPreview.discount_amount || 0), 0) : total;
   const canCredit = access?.level === 'operator' || access?.posPermissions?.includes('credit_sale');
   const canVoid = access?.level === 'operator' || access?.posPermissions?.includes('void');
   const canRefund = access?.level === 'operator' || access?.posPermissions?.includes('refund');
@@ -153,7 +187,46 @@ export default function PosPage() {
     }).filter((l) => l.quantity > 0));
   };
   const removeLine = (itemId) => setCart((prev) => prev.filter((l) => l.item.id !== itemId));
-  const clearCart = () => { setCart([]); setClientId(''); setDeliveryDate(''); setDeliveryAddress(''); };
+  const clearCart = () => {
+    setCart([]); setClientId(''); setDeliveryDate(''); setDeliveryAddress('');
+    setDiscountCode(''); setDiscountPreview(null); setDiscountError(''); setCodeEntry('');
+  };
+  // "Invoice" rail icon — starts a fresh blank sale.
+  const newInvoice = () => clearCart();
+
+  // Quick code/barcode entry: typed into the always-visible box above the
+  // invoice table, or scanned. Looks for an exact code/sku match first (what
+  // a barcode scan produces); falls back to the first search result so a
+  // partial code still finds something.
+  const addByCode = async () => {
+    const code = codeEntry.trim();
+    if (!code) return;
+    try {
+      const { data } = await api.get('/items', { params: { q: code } });
+      if (!data.length) { toast.error(t('pos.itemNotFound')); return; }
+      const exact = data.find((p) => p.code?.toLowerCase() === code.toLowerCase() || p.sku?.toLowerCase() === code.toLowerCase());
+      addToCart(exact || data[0]);
+      setCodeEntry('');
+    } catch (e) { /* toast handled globally */ }
+  };
+
+  const loadDiscountCodes = () => api.get('/discount-codes').then((r) => setDiscountCodes(r.data)).catch(() => {});
+  const applyDiscount = async (codeOverride) => {
+    const code = (codeOverride || discountCode).trim().toUpperCase();
+    if (!code) return;
+    setApplyingDiscount(true);
+    try {
+      const { data } = await api.post('/discount-codes/preview', { code, base_amount: total, scope: 'invoice' });
+      setDiscountCode(code);
+      setDiscountPreview(data);
+      setDiscountError('');
+      setCouponsOpen(false);
+    } catch (err) {
+      setDiscountPreview(null);
+      setDiscountError(err.response?.data?.message || t('common.error'));
+    } finally { setApplyingDiscount(false); }
+  };
+  const removeDiscount = () => { setDiscountCode(''); setDiscountPreview(null); setDiscountError(''); };
 
   // Picking a client prefills the delivery address from their record, but
   // never overwrites an address already typed for this sale.
@@ -192,7 +265,7 @@ export default function PosPage() {
   const hold = async () => {
     if (!cart.length) return;
     try {
-      await api.post('/pos/sales', { client_id: clientId || null, action: 'hold', lines: buildLines(), delivery_date: deliveryDate || null, delivery_address: deliveryAddress || null });
+      await api.post('/pos/sales', { client_id: clientId || null, action: 'hold', lines: buildLines(), delivery_date: deliveryDate || null, delivery_address: deliveryAddress || null, discount_code: discountCode || undefined });
       toast.success(t('pos.saleHeld'));
       clearCart();
       loadHeld();
@@ -214,7 +287,7 @@ export default function PosPage() {
 
   const tenderTotal = Number(tender.cash || 0) + Number(tender.knet || 0) + Number(tender.credit || 0);
   const submitPayment = async () => {
-    if (Math.abs(tenderTotal - total) > 0.001) return toast.error(t('pos.tenderMismatch'));
+    if (Math.abs(tenderTotal - netTotal) > 0.001) return toast.error(t('pos.tenderMismatch'));
     if (Number(tender.knet) > 0 && !tender.knetReference.trim()) return toast.error(t('pos.knetReferenceRequired'));
     setPaying(true);
     try {
@@ -222,7 +295,7 @@ export default function PosPage() {
       if (Number(tender.cash) > 0) payments.push({ method: 'cash', amount: Number(tender.cash) });
       if (Number(tender.knet) > 0) payments.push({ method: 'knet', amount: Number(tender.knet), reference: tender.knetReference.trim() });
       if (Number(tender.credit) > 0) payments.push({ method: 'credit', amount: Number(tender.credit) });
-      await api.post('/pos/sales', { client_id: clientId || null, action: 'complete', lines: buildLines(), payments, delivery_date: deliveryDate || null, delivery_address: deliveryAddress || null });
+      await api.post('/pos/sales', { client_id: clientId || null, action: 'complete', lines: buildLines(), payments, delivery_date: deliveryDate || null, delivery_address: deliveryAddress || null, discount_code: discountCode || undefined });
       toast.success(t('pos.saleCompleted'));
       setPayOpen(false);
       setTender({ cash: '', knet: '', credit: '', knetReference: '' });
@@ -283,127 +356,245 @@ export default function PosPage() {
       <PageHeader
         title={t('nav.pos')}
         subtitle={t('pos.shiftInfo', { branch: branches.find((b) => b.id === access.shift.branch_id)?.name_en || t('branches.unbranchedPool'), float: money(access.shift.opening_float) })}
-        actions={<button onClick={() => setCloseOpen(true)} className="btn-ghost flex items-center gap-2"><Lock size={15} />{t('pos.closeShift')}</button>}
       />
 
-      <div className="flex flex-wrap items-center gap-1.5 mb-2">
-        <button onClick={openHistory} className="btn-ghost flex items-center gap-1 text-xs py-1.5 px-2.5"><CalendarClock size={13} />{t('pos.invoicesByDate')}</button>
-        <button onClick={openHistory} className="btn-ghost flex items-center gap-1 text-xs py-1.5 px-2.5"><Users size={13} />{t('common.client')}</button>
-        {canRefund && <button onClick={openHistory} className="btn-ghost flex items-center gap-1 text-xs py-1.5 px-2.5"><RotateCcw size={13} />{t('pos.refund')}</button>}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* Products */}
-        <div className="lg:col-span-2 space-y-2">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{t('pos.searchFullInventory')}</p>
-          <div className="relative">
-            <Search size={14} className="absolute top-1/2 -translate-y-1/2 start-2.5 text-slate-400" />
-            <input className="input ps-8 py-1.5 text-sm" placeholder={t('pos.searchProducts')} value={query} onChange={(e) => setQuery(e.target.value)} />
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1.5 max-h-[65vh] overflow-y-auto pe-1">
-            {products.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => addToCart(p)}
-                disabled={Number(p.available_quantity) <= 0}
-                className="card p-1.5 text-start hover:shadow-md transition-shadow disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <p className="font-semibold text-xs text-navy-900 dark:text-white truncate leading-tight">{p.name_en}</p>
-                <p className="text-[10px] text-slate-400 truncate">{p.code}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="font-bold text-xs text-navy-900 dark:text-white">{money(p.selling_price)}</span>
-                  <span className={`text-[9px] px-1 py-0.5 rounded-full ${Number(p.available_quantity) > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
-                    {Number(p.available_quantity)} {t('pos.available')}
-                  </span>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_84px] gap-3">
+        {/* Invoice */}
+        <div className="space-y-3 min-w-0">
+          {/* Header strip: client, quick code entry, coupon, total, hold/pay */}
+          <div className="card p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="label flex items-center gap-1 text-[11px]"><Users size={11} />{t('common.client')}</label>
+                  <button type="button" onClick={() => setNewClientOpen(true)} className="text-[11px] font-semibold text-navy-900 dark:text-white flex items-center gap-1 mb-1">
+                    <UserPlus size={11} />{t('pos.newCustomer')}
+                  </button>
                 </div>
-                {Number(p.booked_quantity) > 0 && (
-                  <p className="text-[9px] text-amber-500 mt-0.5">{Number(p.booked_quantity)} {t('items.booked')}</p>
-                )}
-              </button>
-            ))}
-            {!products.length && <p className="col-span-full text-center text-sm text-slate-400 py-8">{t('pos.noProducts')}</p>}
-          </div>
-
-          {!!held.length && (
-            <div>
-              <p className="text-xs font-semibold text-slate-500 mb-1.5 flex items-center gap-1.5"><PauseCircle size={13} />{t('pos.heldSales')}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {held.map((h) => (
-                  <div key={h.id} className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 rounded-lg px-2 py-1 text-xs">
-                    <button onClick={() => resumeHeld(h)} className="font-medium hover:underline">{h.invoice_no} — {money(h.total)}</button>
-                    {canVoid && <button onClick={() => setVoidTarget(h)}><XCircle size={12} /></button>}
+                <input
+                  className="input mb-1 text-xs py-1.5"
+                  placeholder={t('pos.searchCustomerHint')}
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                />
+                <select className="input text-xs py-1.5" value={clientId} onChange={(e) => pickClient(e.target.value)}>
+                  <option value="">{t('pos.walkIn')}</option>
+                  {filteredClients.map((c) => <option key={c.id} value={c.id}>{c.name_en}{c.phone ? ` — ${c.phone}` : ''}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label flex items-center gap-1 text-[11px]"><FileText size={11} />{t('pos.quickAddByCode')}</label>
+                <div className="relative">
+                  <Search size={13} className="absolute top-1/2 -translate-y-1/2 start-2.5 text-slate-400" />
+                  <input
+                    className="input ps-7 text-xs py-1.5"
+                    placeholder={t('pos.quickAddByCodeHint')}
+                    value={codeEntry}
+                    onChange={(e) => setCodeEntry(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addByCode(); } }}
+                  />
+                </div>
+                {discountPreview ? (
+                  <div className="flex items-center justify-between mt-1.5 text-[11px] text-emerald-600">
+                    <span className="flex items-center gap-1"><Tag size={11} />{discountPreview.code} — {t('invoices.discountAppliedAmount', { amount: money(discountPreview.discount_amount) })}</span>
+                    <button onClick={removeDiscount} className="text-red-500"><X size={12} /></button>
                   </div>
-                ))}
+                ) : discountError ? (
+                  <p className="text-[11px] text-red-500 mt-1.5">{discountError}</p>
+                ) : null}
               </div>
             </div>
-          )}
+
+            <div className="flex-1 overflow-y-auto max-h-[45vh] mb-2 border border-slate-100 dark:border-navy-800 rounded-lg">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-navy-900 text-[10px] uppercase tracking-wide text-slate-500">
+                    <th className="text-start py-1.5 px-2 font-semibold">{t('pos.colCode')}</th>
+                    <th className="text-start py-1.5 px-2 font-semibold">{t('pos.colDescription')}</th>
+                    <th className="text-center py-1.5 px-2 font-semibold">{t('pos.colQty')}</th>
+                    <th className="text-end py-1.5 px-2 font-semibold">{t('pos.colPrice')}</th>
+                    <th className="text-end py-1.5 px-2 font-semibold">{t('pos.colTotal')}</th>
+                    <th className="py-1.5 px-1"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cart.map((l) => (
+                    <tr key={l.item.id} className="border-t border-slate-100 dark:border-navy-800">
+                      <td className="py-1.5 px-2 text-slate-400 whitespace-nowrap">{l.item.code}</td>
+                      <td className="py-1.5 px-2 min-w-0">
+                        <p className="truncate font-medium text-navy-900 dark:text-white leading-tight">{l.item.name_en}</p>
+                      </td>
+                      <td className="py-1.5 px-2">
+                        <div className="flex items-center gap-0.5 justify-center">
+                          <button onClick={() => changeQty(l.item.id, -1)} className="p-0.5 rounded bg-slate-100 dark:bg-navy-800"><Minus size={10} /></button>
+                          <span className="w-6 text-center">{l.quantity}</span>
+                          <button onClick={() => changeQty(l.item.id, 1)} className="p-0.5 rounded bg-slate-100 dark:bg-navy-800"><Plus size={10} /></button>
+                        </div>
+                      </td>
+                      <td className="py-1.5 px-2 text-end whitespace-nowrap">{money(l.unit_price)}</td>
+                      <td className="py-1.5 px-2 text-end font-semibold text-navy-900 dark:text-white whitespace-nowrap">{money(l.quantity * l.unit_price)}</td>
+                      <td className="py-1.5 px-1">
+                        <button onClick={() => removeLine(l.item.id)} className="p-0.5 rounded bg-red-50 dark:bg-red-950 text-red-500"><Trash2 size={11} /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!cart.length && <p className="text-center text-xs text-slate-400 py-8">{t('pos.emptyCart')}</p>}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm">
+                {discountPreview && <p className="text-[11px] text-slate-400 line-through">{money(total)}</p>}
+                <div className="flex items-center gap-1.5 font-bold text-base text-navy-900 dark:text-white">
+                  <span>{t('common.total')}</span>
+                  <span>{money(netTotal)}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button onClick={hold} disabled={!cart.length} className="btn-ghost flex items-center justify-center gap-1 text-xs py-1.5 px-3 disabled:opacity-40"><PauseCircle size={13} />{t('pos.hold')}</button>
+                <button onClick={() => setPayOpen(true)} disabled={!cart.length} className="btn-primary flex items-center justify-center gap-1 text-xs py-1.5 px-3 disabled:opacity-40"><CreditCard size={13} />{t('pos.pay')}</button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Cart */}
-        <div className="card p-3 flex flex-col h-fit sticky top-4">
-          <p className="font-bold text-sm text-navy-900 dark:text-white mb-2 flex items-center gap-1.5"><ShoppingCart size={14} />{t('pos.cart')}</p>
-
-          <div className="mb-2">
-            <div className="flex items-center justify-between">
-              <label className="label flex items-center gap-1 text-[11px]"><Users size={11} />{t('common.client')}</label>
-              <button type="button" onClick={() => setNewClientOpen(true)} className="text-[11px] font-semibold text-navy-900 dark:text-white flex items-center gap-1 mb-1">
-                <UserPlus size={11} />{t('pos.newCustomer')}
-              </button>
-            </div>
-            <input
-              className="input mb-1 text-xs py-1.5"
-              placeholder={t('pos.searchCustomerHint')}
-              value={clientSearch}
-              onChange={(e) => setClientSearch(e.target.value)}
-            />
-            <select className="input text-xs py-1.5" value={clientId} onChange={(e) => pickClient(e.target.value)}>
-              <option value="">{t('pos.walkIn')}</option>
-              {filteredClients.map((c) => <option key={c.id} value={c.id}>{c.name_en}{c.phone ? ` — ${c.phone}` : ''}</option>)}
-            </select>
-          </div>
-
-          <div className="mb-2">
-            <label className="label flex items-center gap-1 text-[11px]"><CalendarClock size={11} />{t('invoices.deliveryDate')}</label>
-            <input type="date" className="input mb-1 text-xs py-1.5" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
-            <label className="label text-[11px]">{t('invoices.deliveryAddress')}</label>
-            <textarea className="input text-xs py-1.5" rows={2} value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder={t('invoices.deliveryAddressHint')} />
-          </div>
-
-          <div className="flex-1 overflow-y-auto max-h-[35vh] mb-2 border border-slate-100 dark:border-navy-800 rounded-lg">
-            <table className="w-full text-xs">
-              <tbody>
-                {cart.map((l) => (
-                  <tr key={l.item.id} className="border-b border-slate-100 dark:border-navy-800 last:border-0">
-                    <td className="py-1 px-1.5 min-w-0">
-                      <p className="truncate font-medium text-navy-900 dark:text-white leading-tight">{l.item.name_en}</p>
-                      <p className="text-[10px] text-slate-400">{money(l.unit_price)}</p>
-                    </td>
-                    <td className="py-1 px-1 whitespace-nowrap">
-                      <div className="flex items-center gap-0.5 justify-end">
-                        <button onClick={() => changeQty(l.item.id, -1)} className="p-0.5 rounded bg-slate-100 dark:bg-navy-800"><Minus size={10} /></button>
-                        <span className="w-5 text-center">{l.quantity}</span>
-                        <button onClick={() => changeQty(l.item.id, 1)} className="p-0.5 rounded bg-slate-100 dark:bg-navy-800"><Plus size={10} /></button>
-                        <button onClick={() => removeLine(l.item.id)} className="p-0.5 rounded bg-red-50 dark:bg-red-950 text-red-500 ms-0.5"><Trash2 size={10} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!cart.length && <p className="text-center text-xs text-slate-400 py-5">{t('pos.emptyCart')}</p>}
-          </div>
-
-          <div className="flex items-center justify-between font-bold text-base text-navy-900 dark:text-white mb-2">
-            <span>{t('common.total')}</span>
-            <span>{money(total)}</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1.5">
-            <button onClick={hold} disabled={!cart.length} className="btn-ghost flex items-center justify-center gap-1 text-xs py-1.5 disabled:opacity-40"><PauseCircle size={13} />{t('pos.hold')}</button>
-            <button onClick={() => setPayOpen(true)} disabled={!cart.length} className="btn-primary flex items-center justify-center gap-1 text-xs py-1.5 disabled:opacity-40"><CreditCard size={13} />{t('pos.pay')}</button>
-          </div>
+        {/* Action rail */}
+        <div className="grid grid-cols-3 lg:grid-cols-1 gap-1.5 content-start">
+          <RailButton icon={FileText} label={t('pos.railInvoice')} onClick={newInvoice} />
+          <RailButton icon={Boxes} label={t('pos.railInventory')} onClick={() => setInventoryOpen(true)} />
+          {canRefund && <RailButton icon={RotateCcw} label={t('pos.refund')} onClick={openHistory} />}
+          <RailButton icon={Lock} label={t('pos.closeShift')} onClick={() => setCloseOpen(true)} />
+          <RailButton icon={PauseCircle} label={t('pos.railHoldInvoices')} onClick={() => setHeldOpen(true)} badge={held.length || null} />
+          <RailButton icon={Factory} label={t('pos.railManufactureOrder')} onClick={() => toast(t('common.comingSoon'))} />
+          <RailButton icon={CalendarClock} label={t('invoices.deliveryDate')} onClick={() => setDeliveryOpen(true)} />
+          <RailButton icon={Ticket} label={t('pos.railCoupons')} onClick={() => { setCouponsOpen(true); loadDiscountCodes(); }} />
+          <RailButton icon={PieChart} label={t('nav.reports')} onClick={() => navigate('/reports')} />
         </div>
       </div>
+
+      {/* Inventory search popup — add items by browsing/searching */}
+      {inventoryOpen && (
+        <>
+          <div className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40" onClick={() => setInventoryOpen(false)} />
+          <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
+            <div className="card p-4 max-w-4xl w-full max-h-[85vh] flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-bold text-navy-900 dark:text-white flex items-center gap-2"><Boxes size={16} />{t('pos.searchFullInventory')}</p>
+                <button onClick={() => setInventoryOpen(false)}><X size={18} /></button>
+              </div>
+              <div className="relative mb-3">
+                <Search size={14} className="absolute top-1/2 -translate-y-1/2 start-2.5 text-slate-400" />
+                <input className="input ps-8 text-sm" placeholder={t('pos.searchProducts')} value={query} onChange={(e) => setQuery(e.target.value)} autoFocus />
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5 overflow-y-auto pe-1">
+                {products.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => addToCart(p)}
+                    disabled={Number(p.available_quantity) <= 0}
+                    className="card p-1.5 text-start hover:shadow-md transition-shadow disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <p className="font-semibold text-xs text-navy-900 dark:text-white truncate leading-tight">{p.name_en}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{p.code}</p>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="font-bold text-xs text-navy-900 dark:text-white">{money(p.selling_price)}</span>
+                      <span className={`text-[9px] px-1 py-0.5 rounded-full ${Number(p.available_quantity) > 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
+                        {Number(p.available_quantity)} {t('pos.available')}
+                      </span>
+                    </div>
+                    {Number(p.booked_quantity) > 0 && (
+                      <p className="text-[9px] text-amber-500 mt-0.5">{Number(p.booked_quantity)} {t('items.booked')}</p>
+                    )}
+                  </button>
+                ))}
+                {!products.length && <p className="col-span-full text-center text-sm text-slate-400 py-8">{t('pos.noProducts')}</p>}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Held invoices */}
+      {heldOpen && (
+        <>
+          <div className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40" onClick={() => setHeldOpen(false)} />
+          <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
+            <div className="card p-4 max-w-md w-full max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-bold text-navy-900 dark:text-white flex items-center gap-2"><PauseCircle size={16} />{t('pos.heldSales')}</p>
+                <button onClick={() => setHeldOpen(false)}><X size={18} /></button>
+              </div>
+              <div className="space-y-1.5 overflow-y-auto">
+                {held.map((h) => (
+                  <div key={h.id} className="flex items-center justify-between gap-2 bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 rounded-lg px-3 py-2 text-sm">
+                    <button onClick={() => { resumeHeld(h); setHeldOpen(false); }} className="font-medium hover:underline text-start">{h.invoice_no} — {money(h.total)}</button>
+                    {canVoid && <button onClick={() => setVoidTarget(h)}><XCircle size={14} /></button>}
+                  </div>
+                ))}
+                {!held.length && <p className="text-center text-sm text-slate-400 py-6">{t('common.noData')}</p>}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Delivery date/address */}
+      {deliveryOpen && (
+        <>
+          <div className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40" onClick={() => setDeliveryOpen(false)} />
+          <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
+            <div className="card p-6 max-w-sm w-full">
+              <p className="font-bold text-lg text-navy-900 dark:text-white mb-4 flex items-center gap-2"><CalendarClock size={18} />{t('invoices.deliveryDate')}</p>
+              <label className="label">{t('invoices.deliveryDate')}</label>
+              <input type="date" className="input mb-3" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
+              <label className="label">{t('invoices.deliveryAddress')}</label>
+              <textarea className="input" rows={3} value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder={t('invoices.deliveryAddressHint')} />
+              <div className="flex items-center justify-end gap-2 mt-6">
+                <button onClick={() => setDeliveryOpen(false)} className="btn-primary">{t('common.done')}</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Available coupons */}
+      {couponsOpen && (
+        <>
+          <div className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40" onClick={() => setCouponsOpen(false)} />
+          <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
+            <div className="card p-4 max-w-md w-full max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-bold text-navy-900 dark:text-white flex items-center gap-2"><Ticket size={16} />{t('pos.railCoupons')}</p>
+                <button onClick={() => setCouponsOpen(false)}><X size={18} /></button>
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <input className="input text-sm" placeholder={t('invoices.discountCodePlaceholder')} value={discountCode} onChange={(e) => setDiscountCode(e.target.value.toUpperCase())} />
+                <button onClick={() => applyDiscount()} disabled={applyingDiscount || !discountCode.trim()} className="btn-primary shrink-0">{t('invoices.applyDiscount')}</button>
+              </div>
+              {discountError && <p className="text-xs text-red-500 mb-2">{discountError}</p>}
+              <div className="space-y-1.5 overflow-y-auto">
+                {discountCodes.filter((c) => c.is_active).map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => applyDiscount(c.code)}
+                    className="w-full flex items-center justify-between gap-2 border border-slate-100 dark:border-navy-800 rounded-lg px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-navy-900 text-start"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-navy-900 dark:text-white">{c.code}</p>
+                      {c.description && <p className="text-xs text-slate-400 truncate">{c.description}</p>}
+                    </div>
+                    <span className="text-xs font-semibold text-emerald-600 shrink-0">
+                      {c.type === 'percentage' ? `${Number(c.value)}%` : money(c.value)}
+                    </span>
+                  </button>
+                ))}
+                {!discountCodes.length && <p className="text-center text-sm text-slate-400 py-6">{t('common.noData')}</p>}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Payment modal */}
       {payOpen && (
@@ -412,7 +603,7 @@ export default function PosPage() {
           <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
             <div className="card p-6 max-w-sm w-full">
               <p className="font-bold text-lg text-navy-900 dark:text-white mb-1">{t('pos.pay')}</p>
-              <p className="text-sm text-slate-500 mb-4">{t('pos.amountDue', { amount: money(total) })}</p>
+              <p className="text-sm text-slate-500 mb-4">{t('pos.amountDue', { amount: money(netTotal) })}</p>
               <div className="space-y-3">
                 <div>
                   <label className="label flex items-center gap-1"><Banknote size={13} />{t('pos.cash')}</label>
@@ -439,7 +630,7 @@ export default function PosPage() {
                 )}
                 <div className="flex items-center justify-between text-sm pt-2 border-t border-slate-100 dark:border-navy-800">
                   <span className="text-slate-500">{t('pos.tendered')}</span>
-                  <span className={`font-semibold ${Math.abs(tenderTotal - total) > 0.001 ? 'text-red-500' : 'text-emerald-500'}`}>{money(tenderTotal)}</span>
+                  <span className={`font-semibold ${Math.abs(tenderTotal - netTotal) > 0.001 ? 'text-red-500' : 'text-emerald-500'}`}>{money(tenderTotal)}</span>
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2 mt-6">
