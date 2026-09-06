@@ -42,6 +42,7 @@ const FinancialSetting = require('./FinancialSetting')(sequelize, DataTypes);
 const ItemBooking = require('./ItemBooking')(sequelize, DataTypes);
 const PosShift = require('./PosShift')(sequelize, DataTypes);
 const ItemDamage = require('./ItemDamage')(sequelize, DataTypes);
+const Manufacturer = require('./Manufacturer')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -52,7 +53,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit, FinancialSetting, ItemBooking, PosShift, ItemDamage];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit, FinancialSetting, ItemBooking, PosShift, ItemDamage, Manufacturer];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -145,6 +146,7 @@ Invoice.hasMany(InvoicePayment, { foreignKey: 'invoice_id', as: 'payments', onDe
 PosShift.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
 PosShift.belongsTo(User, { foreignKey: 'cashier_id', as: 'cashier' });
 Invoice.belongsTo(PosShift, { foreignKey: 'pos_shift_id', as: 'posShift' });
+Invoice.belongsTo(Manufacturer, { foreignKey: 'manufacturer_id', as: 'manufacturer' });
 PosShift.hasMany(Invoice, { foreignKey: 'pos_shift_id', as: 'sales' });
 InvoicePayment.belongsTo(Invoice, { foreignKey: 'invoice_id' });
 InvoicePayment.belongsTo(Voucher, { foreignKey: 'voucher_id', as: 'voucher' });
@@ -284,4 +286,5 @@ module.exports = {
   ItemBooking,
   PosShift,
   ItemDamage,
+  Manufacturer,
 };

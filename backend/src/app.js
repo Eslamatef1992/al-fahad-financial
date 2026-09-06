@@ -47,6 +47,7 @@ app.use('/api/purchase-orders', require('./routes/purchaseOrderRoutes'));
 app.use('/api/branches', require('./routes/branchRoutes'));
 app.use('/api/stock-transfers', require('./routes/stockTransferRoutes'));
 app.use('/api/inventory-reports', require('./routes/inventoryReportRoutes'));
+app.use('/api/manufacturers', require('./routes/manufacturerRoutes'));
 app.use('/api/ledger', require('./routes/ledgerRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));

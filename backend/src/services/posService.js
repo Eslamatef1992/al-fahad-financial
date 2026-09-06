@@ -116,7 +116,7 @@ async function creditOutstanding(companyId, clientId, excludeInvoiceId) {
 // the client's normal AR account — no separate ledger mechanism needed, it's
 // exactly how any partially-paid invoice already behaves.
 async function createSale(companyId, userId, posProfile, payload) {
-  const { branch_id, client_id, lines, discount_code, notes, action, payments, cost_center_id, delivery_date, delivery_address } = payload;
+  const { branch_id, client_id, lines, discount_code, notes, action, payments, cost_center_id, delivery_date, delivery_address, is_manufacture_order, manufacturer_id } = payload;
 
   const shift = await getOpenShift(companyId, userId);
   if (!shift) throw badRequest('Open a shift before starting a sale');
@@ -134,6 +134,8 @@ async function createSale(companyId, userId, posProfile, payload) {
     pos_shift_id: shift.id,
     delivery_date: delivery_date || null,
     delivery_address: delivery_address || null,
+    is_manufacture_order: !!is_manufacture_order,
+    manufacturer_id: manufacturer_id || null,
   });
 
   if (action === 'hold') return invoice;

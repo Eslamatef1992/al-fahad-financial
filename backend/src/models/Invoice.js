@@ -23,6 +23,11 @@ module.exports = (sequelize, DataTypes) => {
     // is fulfilled. This pair is what the Delivery Schedule report reads.
     delivery_date: { type: DataTypes.DATEONLY, allowNull: true },
     delivery_address: { type: DataTypes.TEXT, allowNull: true },
+    // Purely a tag — checking "Manufacture Order" on a POS sale and picking a
+    // manufacturer does not trigger any purchasing flow, it just marks this
+    // sale as tied to that manufacturer for later filtering/reporting.
+    is_manufacture_order: { type: DataTypes.BOOLEAN, defaultValue: false },
+    manufacturer_id: { type: DataTypes.UUID, allowNull: true },
     currency: { type: DataTypes.STRING(10), defaultValue: 'KWD' },
     notes: { type: DataTypes.TEXT },
     discount_code_id: { type: DataTypes.UUID, allowNull: true }, // set only for an invoice-scoped code; its amount is allocated across lines

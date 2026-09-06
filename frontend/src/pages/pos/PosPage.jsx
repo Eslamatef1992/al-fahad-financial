@@ -41,6 +41,10 @@ export default function PosPage() {
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [branches, setBranches] = useState([]);
   const [clients, setClients] = useState([]);
+  const [manufacturers, setManufacturers] = useState([]);
+  const [manufactureOrderOpen, setManufactureOrderOpen] = useState(false);
+  const [isManufactureOrder, setIsManufactureOrder] = useState(false);
+  const [manufacturerId, setManufacturerId] = useState('');
 
   const [openFloat, setOpenFloat] = useState('');
   const [openBranch, setOpenBranch] = useState('');
@@ -75,7 +79,12 @@ export default function PosPage() {
   // of a product grid. Items get added either by typing/scanning a code into
   // the always-visible box below, or via the Inventory icon's search popup.
   const [codeEntry, setCodeEntry] = useState('');
+  const [codeSuggestions, setCodeSuggestions] = useState([]);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  // 'branch' = only this shift's branch stock, 'main' = company-wide across
+  // every branch. Defaults to the cashier's own branch since that's what
+  // they're actually standing in front of.
+  const [inventoryTab, setInventoryTab] = useState('branch');
   const [heldOpen, setHeldOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [couponsOpen, setCouponsOpen] = useState(false);
@@ -96,19 +105,35 @@ export default function PosPage() {
     loadAccess();
     api.get('/branches').then((r) => setBranches(r.data)).catch(() => {});
     api.get('/clients').then((r) => setClients(r.data)).catch(() => {});
+    api.get('/manufacturers').then((r) => setManufacturers(r.data)).catch(() => {});
     loadHeld();
   }, [activeCompany]);
+
+  const branchScope = inventoryTab === 'branch' ? access?.shift?.branch_id || null : null;
 
   useEffect(() => {
     if (!access?.shift) return;
     const handle = setTimeout(() => {
-      api.get('/items', { params: query ? { q: query } : {} }).then((r) => {
+      const params = { ...(query ? { q: query } : {}), ...(branchScope ? { branch_id: branchScope } : {}) };
+      api.get('/items', { params }).then((r) => {
         const sorted = [...r.data].sort((a, b) => (a.code || '').localeCompare(b.code || '', undefined, { numeric: true }));
         setProducts(sorted.slice(0, 40));
       });
     }, 200);
     return () => clearTimeout(handle);
-  }, [query, access?.shift]);
+  }, [query, access?.shift, branchScope]);
+
+  // Live suggestions for the quick code-entry box: matches by code, SKU or
+  // name as soon as a couple of characters are typed, so the cashier can pick
+  // from a list instead of needing the exact code and pressing Enter blind.
+  useEffect(() => {
+    if (!access?.shift || !codeEntry.trim()) { setCodeSuggestions([]); return; }
+    const handle = setTimeout(() => {
+      const params = { q: codeEntry.trim(), ...(branchScope ? { branch_id: branchScope } : {}) };
+      api.get('/items', { params }).then((r) => setCodeSuggestions(r.data.slice(0, 8))).catch(() => {});
+    }, 150);
+    return () => clearTimeout(handle);
+  }, [codeEntry, access?.shift, branchScope]);
 
   const total = useMemo(() => cart.reduce((s, l) => s + Number(l.quantity) * Number(l.unit_price), 0), [cart]);
   const netTotal = discountPreview ? Math.max(total - Number(discountPreview.discount_amount || 0), 0) : total;
@@ -190,6 +215,7 @@ export default function PosPage() {
   const clearCart = () => {
     setCart([]); setClientId(''); setDeliveryDate(''); setDeliveryAddress('');
     setDiscountCode(''); setDiscountPreview(null); setDiscountError(''); setCodeEntry('');
+    setIsManufactureOrder(false); setManufacturerId('');
   };
   // "Invoice" rail icon — starts a fresh blank sale.
   const newInvoice = () => clearCart();
@@ -202,13 +228,15 @@ export default function PosPage() {
     const code = codeEntry.trim();
     if (!code) return;
     try {
-      const { data } = await api.get('/items', { params: { q: code } });
+      const { data } = await api.get('/items', { params: { q: code, ...(branchScope ? { branch_id: branchScope } : {}) } });
       if (!data.length) { toast.error(t('pos.itemNotFound')); return; }
       const exact = data.find((p) => p.code?.toLowerCase() === code.toLowerCase() || p.sku?.toLowerCase() === code.toLowerCase());
       addToCart(exact || data[0]);
       setCodeEntry('');
+      setCodeSuggestions([]);
     } catch (e) { /* toast handled globally */ }
   };
+  const pickSuggestion = (item) => { addToCart(item); setCodeEntry(''); setCodeSuggestions([]); };
 
   const loadDiscountCodes = () => api.get('/discount-codes').then((r) => setDiscountCodes(r.data)).catch(() => {});
   const applyDiscount = async (codeOverride) => {
@@ -265,7 +293,7 @@ export default function PosPage() {
   const hold = async () => {
     if (!cart.length) return;
     try {
-      await api.post('/pos/sales', { client_id: clientId || null, action: 'hold', lines: buildLines(), delivery_date: deliveryDate || null, delivery_address: deliveryAddress || null, discount_code: discountCode || undefined });
+      await api.post('/pos/sales', { client_id: clientId || null, action: 'hold', lines: buildLines(), delivery_date: deliveryDate || null, delivery_address: deliveryAddress || null, discount_code: discountCode || undefined, is_manufacture_order: isManufactureOrder, manufacturer_id: isManufactureOrder ? (manufacturerId || null) : null });
       toast.success(t('pos.saleHeld'));
       clearCart();
       loadHeld();
@@ -295,7 +323,7 @@ export default function PosPage() {
       if (Number(tender.cash) > 0) payments.push({ method: 'cash', amount: Number(tender.cash) });
       if (Number(tender.knet) > 0) payments.push({ method: 'knet', amount: Number(tender.knet), reference: tender.knetReference.trim() });
       if (Number(tender.credit) > 0) payments.push({ method: 'credit', amount: Number(tender.credit) });
-      await api.post('/pos/sales', { client_id: clientId || null, action: 'complete', lines: buildLines(), payments, delivery_date: deliveryDate || null, delivery_address: deliveryAddress || null, discount_code: discountCode || undefined });
+      await api.post('/pos/sales', { client_id: clientId || null, action: 'complete', lines: buildLines(), payments, delivery_date: deliveryDate || null, delivery_address: deliveryAddress || null, discount_code: discountCode || undefined, is_manufacture_order: isManufactureOrder, manufacturer_id: isManufactureOrder ? (manufacturerId || null) : null });
       toast.success(t('pos.saleCompleted'));
       setPayOpen(false);
       setTender({ cash: '', knet: '', credit: '', knetReference: '' });
@@ -393,6 +421,27 @@ export default function PosPage() {
                     onChange={(e) => setCodeEntry(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addByCode(); } }}
                   />
+                  {!!codeEntry.trim() && !!codeSuggestions.length && (
+                    <div className="absolute z-30 top-full mt-1 start-0 end-0 card p-1 max-h-56 overflow-y-auto shadow-lg">
+                      {codeSuggestions.map((p) => (
+                        <button
+                          key={p.id}
+                          onMouseDown={() => pickSuggestion(p)}
+                          disabled={Number(p.available_quantity) <= 0}
+                          className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-navy-900 text-start disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-navy-900 dark:text-white truncate">{p.name_en}</p>
+                            <p className="text-[10px] text-slate-400">{p.code}</p>
+                          </div>
+                          <div className="text-end shrink-0">
+                            <p className="text-xs font-semibold text-navy-900 dark:text-white">{money(p.selling_price)}</p>
+                            <p className="text-[10px] text-slate-400">{Number(p.available_quantity)} {t('pos.available')}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 {discountPreview ? (
                   <div className="flex items-center justify-between mt-1.5 text-[11px] text-emerald-600">
@@ -402,6 +451,18 @@ export default function PosPage() {
                 ) : discountError ? (
                   <p className="text-[11px] text-red-500 mt-1.5">{discountError}</p>
                 ) : null}
+                {!!deliveryAddress && (
+                  <p className="flex items-start gap-1 mt-1.5 text-[11px] text-slate-500">
+                    <CalendarClock size={11} className="shrink-0 mt-0.5" />
+                    <span className="truncate">{deliveryDate ? `${deliveryDate} — ` : ''}{deliveryAddress}</span>
+                  </p>
+                )}
+                {isManufactureOrder && (
+                  <p className="flex items-center gap-1 mt-1.5 text-[11px] text-amber-600">
+                    <Factory size={11} className="shrink-0" />
+                    <span className="truncate">{t('pos.railManufactureOrder')}{manufacturerId ? ` — ${manufacturers.find((m) => m.id === manufacturerId)?.name_en || ''}` : ''}</span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -466,7 +527,7 @@ export default function PosPage() {
           {canRefund && <RailButton icon={RotateCcw} label={t('pos.refund')} onClick={openHistory} />}
           <RailButton icon={Lock} label={t('pos.closeShift')} onClick={() => setCloseOpen(true)} />
           <RailButton icon={PauseCircle} label={t('pos.railHoldInvoices')} onClick={() => setHeldOpen(true)} badge={held.length || null} />
-          <RailButton icon={Factory} label={t('pos.railManufactureOrder')} onClick={() => toast(t('common.comingSoon'))} />
+          <RailButton icon={Factory} label={t('pos.railManufactureOrder')} onClick={() => setManufactureOrderOpen(true)} badge={isManufactureOrder ? '✓' : null} />
           <RailButton icon={CalendarClock} label={t('invoices.deliveryDate')} onClick={() => setDeliveryOpen(true)} />
           <RailButton icon={Ticket} label={t('pos.railCoupons')} onClick={() => { setCouponsOpen(true); loadDiscountCodes(); }} />
           <RailButton icon={PieChart} label={t('nav.reports')} onClick={() => navigate('/reports')} />
@@ -482,6 +543,20 @@ export default function PosPage() {
               <div className="flex items-center justify-between mb-3">
                 <p className="font-bold text-navy-900 dark:text-white flex items-center gap-2"><Boxes size={16} />{t('pos.searchFullInventory')}</p>
                 <button onClick={() => setInventoryOpen(false)}><X size={18} /></button>
+              </div>
+              <div className="flex gap-1.5 mb-3">
+                <button
+                  onClick={() => setInventoryTab('branch')}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${inventoryTab === 'branch' ? 'bg-navy-900 text-white dark:bg-white dark:text-navy-900' : 'bg-slate-100 dark:bg-navy-800 text-slate-500'}`}
+                >
+                  {t('pos.tabBranchInventory')}
+                </button>
+                <button
+                  onClick={() => setInventoryTab('main')}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${inventoryTab === 'main' ? 'bg-navy-900 text-white dark:bg-white dark:text-navy-900' : 'bg-slate-100 dark:bg-navy-800 text-slate-500'}`}
+                >
+                  {t('pos.tabMainInventory')}
+                </button>
               </div>
               <div className="relative mb-3">
                 <Search size={14} className="absolute top-1/2 -translate-y-1/2 start-2.5 text-slate-400" />
@@ -552,6 +627,36 @@ export default function PosPage() {
               <textarea className="input" rows={3} value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder={t('invoices.deliveryAddressHint')} />
               <div className="flex items-center justify-end gap-2 mt-6">
                 <button onClick={() => setDeliveryOpen(false)} className="btn-primary">{t('common.done')}</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Manufacture Order tag — checking the box and picking a manufacturer
+          only tags this sale for later filtering/reporting, it does not open
+          any purchasing flow. */}
+      {manufactureOrderOpen && (
+        <>
+          <div className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40" onClick={() => setManufactureOrderOpen(false)} />
+          <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
+            <div className="card p-6 max-w-sm w-full">
+              <p className="font-bold text-lg text-navy-900 dark:text-white mb-4 flex items-center gap-2"><Factory size={18} />{t('pos.railManufactureOrder')}</p>
+              <label className="flex items-center gap-2 text-sm text-navy-900 dark:text-white mb-3 cursor-pointer">
+                <input type="checkbox" className="rounded" checked={isManufactureOrder} onChange={(e) => setIsManufactureOrder(e.target.checked)} />
+                {t('pos.manufactureOrderCheckbox')}
+              </label>
+              {isManufactureOrder && (
+                <div>
+                  <label className="label">{t('nav.manufacturers')}</label>
+                  <select className="input" value={manufacturerId} onChange={(e) => setManufacturerId(e.target.value)}>
+                    <option value="">{t('common.select')}</option>
+                    {manufacturers.filter((m) => m.is_active).map((m) => <option key={m.id} value={m.id}>{m.name_en}</option>)}
+                  </select>
+                </div>
+              )}
+              <div className="flex items-center justify-end gap-2 mt-6">
+                <button onClick={() => setManufactureOrderOpen(false)} className="btn-primary">{t('common.done')}</button>
               </div>
             </div>
           </div>

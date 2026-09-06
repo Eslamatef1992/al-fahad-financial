@@ -46,7 +46,7 @@ async function buildInvoiceLines(companyId, { lines, discount_code, excludeInvoi
 
 // Creates a draft invoice with computed line totals. No ledger impact yet.
 async function createInvoice(companyId, userId, payload) {
-  const { type, client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines, discount_code, channel, pos_shift_id, delivery_date, delivery_address } = payload;
+  const { type, client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines, discount_code, channel, pos_shift_id, delivery_date, delivery_address, is_manufacture_order, manufacturer_id } = payload;
 
   if (!['sales', 'purchase'].includes(type)) throw badRequest('Invoice type must be "sales" or "purchase"');
   if (type === 'sales' && !client_id) throw badRequest('client_id is required for sales invoices');
@@ -88,6 +88,8 @@ async function createInvoice(companyId, userId, payload) {
       pos_shift_id: channel === 'pos' ? (pos_shift_id || null) : null,
       delivery_date: delivery_date || null,
       delivery_address: delivery_address || null,
+      is_manufacture_order: !!is_manufacture_order,
+      manufacturer_id: is_manufacture_order ? (manufacturer_id || null) : null,
     }, { transaction: t });
 
     await Promise.all(computedLines.map((l, idx) => InvoiceLine.create({

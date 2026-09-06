@@ -32,6 +32,7 @@
     "branches": "Branches",
     "stockTransfers": "Stock Transfers",
     "discountCodes": "Discount Codes",
+    "manufacturers": "Manufacturers",
     "units": "Units",
     "financialSettings": "Financial Configuration",
     "bookings": "Booked Items",
@@ -483,6 +484,8 @@
     "canVoid": "Can Void Sales",
     "canCreditSale": "Can Sell on Credit",
     "searchFullInventory": "Search the full inventory",
+    "tabBranchInventory": "Branch Inventory",
+    "tabMainInventory": "Main Inventory",
     "quickAddByCode": "Add item by code",
     "quickAddByCodeHint": "Type or scan a code, then press Enter",
     "itemNotFound": "No item matches that code",
@@ -495,6 +498,7 @@
     "railInventory": "Inventory",
     "railHoldInvoices": "Hold Invoices",
     "railManufactureOrder": "Manufacture Order",
+    "manufactureOrderCheckbox": "This is a manufacture order",
     "railCoupons": "Available Coupons",
     "invoicesByDate": "Invoices By Date",
     "customerSearchPlaceholder": "Search by customer name or phone...",
@@ -562,6 +566,9 @@
     "totalQtySold": "Total Qty Sold",
     "invoiceCount": "Invoices",
     "noSales": "No sales found for this filter."
+  },
+  "manufacturers": {
+    "pageHint": "Manufacturers a Manufacture Order can be tagged against — no purchasing or accounting link, just a list to pick from."
   },
   "discountCodes": {
     "code": "Code",

@@ -32,6 +32,7 @@
     "branches": "الفروع",
     "stockTransfers": "تحويلات المخزون",
     "discountCodes": "أكواد الخصم",
+    "manufacturers": "المصنعون",
     "units": "وحدات القياس",
     "financialSettings": "الإعدادات المالية",
     "bookings": "الأصناف المحجوزة",
@@ -483,6 +484,8 @@
     "canVoid": "يمكنه إلغاء العمليات",
     "canCreditSale": "يمكنه البيع الآجل",
     "searchFullInventory": "ابحث في كامل المخزون",
+    "tabBranchInventory": "مخزون الفرع",
+    "tabMainInventory": "المخزون الرئيسي",
     "quickAddByCode": "إضافة صنف بالكود",
     "quickAddByCodeHint": "اكتب أو امسح الكود ثم اضغط Enter",
     "itemNotFound": "لا يوجد صنف بهذا الكود",
@@ -495,6 +498,7 @@
     "railInventory": "المخزون",
     "railHoldInvoices": "الفواتير المعلقة",
     "railManufactureOrder": "أمر تصنيع",
+    "manufactureOrderCheckbox": "هذه عملية بيع مرتبطة بأمر تصنيع",
     "railCoupons": "كوبونات الخصم المتاحة",
     "invoicesByDate": "الفواتير حسب التاريخ",
     "customerSearchPlaceholder": "بحث باسم العميل أو رقم الهاتف...",
@@ -562,6 +566,9 @@
     "totalQtySold": "إجمالي الكمية المباعة",
     "invoiceCount": "عدد الفواتير",
     "noSales": "لا توجد مبيعات مطابقة لهذا الفلتر."
+  },
+  "manufacturers": {
+    "pageHint": "قائمة المصنعين التي يمكن ربط أمر التصنيع بها — بدون أي علاقة محاسبية أو شرائية، مجرد قائمة للاختيار منها."
   },
   "discountCodes": {
     "code": "الكود",

@@ -39,6 +39,7 @@ import BranchesPage from '@/pages/branches/BranchesPage';
 import StockTransfersPage from '@/pages/stockTransfers/StockTransfersPage';
 import InventoryReportsPage from '@/pages/reports/InventoryReportsPage';
 import DiscountCodesPage from '@/pages/discountCodes/DiscountCodesPage';
+import ManufacturersPage from '@/pages/manufacturers/ManufacturersPage';
 import UnitsPage from '@/pages/units/UnitsPage';
 import FinancialSettingsPage from '@/pages/financialSettings/FinancialSettingsPage';
 import BookingsPage from '@/pages/bookings/BookingsPage';
@@ -100,6 +101,7 @@ export default function App() {
           <Route path="/delivery-schedule" element={<DeliverySchedulePage />} />
           <Route path="/stock-transfers" element={<StockTransfersPage />} />
           <Route path="/discount-codes" element={<DiscountCodesPage />} />
+          <Route path="/manufacturers" element={<ManufacturersPage />} />
           <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
           <Route path="/purchase-orders/new" element={<PurchaseOrderFormPage />} />
           <Route path="/purchase-orders/:id/edit" element={<PurchaseOrderFormPage />} />
