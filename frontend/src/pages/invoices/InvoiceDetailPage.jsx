@@ -122,6 +122,7 @@ export default function InvoiceDetailPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 dark:border-navy-800">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase">{t('common.itemNo')}</th>
               <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('common.description')}</th>
               <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.qty')}</th>
               <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.unitPrice')}</th>
@@ -130,8 +131,9 @@ export default function InvoiceDetailPage() {
             </tr>
           </thead>
           <tbody>
-            {invoice.lines?.map((l) => (
+            {invoice.lines?.map((l, i) => (
               <tr key={l.id} className="border-b border-slate-50 dark:border-navy-800/60 last:border-0">
+                <td className="px-4 py-3 text-center text-slate-400">{i + 1}</td>
                 <td className="px-4 py-3">{l.description || l.account?.name_en}</td>
                 <td className="px-4 py-3 text-end">{Number(l.quantity).toFixed(2)}</td>
                 <td className="px-4 py-3 text-end">{Number(l.unit_price).toFixed(3)}</td>
@@ -149,7 +151,14 @@ export default function InvoiceDetailPage() {
           <div className="space-y-2">
             {invoice.payments.map((p) => (
               <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-navy-800/50 text-sm">
-                <div><span className="font-medium">{p.date}</span> {p.notes && <span className="text-slate-400"> · {p.notes}</span>}</div>
+                <div>
+                  <span className="font-medium">{p.date}</span>
+                  <span className="px-2 py-0.5 mx-2 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 dark:bg-blue-950">
+                    {p.paymentMethodRef?.name_en || p.payment_method || t('nav.paymentMethods')}
+                  </span>
+                  {p.reference && <span className="text-slate-400 text-xs">{t('pos.referenceOptionalPlaceholder')}: {p.reference}</span>}
+                  {p.notes && <span className="text-slate-400"> · {p.notes}</span>}
+                </div>
                 <div className="font-semibold">{Number(p.amount).toFixed(3)}</div>
               </div>
             ))}

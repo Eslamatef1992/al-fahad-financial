@@ -1,12 +1,19 @@
 const { Op } = require('sequelize');
-const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Branch, Company, Voucher, Item, DiscountCode } = require('../models');
+const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Branch, Company, Voucher, Item, DiscountCode, PaymentMethod } = require('../models');
 const invoiceService = require('../services/invoiceService');
 const { generateInvoicePdf, generateAgingPdf, generateDeliverySchedulePdf } = require('../services/pdfService');
 const { exportInvoices } = require('../services/excelService');
 
 const lineInclude = [{ model: InvoiceLine, as: 'lines', include: [{ model: Account, as: 'account' }, { model: Item, as: 'item' }, { model: DiscountCode, as: 'discountCode' }] }];
 const partyInclude = [{ model: Client, as: 'client' }, { model: Supplier, as: 'supplier' }, { model: CostCenter, as: 'costCenter' }, { model: Branch, as: 'branch' }, { model: DiscountCode, as: 'discountCode' }];
-const paymentInclude = [{ model: InvoicePayment, as: 'payments', include: [{ model: Voucher, as: 'voucher', attributes: ['id', 'voucher_no', 'status'] }] }];
+const paymentInclude = [{
+  model: InvoicePayment,
+  as: 'payments',
+  include: [
+    { model: Voucher, as: 'voucher', attributes: ['id', 'voucher_no', 'status'] },
+    { model: PaymentMethod, as: 'paymentMethodRef', attributes: ['id', 'name_en', 'name_ar'] },
+  ],
+}];
 
 exports.list = async (req, res) => {
   const { type, status, from, to, party_id, branch_id } = req.query;
@@ -137,7 +144,7 @@ exports.addPayment = async (req, res) => {
 };
 
 exports.pdf = async (req, res) => {
-  const invoice = await Invoice.findOne({ where: { id: req.params.id, company_id: req.companyId }, include: [...lineInclude, ...partyInclude] });
+  const invoice = await Invoice.findOne({ where: { id: req.params.id, company_id: req.companyId }, include: [...lineInclude, ...partyInclude, ...paymentInclude] });
   if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
   const company = await Company.findByPk(req.companyId);
   generateInvoicePdf(res, invoice, company);

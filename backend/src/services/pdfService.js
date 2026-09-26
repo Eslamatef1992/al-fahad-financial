@@ -706,6 +706,13 @@ function generateInvoicePdf(res, invoice, company) {
   const partyName = invoice.type === 'sales' ? invoice.client?.name_en : invoice.supplier?.name_en;
   header(doc, company, invoice.invoice_no, `${invoice.type === 'sales' ? 'SALES INVOICE' : 'PURCHASE BILL'} · ${invoice.date}`);
 
+  // Payment Method: which Payment Setting Option(s) actually settled this
+  // invoice, if any payment has been recorded yet (blank/omitted otherwise —
+  // exactly like the blank line on a paper invoice waiting to be filled in).
+  const paymentMethodLabels = invoice.payments?.length
+    ? [...new Set(invoice.payments.map((p) => p.payment_method).filter(Boolean))].join(', ')
+    : null;
+
   metaCard(doc, [
     { label: invoice.type === 'sales' ? 'Bill To' : 'Vendor', value: partyName || '-' },
     { label: 'Status', value: invoice.status, badge: true },
@@ -713,6 +720,7 @@ function generateInvoicePdf(res, invoice, company) {
     { label: 'Reference', value: invoice.reference_no || '-' },
     ...(invoice.branch ? [{ label: 'Branch', value: `${invoice.branch.code} - ${invoice.branch.name_en}` }] : []),
     ...(invoice.delivery_date ? [{ label: 'Delivery Date', value: invoice.delivery_date }] : []),
+    ...(paymentMethodLabels ? [{ label: 'Payment Method', value: paymentMethodLabels }] : []),
   ]);
 
   if (invoice.delivery_address) {
@@ -722,11 +730,12 @@ function generateInvoicePdf(res, invoice, company) {
 
   table(doc, {
     headers: [
-      { label: 'Description' }, { label: 'Qty', align: 'right' }, { label: 'Unit Price', align: 'right' },
-      { label: 'Tax %', align: 'right' }, { label: 'Total', align: 'right' },
+      { label: 'No.', align: 'center' }, { label: 'Description' }, { label: 'Qty', align: 'right' },
+      { label: 'Unit Price', align: 'right' }, { label: 'Tax %', align: 'right' }, { label: 'Total', align: 'right' },
     ],
-    colWidths: [220, 50, 80, 60, 90],
-    rows: invoice.lines.map((l) => [
+    colWidths: [30, 190, 50, 80, 60, 90],
+    rows: invoice.lines.map((l, i) => [
+      String(i + 1),
       l.description || '-',
       Number(l.quantity).toFixed(2),
       Number(l.unit_price).toFixed(3),
@@ -750,6 +759,8 @@ function generateInvoicePdf(res, invoice, company) {
     drawBidi(doc, `Notes: ${invoice.notes}`, 40, doc.y, { fontSize: 9, color: GRAY, width: doc.page.width - 80 });
     doc.moveDown(1);
   }
+
+  signatureBlock(doc, ['Received By', 'Delivered By', 'Authorized Signature']);
 
   footer(doc, company);
   doc.end();

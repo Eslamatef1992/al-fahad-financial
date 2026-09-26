@@ -87,6 +87,7 @@
     "print": "Print",
     "applyFilters": "Apply Filters",
     "excel": "Excel",
+    "itemNo": "No.",
     "qty": "Qty",
     "unitPrice": "Unit Price",
     "taxPercent": "Tax %",
