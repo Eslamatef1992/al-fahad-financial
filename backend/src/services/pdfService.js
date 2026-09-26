@@ -730,16 +730,16 @@ function generateInvoicePdf(res, invoice, company) {
 
   table(doc, {
     headers: [
-      { label: 'No.', align: 'center' }, { label: 'Description' }, { label: 'Qty', align: 'right' },
-      { label: 'Unit Price', align: 'right' }, { label: 'Tax %', align: 'right' }, { label: 'Total', align: 'right' },
+      { label: 'No.', align: 'center' }, { label: 'SKU' }, { label: 'Description' }, { label: 'Qty', align: 'right' },
+      { label: 'Unit Price', align: 'right' }, { label: 'Total', align: 'right' },
     ],
-    colWidths: [30, 190, 50, 80, 60, 90],
+    colWidths: [30, 70, 150, 50, 90, 110],
     rows: invoice.lines.map((l, i) => [
       String(i + 1),
+      l.variant?.sku || l.item?.sku || '-',
       l.description || '-',
       Number(l.quantity).toFixed(2),
       Number(l.unit_price).toFixed(3),
-      Number(l.tax_rate).toFixed(1),
       Number(l.line_total).toFixed(3),
     ]),
   });
@@ -749,7 +749,6 @@ function generateInvoicePdf(res, invoice, company) {
   totalsBox(doc, [
     { label: 'Subtotal', value: Number(invoice.subtotal).toFixed(3) },
     ...(discountAmount > 0.0009 ? [{ label: `Discount${invoice.discountCode ? ` (${invoice.discountCode.code})` : ''}`, value: `-${discountAmount.toFixed(3)}`, color: DANGER }] : []),
-    { label: 'Tax', value: Number(invoice.tax_total).toFixed(3) },
     { label: 'Total', value: `${Number(invoice.total).toFixed(3)} ${invoice.currency}` },
     { label: 'Paid', value: Number(invoice.paid_total).toFixed(3) },
     { label: 'Balance Due', value: balanceDue.toFixed(3), color: balanceDue > 0.001 ? DANGER : SUCCESS },

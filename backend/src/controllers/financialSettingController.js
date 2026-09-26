@@ -16,6 +16,7 @@ const FIELDS = [
   'pos_knet_account_id',
   'cash_control_account_id',
   'damage_expense_account_id',
+  'default_credit_account_id',
 ];
 
 exports.get = async (req, res) => {

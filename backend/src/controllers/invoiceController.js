@@ -1,10 +1,10 @@
 const { Op } = require('sequelize');
-const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Branch, Company, Voucher, Item, DiscountCode, PaymentMethod } = require('../models');
+const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Branch, Company, Voucher, Item, ItemVariant, DiscountCode, PaymentMethod } = require('../models');
 const invoiceService = require('../services/invoiceService');
 const { generateInvoicePdf, generateAgingPdf, generateDeliverySchedulePdf } = require('../services/pdfService');
 const { exportInvoices } = require('../services/excelService');
 
-const lineInclude = [{ model: InvoiceLine, as: 'lines', include: [{ model: Account, as: 'account' }, { model: Item, as: 'item' }, { model: DiscountCode, as: 'discountCode' }] }];
+const lineInclude = [{ model: InvoiceLine, as: 'lines', include: [{ model: Account, as: 'account' }, { model: Item, as: 'item' }, { model: ItemVariant, as: 'variant' }, { model: DiscountCode, as: 'discountCode' }] }];
 const partyInclude = [{ model: Client, as: 'client' }, { model: Supplier, as: 'supplier' }, { model: CostCenter, as: 'costCenter' }, { model: Branch, as: 'branch' }, { model: DiscountCode, as: 'discountCode' }];
 const paymentInclude = [{
   model: InvoicePayment,
@@ -40,6 +40,15 @@ exports.get = async (req, res) => {
 exports.create = async (req, res) => {
   const invoice = await invoiceService.createInvoice(req.companyId, req.user.id, req.body);
   res.status(201).json(invoice);
+};
+
+// One-step "Complete & Pay" — creates the draft, posts it, and settles the
+// given payments (Payment Setting Options + Credit), all in one request, so
+// the Sales Invoice creation screen can behave exactly like POS checkout.
+exports.createAndSettle = async (req, res) => {
+  const invoice = await invoiceService.createInvoiceAndSettle(req.companyId, req.user.id, req.body);
+  const withPayments = await Invoice.findByPk(invoice.id, { include: [...lineInclude, ...partyInclude, ...paymentInclude] });
+  res.status(201).json(withPayments);
 };
 
 // Edits a draft invoice IN PLACE — same id, same invoice_no. Previously this

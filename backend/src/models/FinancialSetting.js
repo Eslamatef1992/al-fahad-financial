@@ -35,6 +35,10 @@ module.exports = (sequelize, DataTypes) => {
     // Default expense account a cleared/written-off Damages entry posts its
     // loss to (falls back to the item's own COGS account if left unset).
     damage_expense_account_id: { type: DataTypes.UUID, allowNull: true },
+    // Fallback AR/control account for a credit sale when the client somehow
+    // has no linked account of their own (every client normally gets one
+    // automatically on creation — this only covers that edge case).
+    default_credit_account_id: { type: DataTypes.UUID, allowNull: true },
   }, {
     tableName: 'financial_settings',
   });

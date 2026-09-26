@@ -123,10 +123,10 @@ export default function InvoiceDetailPage() {
           <thead>
             <tr className="border-b border-slate-100 dark:border-navy-800">
               <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase">{t('common.itemNo')}</th>
+              <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('common.sku')}</th>
               <th className="px-4 py-3 text-start text-xs font-semibold text-slate-500 uppercase">{t('common.description')}</th>
               <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.qty')}</th>
               <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.unitPrice')}</th>
-              <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.taxPercent')}</th>
               <th className="px-4 py-3 text-end text-xs font-semibold text-slate-500 uppercase">{t('common.total')}</th>
             </tr>
           </thead>
@@ -134,10 +134,10 @@ export default function InvoiceDetailPage() {
             {invoice.lines?.map((l, i) => (
               <tr key={l.id} className="border-b border-slate-50 dark:border-navy-800/60 last:border-0">
                 <td className="px-4 py-3 text-center text-slate-400">{i + 1}</td>
+                <td className="px-4 py-3 text-slate-400">{l.variant?.sku || l.item?.sku || '-'}</td>
                 <td className="px-4 py-3">{l.description || l.account?.name_en}</td>
                 <td className="px-4 py-3 text-end">{Number(l.quantity).toFixed(2)}</td>
                 <td className="px-4 py-3 text-end">{Number(l.unit_price).toFixed(3)}</td>
-                <td className="px-4 py-3 text-end">{Number(l.tax_rate).toFixed(1)}</td>
                 <td className="px-4 py-3 text-end font-medium">{Number(l.line_total).toFixed(3)}</td>
               </tr>
             ))}

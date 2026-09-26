@@ -88,6 +88,7 @@
     "applyFilters": "Apply Filters",
     "excel": "Excel",
     "itemNo": "No.",
+    "sku": "SKU",
     "qty": "Qty",
     "unitPrice": "Unit Price",
     "taxPercent": "Tax %",
@@ -417,7 +418,9 @@
     "posCashDefault": "Default Cash Account for POS Payments",
     "posKnetDefault": "Default Knet Account for POS Payments",
     "cashControlDefault": "Default Linked Account for New Cash/Bank Registers",
-    "damageExpenseDefault": "Default Expense Account for Cleared Damages"
+    "damageExpenseDefault": "Default Expense Account for Cleared Damages",
+    "creditSectionTitle": "Credit Sales",
+    "defaultCreditDefault": "Default AR/Control Account for Credit Sales"
   },
   "deliverySchedule": {
     "pageHint": "Every sales invoice with a delivery date set — whether or not the item is formally booked — sorted soonest first, so it reads like a dispatcher's route sheet."
