@@ -270,7 +270,7 @@ async function postInvoice(companyId, invoiceId, userId) {
 // Records a payment against a posted invoice by creating + posting a
 // receipt (sales) or payment (purchase) voucher that moves cash against the
 // client/supplier control account, then updates the invoice's paid status.
-async function recordPayment(companyId, invoiceId, userId, { amount, date, cash_account_id, notes, payment_method, reference }) {
+async function recordPayment(companyId, invoiceId, userId, { amount, date, cash_account_id, notes, payment_method, payment_method_id, reference }) {
   const invoice = await Invoice.findOne({
     where: { id: invoiceId, company_id: companyId },
     include: [{ model: Client, as: 'client' }, { model: Supplier, as: 'supplier' }],
@@ -312,6 +312,7 @@ async function recordPayment(companyId, invoiceId, userId, { amount, date, cash_
     date: date || new Date().toISOString().slice(0, 10),
     notes,
     payment_method: payment_method || 'cash',
+    payment_method_id: payment_method_id || null,
     reference: reference || null,
   });
 

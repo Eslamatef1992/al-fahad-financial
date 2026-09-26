@@ -24,11 +24,24 @@ export default function InvoiceDetailPage() {
   const [cashAccounts, setCashAccounts] = useState([]);
   const [confirmAction, setConfirmAction] = useState(null);
   const [payOpen, setPayOpen] = useState(false);
-  const [payForm, setPayForm] = useState({ amount: '', date: new Date().toISOString().slice(0, 10), cash_account_id: '', notes: '' });
+  const [payForm, setPayForm] = useState({ amount: '', date: new Date().toISOString().slice(0, 10), cash_account_id: '', payment_method_id: '', notes: '' });
   const [paying, setPaying] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState([]);
 
   const load = () => api.get(`/invoices/${id}`).then((r) => setInvoice(r.data));
-  useEffect(() => { load(); api.get('/cash-accounts').then((r) => setCashAccounts(r.data)); }, [id]);
+  useEffect(() => {
+    load();
+    api.get('/cash-accounts').then((r) => setCashAccounts(r.data));
+    api.get('/payment-methods').then((r) => setPaymentMethods(r.data)).catch(() => {});
+  }, [id]);
+
+  // Picking a Payment Setting Option pre-fills the Cash/Bank Account with
+  // that method's linked account, but the account dropdown stays editable —
+  // an accountant can still route the payment to a different account.
+  const pickPaymentMethod = (methodId) => {
+    const method = paymentMethods.find((m) => m.id === methodId);
+    setPayForm((f) => ({ ...f, payment_method_id: methodId, cash_account_id: method ? method.account_id : f.cash_account_id }));
+  };
 
   const act = async () => {
     if (confirmAction === 'delete') {
@@ -47,10 +60,11 @@ export default function InvoiceDetailPage() {
     e.preventDefault();
     setPaying(true);
     try {
-      await api.post(`/invoices/${id}/payments`, payForm);
+      const method = paymentMethods.find((m) => m.id === payForm.payment_method_id);
+      await api.post(`/invoices/${id}/payments`, { ...payForm, payment_method: method ? method.name_en : undefined });
       toast.success(t('invoices.paymentRecorded'));
       setPayOpen(false);
-      setPayForm({ amount: '', date: new Date().toISOString().slice(0, 10), cash_account_id: '', notes: '' });
+      setPayForm({ amount: '', date: new Date().toISOString().slice(0, 10), cash_account_id: '', payment_method_id: '', notes: '' });
       load();
     } finally { setPaying(false); }
   };
@@ -146,6 +160,13 @@ export default function InvoiceDetailPage() {
       <SlideOver open={payOpen} onClose={() => setPayOpen(false)} title={t('invoices.recordPayment')} onSubmit={submitPayment} submitting={paying}>
         <div><label className="label">{t('invoices.amountRemaining', { balance: balance.toFixed(3) })}</label><input required type="number" step="0.001" max={balance} className="input" value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} /></div>
         <div><label className="label">{t('common.date')}</label><input required type="date" className="input" value={payForm.date} onChange={(e) => setPayForm({ ...payForm, date: e.target.value })} /></div>
+        <div>
+          <label className="label">{t('nav.paymentMethods')}</label>
+          <select className="input" value={payForm.payment_method_id} onChange={(e) => pickPaymentMethod(e.target.value)}>
+            <option value="">{t('common.select')}</option>
+            {paymentMethods.filter((m) => m.is_active).map((m) => <option key={m.id} value={m.id}>{m.name_en}</option>)}
+          </select>
+        </div>
         <div>
           <label className="label">{t('invoices.cashBankAccount')}</label>
           <select required className="input" value={payForm.cash_account_id} onChange={(e) => setPayForm({ ...payForm, cash_account_id: e.target.value })}>

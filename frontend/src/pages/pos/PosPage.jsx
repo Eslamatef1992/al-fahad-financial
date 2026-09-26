@@ -62,7 +62,13 @@ export default function PosPage() {
   const [held, setHeld] = useState([]);
   const [payOpen, setPayOpen] = useState(false);
   const [paying, setPaying] = useState(false);
-  const [tender, setTender] = useState({ cash: '', knet: '', credit: '', knetReference: '' });
+  // Dynamic tender: one amount (+ optional reference) per active Payment
+  // Setting Option, keyed by that method's id, plus Credit as its own
+  // special case (settles into AR via credit-limit logic, not a GL account).
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [tenderAmounts, setTenderAmounts] = useState({});
+  const [tenderRefs, setTenderRefs] = useState({});
+  const [creditAmount, setCreditAmount] = useState('');
   const [closeOpen, setCloseOpen] = useState(false);
   const [countedCash, setCountedCash] = useState('');
   const [voidTarget, setVoidTarget] = useState(null);
@@ -106,6 +112,7 @@ export default function PosPage() {
     api.get('/branches').then((r) => setBranches(r.data)).catch(() => {});
     api.get('/clients').then((r) => setClients(r.data)).catch(() => {});
     api.get('/manufacturers').then((r) => setManufacturers(r.data)).catch(() => {});
+    api.get('/payment-methods').then((r) => setPaymentMethods(r.data)).catch(() => {});
     loadHeld();
   }, [activeCompany]);
 
@@ -313,20 +320,23 @@ export default function PosPage() {
   };
   const voidHeldSilently = async (id) => { try { await api.post(`/pos/sales/${id}/void`); loadHeld(); } catch (e) {} };
 
-  const tenderTotal = Number(tender.cash || 0) + Number(tender.knet || 0) + Number(tender.credit || 0);
+  const activePaymentMethods = paymentMethods.filter((pm) => pm.is_active);
+  const tenderTotal = Object.values(tenderAmounts).reduce((s, v) => s + Number(v || 0), 0) + Number(creditAmount || 0);
+  const resetTender = () => { setTenderAmounts({}); setTenderRefs({}); setCreditAmount(''); };
   const submitPayment = async () => {
     if (Math.abs(tenderTotal - netTotal) > 0.001) return toast.error(t('pos.tenderMismatch'));
-    if (Number(tender.knet) > 0 && !tender.knetReference.trim()) return toast.error(t('pos.knetReferenceRequired'));
     setPaying(true);
     try {
       const payments = [];
-      if (Number(tender.cash) > 0) payments.push({ method: 'cash', amount: Number(tender.cash) });
-      if (Number(tender.knet) > 0) payments.push({ method: 'knet', amount: Number(tender.knet), reference: tender.knetReference.trim() });
-      if (Number(tender.credit) > 0) payments.push({ method: 'credit', amount: Number(tender.credit) });
+      activePaymentMethods.forEach((pm) => {
+        const amt = Number(tenderAmounts[pm.id] || 0);
+        if (amt > 0) payments.push({ method: pm.name_en, amount: amt, account_id: pm.account_id, payment_method_id: pm.id, reference: (tenderRefs[pm.id] || '').trim() || undefined });
+      });
+      if (Number(creditAmount) > 0) payments.push({ method: 'credit', amount: Number(creditAmount) });
       await api.post('/pos/sales', { client_id: clientId || null, action: 'complete', lines: buildLines(), payments, delivery_date: deliveryDate || null, delivery_address: deliveryAddress || null, discount_code: discountCode || undefined, is_manufacture_order: isManufactureOrder, manufacturer_id: isManufactureOrder ? (manufacturerId || null) : null });
       toast.success(t('pos.saleCompleted'));
       setPayOpen(false);
-      setTender({ cash: '', knet: '', credit: '', knetReference: '' });
+      resetTender();
       clearCart();
     } catch (e) { /* toast handled globally */ }
     finally { setPaying(false); }
@@ -710,26 +720,31 @@ export default function PosPage() {
               <p className="font-bold text-lg text-navy-900 dark:text-white mb-1">{t('pos.pay')}</p>
               <p className="text-sm text-slate-500 mb-4">{t('pos.amountDue', { amount: money(netTotal) })}</p>
               <div className="space-y-3">
-                <div>
-                  <label className="label flex items-center gap-1"><Banknote size={13} />{t('pos.cash')}</label>
-                  <input type="number" step="0.001" className="input" value={tender.cash} onChange={(e) => setTender({ ...tender, cash: e.target.value })} />
-                </div>
-                <div>
-                  <label className="label flex items-center gap-1"><Landmark size={13} />{t('pos.knet')}</label>
-                  <input type="number" step="0.001" className="input" value={tender.knet} onChange={(e) => setTender({ ...tender, knet: e.target.value })} />
-                  {Number(tender.knet) > 0 && (
+                {activePaymentMethods.length === 0 && (
+                  <p className="text-xs text-amber-500">{t('pos.noPaymentMethods')}</p>
+                )}
+                {activePaymentMethods.map((pm) => (
+                  <div key={pm.id}>
+                    <label className="label flex items-center gap-1"><Banknote size={13} />{pm.name_en}</label>
                     <input
-                      className="input mt-1.5"
-                      value={tender.knetReference}
-                      onChange={(e) => setTender({ ...tender, knetReference: e.target.value })}
-                      placeholder={t('pos.knetReferencePlaceholder')}
+                      type="number" step="0.001" className="input"
+                      value={tenderAmounts[pm.id] || ''}
+                      onChange={(e) => setTenderAmounts({ ...tenderAmounts, [pm.id]: e.target.value })}
                     />
-                  )}
-                </div>
+                    {Number(tenderAmounts[pm.id]) > 0 && (
+                      <input
+                        className="input mt-1.5"
+                        value={tenderRefs[pm.id] || ''}
+                        onChange={(e) => setTenderRefs({ ...tenderRefs, [pm.id]: e.target.value })}
+                        placeholder={t('pos.referenceOptionalPlaceholder')}
+                      />
+                    )}
+                  </div>
+                ))}
                 {canCredit && (
                   <div>
                     <label className="label flex items-center gap-1"><Users size={13} />{t('pos.credit')}</label>
-                    <input type="number" step="0.001" className="input" value={tender.credit} onChange={(e) => setTender({ ...tender, credit: e.target.value })} disabled={!clientId} />
+                    <input type="number" step="0.001" className="input" value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} disabled={!clientId} />
                     {!clientId && <p className="text-xs text-amber-500 mt-1">{t('pos.creditNeedsClient')}</p>}
                   </div>
                 )}

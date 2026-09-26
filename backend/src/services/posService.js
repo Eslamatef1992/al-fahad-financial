@@ -188,6 +188,7 @@ async function createSale(companyId, userId, posProfile, payload) {
       date: new Date().toISOString().slice(0, 10),
       cash_account_id: account_id,
       payment_method: p.method === 'other' ? 'other' : p.method,
+      payment_method_id: p.payment_method_id || null,
       reference: p.reference || null,
     });
   }

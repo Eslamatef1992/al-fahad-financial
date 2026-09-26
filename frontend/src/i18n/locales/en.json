@@ -33,6 +33,7 @@
     "stockTransfers": "Stock Transfers",
     "discountCodes": "Discount Codes",
     "manufacturers": "Manufacturers",
+    "paymentMethods": "Payment Setting Options",
     "units": "Units",
     "financialSettings": "Financial Configuration",
     "bookings": "Booked Items",
@@ -500,6 +501,8 @@
     "railManufactureOrder": "Manufacture Order",
     "manufactureOrderCheckbox": "This is a manufacture order",
     "railCoupons": "Available Coupons",
+    "noPaymentMethods": "No payment methods configured yet — ask a super admin to add one under Payment Setting Options.",
+    "referenceOptionalPlaceholder": "Reference (optional)",
     "invoicesByDate": "Invoices By Date",
     "customerSearchPlaceholder": "Search by customer name or phone...",
     "refund": "Refund",
@@ -569,6 +572,12 @@
   },
   "manufacturers": {
     "pageHint": "Manufacturers a Manufacture Order can be tagged against — no purchasing or accounting link, just a list to pick from."
+  },
+  "paymentMethods": {
+    "pageHint": "The ways a payment can be tendered — each linked to one Chart-of-Accounts account it settles into. Drives the payment options shown at POS checkout and on invoice payments.",
+    "linkedAccount": "Linked Account",
+    "linkedAccountHint": "The GL account this payment method posts to when it's used.",
+    "superAdminOnly": "Only a super admin can manage payment methods."
   },
   "discountCodes": {
     "code": "Code",
