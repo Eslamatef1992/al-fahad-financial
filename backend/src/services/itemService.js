@@ -1,6 +1,6 @@
 const {
   sequelize, Item, InventoryTransaction, Account, ItemBranchStock, StockTransfer, StockTransferLine, Branch,
-  ItemVariant, ItemVariantBranchStock, ItemCategory, Unit,
+  ItemVariant, ItemVariantBranchStock, ItemCategory, Unit, FinancialSetting,
 } = require('../models');
 
 function badRequest(message) { const e = new Error(message); e.status = 400; return e; }
@@ -122,13 +122,29 @@ async function resolveTarget(companyId, itemId, { branchId, variantId }, t) {
 // the balance is traceable from day one, exactly like any other stock change.
 async function createItem(companyId, userId, payload) {
   const {
-    name_en, name_ar, category, category_id, unit, unit_id, sku, variant_attributes, inventory_account_id, income_account_id, cogs_account_id,
+    name_en, name_ar, category, category_id, unit, unit_id, sku, variant_attributes, inventory_account_id, cogs_account_id,
     selling_price, reorder_level, opening_quantity, opening_cost,
   } = payload;
+  let { income_account_id } = payload;
 
   if (!name_en || !name_ar) throw badRequest('name_en and name_ar are required');
+
+  // Income Account is no longer a field on the Item form — the item's sales
+  // revenue line always uses the company's default Income Account for Items
+  // (Financial Configuration), so a caller can simply omit it. It stays a
+  // real per-item column (not removed from the schema) purely so a company
+  // that DOES want a different revenue account for one item can still pass
+  // one explicitly — the form itself just never surfaces that choice anymore.
+  if (!income_account_id) {
+    const settings = await FinancialSetting.findOne({ where: { company_id: companyId } });
+    income_account_id = settings?.item_income_account_id || null;
+  }
   if (!inventory_account_id || !income_account_id || !cogs_account_id) {
-    throw badRequest('inventory_account_id, income_account_id, and cogs_account_id are all required');
+    throw badRequest(
+      !income_account_id
+        ? 'No default Income Account configured — set one in Financial Configuration first'
+        : 'inventory_account_id and cogs_account_id are both required',
+    );
   }
 
   return sequelize.transaction(async (t) => {

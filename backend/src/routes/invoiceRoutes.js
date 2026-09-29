@@ -13,6 +13,7 @@ router.get('/delivery-schedule/pdf', ctrl.deliverySchedulePdf);
 router.get('/:id', ctrl.get);
 router.get('/:id/pdf', ctrl.pdf);
 router.post('/', requireMinRole('accountant'), ctrl.create);
+router.post('/create-and-settle', requireMinRole('accountant'), ctrl.createAndSettle);
 router.put('/:id', requireMinRole('accountant'), ctrl.update);
 router.delete('/:id', requireMinRole('accountant'), ctrl.remove);
 router.post('/:id/post', requireMinRole('accountant'), ctrl.post);

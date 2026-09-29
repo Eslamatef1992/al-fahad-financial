@@ -154,6 +154,21 @@ export default function PosPage() {
     return clients.filter((c) => c.name_en?.toLowerCase().includes(q) || c.name_ar?.includes(q) || c.phone?.includes(clientSearch));
   }, [clients, clientSearch]);
 
+  // Enter in the customer search box: pick the top match if there is one,
+  // otherwise open the New Customer modal prefilled from what was typed —
+  // digits go to Phone, anything else goes to Name (the other field stays
+  // required so the cashier still fills it in before saving).
+  const handleClientSearchKeyDown = (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (filteredClients.length) { pickClient(filteredClients[0].id); setClientSearch(''); return; }
+    const q = clientSearch.trim();
+    if (!q) return;
+    const isNumeric = /\d/.test(q) && /^[0-9+\-\s]+$/.test(q);
+    setNewClient({ name_en: isNumeric ? '' : q, phone: isNumeric ? q : '' });
+    setNewClientOpen(true);
+  };
+
   const createQuickClient = async () => {
     if (!newClient.name_en.trim() || !newClient.phone.trim()) {
       toast.error(t('pos.quickClientRequired'));
@@ -414,6 +429,7 @@ export default function PosPage() {
                   placeholder={t('pos.searchCustomerHint')}
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
+                  onKeyDown={handleClientSearchKeyDown}
                 />
                 <select className="input text-xs py-1.5" value={clientId} onChange={(e) => pickClient(e.target.value)}>
                   <option value="">{t('pos.walkIn')}</option>

@@ -141,6 +141,7 @@ async function exportInvoices(res, company, rows, invoiceType) {
       { header: 'Total', key: 'total', width: 14 },
       { header: 'Paid', key: 'paid', width: 14 },
       { header: 'Status', key: 'status', width: 14 },
+      { header: 'Salesperson', key: 'salesperson', width: 20 },
     ];
     const headerRowIndex = sheet.lastRow.number + 1;
     sheet.addRow(sheet.columns.map((c) => c.header));
@@ -148,7 +149,7 @@ async function exportInvoices(res, company, rows, invoiceType) {
 
     rows.forEach((inv) => {
       const party = invoiceType === 'sales' ? inv.client?.name_en : inv.supplier?.name_en;
-      sheet.addRow([inv.invoice_no, party || '', inv.date, inv.due_date || '', inv.branch ? `${inv.branch.code} - ${inv.branch.name_en}` : '', Number(inv.subtotal), Number(inv.tax_total), Number(inv.total), Number(inv.paid_total), inv.status]);
+      sheet.addRow([inv.invoice_no, party || '', inv.date, inv.due_date || '', inv.branch ? `${inv.branch.code} - ${inv.branch.name_en}` : '', Number(inv.subtotal), Number(inv.tax_total), Number(inv.total), Number(inv.paid_total), inv.status, inv.creator?.name || '']);
     });
     [6, 7, 8, 9].forEach((col) => { sheet.getColumn(col).numFmt = '#,##0.000'; });
   });

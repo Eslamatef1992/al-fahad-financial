@@ -8,7 +8,7 @@ import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
-const emptyUser = { name: '', email: '', password: '', role: 'accountant', companyIds: [], companyRole: 'accountant' };
+const emptyUser = { name: '', email: '', phone: '', password: '', role: 'accountant', companyIds: [], companyRole: 'accountant' };
 const ROLE_COLOR = { super_admin: 'bg-gold-100 text-gold-700', admin: 'bg-navy-100 text-navy-700', accountant: 'bg-blue-50 text-blue-600', viewer: 'bg-slate-100 text-slate-500' };
 
 export default function UsersPage() {
@@ -36,13 +36,13 @@ export default function UsersPage() {
   useEffect(load, []);
 
   const openNew = () => { setEditing(null); setForm(emptyUser); setOpen(true); };
-  const openEdit = (u) => { setEditing(u); setForm({ ...emptyUser, name: u.name, role: u.role }); setOpen(true); };
+  const openEdit = (u) => { setEditing(u); setForm({ ...emptyUser, name: u.name, phone: u.phone || '', role: u.role }); setOpen(true); };
 
   const submit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      if (editing) await api.put(`/users/${editing.id}`, { name: form.name, role: form.role });
+      if (editing) await api.put(`/users/${editing.id}`, { name: form.name, phone: form.phone, role: form.role });
       else await api.post('/users', form);
       toast.success(t('common.save'));
       setOpen(false);
@@ -132,6 +132,7 @@ export default function UsersPage() {
 
       <SlideOver open={open} onClose={() => setOpen(false)} title={editing ? 'Edit User' : 'New User'} onSubmit={submit} submitting={saving}>
         <div><label className="label">Name</label><input required className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+        <div><label className="label">{t('common.phone')}</label><input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
         {!editing && (
           <>
             <div><label className="label">{t('common.email')}</label><input required type="email" className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>

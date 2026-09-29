@@ -1,4 +1,4 @@
-const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Voucher, VoucherLine, Item, ItemBooking, InventoryTransaction } = require('../models');
+const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Voucher, VoucherLine, Item, ItemBooking, InventoryTransaction, PaymentMethod } = require('../models');
 const voucherService = require('./voucherService');
 const itemService = require('./itemService');
 const discountService = require('./discountService');
@@ -267,6 +267,46 @@ async function postInvoice(companyId, invoiceId, userId) {
   });
 }
 
+// One-step "create + post + settle" for the Sales Invoice creation screen —
+// mirrors posService.createSale's payments handling exactly, so a backoffice
+// sales invoice created this way behaves identically to a POS sale: draft is
+// created, posted immediately, then each tendered amount is recorded as a
+// payment against the Payment Setting Option (GL account) it's linked to.
+// `payments` is an array of { payment_method_id, amount, reference }. An
+// entry with no payment_method_id is treated as Credit — it's simply left as
+// an open AR balance on the invoice, exactly like any partially-paid invoice.
+async function createInvoiceAndSettle(companyId, userId, payload) {
+  const { payments, ...invoicePayload } = payload;
+
+  const invoice = await createInvoice(companyId, userId, invoicePayload);
+  const posted = await postInvoice(companyId, invoice.id, userId);
+
+  for (const p of (payments || [])) {
+    const amount = Number(p.amount);
+    if (amount <= 0) continue;
+
+    if (!p.payment_method_id) {
+      // Credit — leaves this amount unpaid against the client's own AR
+      // account. No voucher/payment row needed, same as POS credit tenders.
+      continue;
+    }
+
+    const method = await PaymentMethod.findOne({ where: { id: p.payment_method_id, company_id: companyId, is_active: true } });
+    if (!method) throw badRequest('Invalid or inactive payment method');
+
+    await recordPayment(companyId, posted.id, userId, {
+      amount,
+      date: invoicePayload.date || new Date().toISOString().slice(0, 10),
+      cash_account_id: method.account_id,
+      payment_method: method.name_en,
+      payment_method_id: method.id,
+      reference: p.reference || null,
+    });
+  }
+
+  return Invoice.findOne({ where: { id: posted.id, company_id: companyId } });
+}
+
 // Records a payment against a posted invoice by creating + posting a
 // receipt (sales) or payment (purchase) voucher that moves cash against the
 // client/supplier control account, then updates the invoice's paid status.
@@ -444,4 +484,4 @@ async function refundInvoice(companyId, userId, invoiceId, { reason } = {}) {
   });
 }
 
-module.exports = { createInvoice, postInvoice, recordPayment, cancelInvoice, refundInvoice, nextInvoiceNo, computeLine, buildInvoiceLines };
+module.exports = { createInvoice, postInvoice, createInvoiceAndSettle, recordPayment, cancelInvoice, refundInvoice, nextInvoiceNo, computeLine, buildInvoiceLines };

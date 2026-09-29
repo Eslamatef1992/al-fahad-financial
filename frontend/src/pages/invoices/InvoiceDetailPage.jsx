@@ -110,6 +110,7 @@ export default function InvoiceDetailPage() {
         {invoice.branch && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.branch')}</p><p className="text-sm mt-1 font-medium">{invoice.branch.code} - {invoice.branch.name_en}</p></div>}
         {invoice.delivery_date && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.deliveryDate')}</p><p className="text-sm mt-1 font-medium">{invoice.delivery_date}</p></div>}
         {invoice.delivery_address && <div className="col-span-2"><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.deliveryAddress')}</p><p className="text-sm mt-1 font-medium whitespace-pre-wrap">{invoice.delivery_address}</p></div>}
+        {invoice.creator?.name && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.salesperson')}</p><p className="text-sm mt-1 font-medium">{invoice.creator.name}</p></div>}
         {Number(invoice.discount_amount) > 0.0009 && (
           <div>
             <p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.discount')}</p>

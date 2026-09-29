@@ -1,11 +1,15 @@
 const { Op } = require('sequelize');
-const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Branch, Company, Voucher, Item, ItemVariant, DiscountCode, PaymentMethod } = require('../models');
+const { sequelize, Invoice, InvoiceLine, InvoicePayment, Client, Supplier, Account, CostCenter, Branch, Company, Voucher, Item, ItemVariant, DiscountCode, PaymentMethod, User } = require('../models');
 const invoiceService = require('../services/invoiceService');
 const { generateInvoicePdf, generateAgingPdf, generateDeliverySchedulePdf } = require('../services/pdfService');
 const { exportInvoices } = require('../services/excelService');
 
 const lineInclude = [{ model: InvoiceLine, as: 'lines', include: [{ model: Account, as: 'account' }, { model: Item, as: 'item' }, { model: ItemVariant, as: 'variant' }, { model: DiscountCode, as: 'discountCode' }] }];
-const partyInclude = [{ model: Client, as: 'client' }, { model: Supplier, as: 'supplier' }, { model: CostCenter, as: 'costCenter' }, { model: Branch, as: 'branch' }, { model: DiscountCode, as: 'discountCode' }];
+// Salesperson snapshot: who created the invoice (POS cashier or backoffice
+// user), so it can be printed/reported on. Only the fields the printouts and
+// reports actually need are pulled — never password_hash.
+const creatorInclude = [{ model: User, as: 'creator', attributes: ['id', 'name', 'phone'] }];
+const partyInclude = [{ model: Client, as: 'client' }, { model: Supplier, as: 'supplier' }, { model: CostCenter, as: 'costCenter' }, { model: Branch, as: 'branch' }, { model: DiscountCode, as: 'discountCode' }, ...creatorInclude];
 const paymentInclude = [{
   model: InvoicePayment,
   as: 'payments',

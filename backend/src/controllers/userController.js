@@ -20,12 +20,12 @@ exports.get = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const { name, email, password, role, companyIds, companyRole } = req.body;
+  const { name, email, phone, password, role, companyIds, companyRole } = req.body;
   const existing = await User.findOne({ where: { email } });
   if (existing) return res.status(400).json({ message: 'A user with this email already exists' });
 
   const password_hash = await bcrypt.hash(password || 'ChangeMe123!', 10);
-  const user = await User.create({ name, email, password_hash, role: role || 'accountant' });
+  const user = await User.create({ name, email, phone: phone || null, password_hash, role: role || 'accountant' });
 
   if (Array.isArray(companyIds)) {
     await Promise.all(companyIds.map((cid) => UserCompany.create({ user_id: user.id, company_id: cid, role: companyRole || 'accountant' })));
@@ -39,9 +39,10 @@ exports.update = async (req, res) => {
   const user = await User.findByPk(req.params.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  const { name, role, is_active, preferred_lang } = req.body;
+  const { name, phone, role, is_active, preferred_lang } = req.body;
   await user.update({
     ...(name !== undefined && { name }),
+    ...(phone !== undefined && { phone }),
     ...(role !== undefined && { role }),
     ...(is_active !== undefined && { is_active }),
     ...(preferred_lang !== undefined && { preferred_lang }),

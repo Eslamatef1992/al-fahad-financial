@@ -412,10 +412,10 @@ function totalsBox(doc, lines, opts = {}) {
   lines.forEach((line, i) => {
     const ly = y0 + 8 + i * rowH;
     const isLast = i === lines.length - 1;
-    doc.font(isLast ? 'Helvetica-Bold' : 'Helvetica').fontSize(isLast ? 11 : 9.5)
-      .fillColor(line.color || (isLast ? NAVY : TEXT_DARK));
-    doc.text(line.label, startX + 12, ly, { width: width - 100, align: 'left' });
-    doc.text(line.value, startX + 12, ly, { width: width - 24, align: 'right' });
+    const fontSize = isLast ? 11 : 9.5;
+    const color = line.color || (isLast ? NAVY : TEXT_DARK);
+    drawBidi(doc, line.label, startX + 12, ly, { width: width - 100, align: 'left', fontSize, color, bold: isLast });
+    drawBidi(doc, line.value, startX + 12, ly, { width: width - 24, align: 'right', fontSize, color, bold: isLast });
   });
   doc.y = y0 + height + 10;
 }
@@ -721,6 +721,7 @@ function generateInvoicePdf(res, invoice, company) {
     ...(invoice.branch ? [{ label: 'Branch', value: `${invoice.branch.code} - ${invoice.branch.name_en}` }] : []),
     ...(invoice.delivery_date ? [{ label: 'Delivery Date', value: invoice.delivery_date }] : []),
     ...(paymentMethodLabels ? [{ label: 'Payment Method', value: paymentMethodLabels }] : []),
+    ...(invoice.creator?.name ? [{ label: 'Salesperson', value: invoice.creator.name }] : []),
   ]);
 
   if (invoice.delivery_address) {
@@ -749,7 +750,7 @@ function generateInvoicePdf(res, invoice, company) {
   totalsBox(doc, [
     { label: 'Subtotal', value: Number(invoice.subtotal).toFixed(3) },
     ...(discountAmount > 0.0009 ? [{ label: `Discount${invoice.discountCode ? ` (${invoice.discountCode.code})` : ''}`, value: `-${discountAmount.toFixed(3)}`, color: DANGER }] : []),
-    { label: 'Total', value: `${Number(invoice.total).toFixed(3)} ${invoice.currency}` },
+    { label: 'Total', value: `${Number(invoice.total).toFixed(3)} ${invoice.currency} فقط` },
     { label: 'Paid', value: Number(invoice.paid_total).toFixed(3) },
     { label: 'Balance Due', value: balanceDue.toFixed(3), color: balanceDue > 0.001 ? DANGER : SUCCESS },
   ], { width: 260 });

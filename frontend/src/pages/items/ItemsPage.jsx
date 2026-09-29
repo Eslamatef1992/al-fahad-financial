@@ -485,13 +485,6 @@ export default function ItemsPage() {
           <p className="text-xs text-slate-400 mt-1">{t('items.inventoryAccountHint')}</p>
         </div>
         <div>
-          <label className="label">{t('items.incomeAccount')}</label>
-          <select required className="input" value={form.income_account_id} onChange={(e) => setForm({ ...form, income_account_id: e.target.value })}>
-            <option value="">{t('common.select')}</option>
-            {revenueAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} - {a.name_en}</option>)}
-          </select>
-        </div>
-        <div>
           <label className="label">{t('items.cogsAccount')}</label>
           <select required className="input" value={form.cogs_account_id} onChange={(e) => setForm({ ...form, cogs_account_id: e.target.value })}>
             <option value="">{t('common.select')}</option>
