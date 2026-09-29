@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, PauseCircle, XCircle, Lock, Unlock, CreditCard, Banknote, Landmark, Users,
-  CalendarClock, RotateCcw, UserPlus, X, FileText, Boxes, Factory, Ticket, PieChart, Tag,
+  CalendarClock, RotateCcw, UserPlus, X, FileText, Boxes, Factory, Ticket, PieChart, Tag, History, Printer,
 } from 'lucide-react';
-import api from '@/api/client';
+import api, { printFile } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -201,6 +201,11 @@ export default function PosPage() {
     api.get('/pos/sales/history', { params }).then((r) => setHistoryRows(r.data)).finally(() => setHistoryLoading(false));
   };
   const openHistory = () => { setHistoryOpen(true); loadHistory(); };
+  const todayStr = () => new Date().toISOString().slice(0, 10);
+  const printHistoryInvoice = (row) => {
+    if (row.date !== todayStr()) { toast.error(t('pos.printTodayOnly')); return; }
+    printFile(`/invoices/${row.id}/pdf`, {});
+  };
 
   const confirmRefund = async () => {
     setRefunding(true);
@@ -550,6 +555,7 @@ export default function PosPage() {
         <div className="grid grid-cols-3 lg:grid-cols-1 gap-1.5 content-start">
           <RailButton icon={FileText} label={t('pos.railInvoice')} onClick={newInvoice} />
           <RailButton icon={Boxes} label={t('pos.railInventory')} onClick={() => setInventoryOpen(true)} />
+          <RailButton icon={History} label={t('pos.invoiceHistory')} onClick={openHistory} />
           {canRefund && <RailButton icon={RotateCcw} label={t('pos.refund')} onClick={openHistory} />}
           <RailButton icon={Lock} label={t('pos.closeShift')} onClick={() => setCloseOpen(true)} />
           <RailButton icon={PauseCircle} label={t('pos.railHoldInvoices')} onClick={() => setHeldOpen(true)} badge={held.length || null} />
@@ -840,13 +846,13 @@ export default function PosPage() {
           <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
             <div className="card p-6 max-w-3xl w-full max-h-[85vh] flex flex-col">
               <div className="flex items-center justify-between mb-4">
-                <p className="font-bold text-lg text-navy-900 dark:text-white flex items-center gap-2"><CalendarClock size={18} />{t('pos.invoicesByDate')}</p>
+                <p className="font-bold text-lg text-navy-900 dark:text-white flex items-center gap-2"><History size={18} />{t('pos.invoiceHistory')}</p>
                 <button onClick={() => setHistoryOpen(false)}><X size={18} /></button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
                 <input type="date" className="input" value={historyFilters.date_from} onChange={(e) => setHistoryFilters({ ...historyFilters, date_from: e.target.value })} />
                 <input type="date" className="input" value={historyFilters.date_to} onChange={(e) => setHistoryFilters({ ...historyFilters, date_to: e.target.value })} />
-                <input className="input sm:col-span-1" placeholder={t('pos.customerSearchPlaceholder')} value={historyFilters.q} onChange={(e) => setHistoryFilters({ ...historyFilters, q: e.target.value })} />
+                <input className="input sm:col-span-1" placeholder={t('pos.historySearchPlaceholder')} value={historyFilters.q} onChange={(e) => setHistoryFilters({ ...historyFilters, q: e.target.value })} />
                 <button onClick={loadHistory} className="btn-primary">{t('common.applyFilters')}</button>
               </div>
               <div className="flex-1 overflow-y-auto space-y-2">
@@ -864,6 +870,14 @@ export default function PosPage() {
                       <span className={`text-[11px] px-1.5 py-0.5 rounded-full ${row.status === 'cancelled' ? 'bg-slate-100 text-slate-400' : row.status === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                         {t(`pos.status_${row.status}`)}
                       </span>
+                      <button
+                        onClick={() => printHistoryInvoice(row)}
+                        disabled={row.date !== todayStr()}
+                        title={row.date === todayStr() ? t('common.print') : t('pos.printTodayOnly')}
+                        className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 text-slate-500 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                      >
+                        <Printer size={14} />
+                      </button>
                       {canRefund && ['paid', 'partially_paid'].includes(row.status) && (
                         <button onClick={() => setRefundTarget(row)} title={t('pos.refund')} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-red-500">
                           <RotateCcw size={14} />
