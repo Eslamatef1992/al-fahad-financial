@@ -14,18 +14,34 @@ import useFinancialDefaults from '@/hooks/useFinancialDefaults';
 
 const money = (n) => Number(n || 0).toFixed(3);
 
-// One square button in the right-side action rail: icon on top, tiny label
-// below, with an optional small count badge (e.g. number of held invoices).
-function RailButton({ icon: Icon, label, onClick, badge }) {
+// Icon on top in a colored rounded chip, label below. Each rail action gets
+// its own accent color so the rail reads at a glance instead of being a wall
+// of identical navy icons.
+const RAIL_COLORS = {
+  sky: 'bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400',
+  violet: 'bg-violet-50 text-violet-600 dark:bg-violet-950 dark:text-violet-400',
+  rose: 'bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400',
+  amber: 'bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400',
+  emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400',
+  indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400',
+  fuchsia: 'bg-fuchsia-50 text-fuchsia-600 dark:bg-fuchsia-950 dark:text-fuchsia-400',
+  orange: 'bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-400',
+  cyan: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-950 dark:text-cyan-400',
+  slate: 'bg-slate-100 text-slate-600 dark:bg-navy-800 dark:text-slate-300',
+};
+
+function RailButton({ icon: Icon, label, onClick, badge, color = 'slate' }) {
   return (
     <button
       onClick={onClick}
-      className="relative card p-2 flex flex-col items-center justify-center gap-1 hover:shadow-md transition-shadow text-center"
+      className="relative card p-3 flex flex-col items-center justify-center gap-1.5 hover:shadow-md hover:-translate-y-0.5 transition-all text-center"
     >
-      <Icon size={18} className="text-navy-900 dark:text-white" />
-      <span className="text-[9px] font-medium text-slate-500 leading-tight">{label}</span>
+      <span className={`w-10 h-10 rounded-xl flex items-center justify-center ${RAIL_COLORS[color] || RAIL_COLORS.slate}`}>
+        <Icon size={20} strokeWidth={2} />
+      </span>
+      <span className="text-[11px] font-semibold text-navy-900 dark:text-white leading-tight">{label}</span>
       {!!badge && (
-        <span className="absolute top-1 end-1 bg-red-500 text-white text-[9px] leading-none rounded-full w-4 h-4 flex items-center justify-center">{badge}</span>
+        <span className="absolute top-1.5 end-1.5 bg-red-500 text-white text-[10px] leading-none rounded-full min-w-[18px] min-h-[18px] flex items-center justify-center px-1">{badge}</span>
       )}
     </button>
   );
@@ -416,7 +432,7 @@ export default function PosPage() {
         subtitle={t('pos.shiftInfo', { branch: branches.find((b) => b.id === access.shift.branch_id)?.name_en || t('branches.unbranchedPool'), float: money(access.shift.opening_float) })}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_84px] gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_120px] gap-3">
         {/* Invoice */}
         <div className="space-y-3 min-w-0">
           {/* Header strip: client, quick code entry, coupon, total, hold/pay */}
@@ -552,17 +568,17 @@ export default function PosPage() {
         </div>
 
         {/* Action rail */}
-        <div className="grid grid-cols-3 lg:grid-cols-1 gap-1.5 content-start">
-          <RailButton icon={FileText} label={t('pos.railInvoice')} onClick={newInvoice} />
-          <RailButton icon={Boxes} label={t('pos.railInventory')} onClick={() => setInventoryOpen(true)} />
-          <RailButton icon={History} label={t('pos.invoiceHistory')} onClick={openHistory} />
-          {canRefund && <RailButton icon={RotateCcw} label={t('pos.refund')} onClick={openHistory} />}
-          <RailButton icon={Lock} label={t('pos.closeShift')} onClick={() => setCloseOpen(true)} />
-          <RailButton icon={PauseCircle} label={t('pos.railHoldInvoices')} onClick={() => setHeldOpen(true)} badge={held.length || null} />
-          <RailButton icon={Factory} label={t('pos.railManufactureOrder')} onClick={() => setManufactureOrderOpen(true)} badge={isManufactureOrder ? '✓' : null} />
-          <RailButton icon={CalendarClock} label={t('invoices.deliveryDate')} onClick={() => setDeliveryOpen(true)} />
-          <RailButton icon={Ticket} label={t('pos.railCoupons')} onClick={() => { setCouponsOpen(true); loadDiscountCodes(); }} />
-          <RailButton icon={PieChart} label={t('nav.reports')} onClick={() => navigate('/reports')} />
+        <div className="grid grid-cols-3 lg:grid-cols-1 gap-2 content-start">
+          <RailButton icon={FileText} label={t('pos.railInvoice')} onClick={newInvoice} color="sky" />
+          <RailButton icon={Boxes} label={t('pos.railInventory')} onClick={() => setInventoryOpen(true)} color="indigo" />
+          <RailButton icon={History} label={t('pos.invoiceHistory')} onClick={openHistory} color="cyan" />
+          {canRefund && <RailButton icon={RotateCcw} label={t('pos.refund')} onClick={openHistory} color="rose" />}
+          <RailButton icon={Lock} label={t('pos.closeShift')} onClick={() => setCloseOpen(true)} color="slate" />
+          <RailButton icon={PauseCircle} label={t('pos.railHoldInvoices')} onClick={() => setHeldOpen(true)} badge={held.length || null} color="amber" />
+          <RailButton icon={Factory} label={t('pos.railManufactureOrder')} onClick={() => setManufactureOrderOpen(true)} badge={isManufactureOrder ? '✓' : null} color="orange" />
+          <RailButton icon={CalendarClock} label={t('invoices.deliveryDate')} onClick={() => setDeliveryOpen(true)} color="violet" />
+          <RailButton icon={Ticket} label={t('pos.railCoupons')} onClick={() => { setCouponsOpen(true); loadDiscountCodes(); }} color="fuchsia" />
+          <RailButton icon={PieChart} label={t('nav.reports')} onClick={() => navigate('/reports')} color="emerald" />
         </div>
       </div>
 
