@@ -436,54 +436,57 @@ export default function PosPage() {
         {/* Invoice */}
         <div className="space-y-3 min-w-0">
           {/* Header strip: client, quick code entry, coupon, total, hold/pay */}
-          <div className="card p-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="label flex items-center gap-1 text-[11px]"><Users size={11} />{t('common.client')}</label>
-                  <button type="button" onClick={() => setNewClientOpen(true)} className="text-[11px] font-semibold text-navy-900 dark:text-white flex items-center gap-1 mb-1">
-                    <UserPlus size={11} />{t('pos.newCustomer')}
+          <div className="card p-4 sm:p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-sky-50/40 dark:bg-sky-950/10">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wide"><Users size={13} />{t('common.client')}</label>
+                  <button type="button" onClick={() => setNewClientOpen(true)} className="text-xs font-semibold text-sky-600 dark:text-sky-400 flex items-center gap-1 hover:underline">
+                    <UserPlus size={13} />{t('pos.newCustomer')}
                   </button>
                 </div>
-                <input
-                  className="input mb-1 text-xs py-1.5"
-                  placeholder={t('pos.searchCustomerHint')}
-                  value={clientSearch}
-                  onChange={(e) => setClientSearch(e.target.value)}
-                  onKeyDown={handleClientSearchKeyDown}
-                />
-                <select className="input text-xs py-1.5" value={clientId} onChange={(e) => pickClient(e.target.value)}>
+                <div className="relative mb-2">
+                  <Search size={14} className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400" />
+                  <input
+                    className="input ps-8 text-sm py-2"
+                    placeholder={t('pos.searchCustomerHint')}
+                    value={clientSearch}
+                    onChange={(e) => setClientSearch(e.target.value)}
+                    onKeyDown={handleClientSearchKeyDown}
+                  />
+                </div>
+                <select className="input text-sm py-2" value={clientId} onChange={(e) => pickClient(e.target.value)}>
                   <option value="">{t('pos.walkIn')}</option>
                   {filteredClients.map((c) => <option key={c.id} value={c.id}>{c.name_en}{c.phone ? ` — ${c.phone}` : ''}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="label flex items-center gap-1 text-[11px]"><FileText size={11} />{t('pos.quickAddByCode')}</label>
+              <div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-indigo-50/40 dark:bg-indigo-950/10">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wide mb-2"><FileText size={13} />{t('pos.quickAddByCode')}</label>
                 <div className="relative">
-                  <Search size={13} className="absolute top-1/2 -translate-y-1/2 start-2.5 text-slate-400" />
+                  <Search size={14} className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400" />
                   <input
-                    className="input ps-7 text-xs py-1.5"
+                    className="input ps-8 text-sm py-2"
                     placeholder={t('pos.quickAddByCodeHint')}
                     value={codeEntry}
                     onChange={(e) => setCodeEntry(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addByCode(); } }}
                   />
                   {!!codeEntry.trim() && !!codeSuggestions.length && (
-                    <div className="absolute z-30 top-full mt-1 start-0 end-0 card p-1 max-h-56 overflow-y-auto shadow-lg">
+                    <div className="absolute z-30 top-full mt-1 start-0 end-0 card p-1.5 max-h-56 overflow-y-auto shadow-lg">
                       {codeSuggestions.map((p) => (
                         <button
                           key={p.id}
                           onMouseDown={() => pickSuggestion(p)}
                           disabled={Number(p.available_quantity) <= 0}
-                          className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-navy-900 text-start disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-navy-900 text-start disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
                           <div className="min-w-0">
-                            <p className="text-xs font-medium text-navy-900 dark:text-white truncate">{p.name_en}</p>
-                            <p className="text-[10px] text-slate-400">{p.code}</p>
+                            <p className="text-sm font-medium text-navy-900 dark:text-white truncate">{p.name_en}</p>
+                            <p className="text-[11px] text-slate-400">{p.code}</p>
                           </div>
                           <div className="text-end shrink-0">
-                            <p className="text-xs font-semibold text-navy-900 dark:text-white">{money(p.selling_price)}</p>
-                            <p className="text-[10px] text-slate-400">{Number(p.available_quantity)} {t('pos.available')}</p>
+                            <p className="text-sm font-semibold text-navy-900 dark:text-white">{money(p.selling_price)}</p>
+                            <p className="text-[11px] text-slate-400">{Number(p.available_quantity)} {t('pos.available')}</p>
                           </div>
                         </button>
                       ))}
@@ -491,77 +494,82 @@ export default function PosPage() {
                   )}
                 </div>
                 {discountPreview ? (
-                  <div className="flex items-center justify-between mt-1.5 text-[11px] text-emerald-600">
-                    <span className="flex items-center gap-1"><Tag size={11} />{discountPreview.code} — {t('invoices.discountAppliedAmount', { amount: money(discountPreview.discount_amount) })}</span>
-                    <button onClick={removeDiscount} className="text-red-500"><X size={12} /></button>
+                  <div className="flex items-center justify-between mt-2 text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950 rounded-lg px-2 py-1.5">
+                    <span className="flex items-center gap-1"><Tag size={12} />{discountPreview.code} — {t('invoices.discountAppliedAmount', { amount: money(discountPreview.discount_amount) })}</span>
+                    <button onClick={removeDiscount} className="text-red-500"><X size={13} /></button>
                   </div>
                 ) : discountError ? (
-                  <p className="text-[11px] text-red-500 mt-1.5">{discountError}</p>
+                  <p className="text-xs text-red-500 mt-2">{discountError}</p>
                 ) : null}
                 {!!deliveryAddress && (
-                  <p className="flex items-start gap-1 mt-1.5 text-[11px] text-slate-500">
-                    <CalendarClock size={11} className="shrink-0 mt-0.5" />
+                  <p className="flex items-start gap-1.5 mt-2 text-xs text-slate-500">
+                    <CalendarClock size={13} className="shrink-0 mt-0.5" />
                     <span className="truncate">{deliveryDate ? `${deliveryDate} — ` : ''}{deliveryAddress}</span>
                   </p>
                 )}
                 {isManufactureOrder && (
-                  <p className="flex items-center gap-1 mt-1.5 text-[11px] text-amber-600">
-                    <Factory size={11} className="shrink-0" />
+                  <p className="flex items-center gap-1.5 mt-2 text-xs font-medium text-amber-600">
+                    <Factory size={13} className="shrink-0" />
                     <span className="truncate">{t('pos.railManufactureOrder')}{manufacturerId ? ` — ${manufacturers.find((m) => m.id === manufacturerId)?.name_en || ''}` : ''}</span>
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto max-h-[45vh] mb-2 border border-slate-100 dark:border-navy-800 rounded-lg">
-              <table className="w-full text-xs">
+            <div className="flex-1 overflow-y-auto max-h-[45vh] mb-3 border border-slate-100 dark:border-navy-800 rounded-xl">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-navy-900 text-[10px] uppercase tracking-wide text-slate-500">
-                    <th className="text-start py-1.5 px-2 font-semibold">{t('pos.colCode')}</th>
-                    <th className="text-start py-1.5 px-2 font-semibold">{t('pos.colDescription')}</th>
-                    <th className="text-center py-1.5 px-2 font-semibold">{t('pos.colQty')}</th>
-                    <th className="text-end py-1.5 px-2 font-semibold">{t('pos.colPrice')}</th>
-                    <th className="text-end py-1.5 px-2 font-semibold">{t('pos.colTotal')}</th>
-                    <th className="py-1.5 px-1"></th>
+                  <tr className="bg-slate-50 dark:bg-navy-900 text-[11px] uppercase tracking-wide text-slate-500 sticky top-0">
+                    <th className="text-start py-2.5 px-3 font-bold">{t('pos.colCode')}</th>
+                    <th className="text-start py-2.5 px-3 font-bold">{t('pos.colDescription')}</th>
+                    <th className="text-center py-2.5 px-3 font-bold">{t('pos.colQty')}</th>
+                    <th className="text-end py-2.5 px-3 font-bold">{t('pos.colPrice')}</th>
+                    <th className="text-end py-2.5 px-3 font-bold">{t('pos.colTotal')}</th>
+                    <th className="py-2.5 px-2"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {cart.map((l) => (
-                    <tr key={l.item.id} className="border-t border-slate-100 dark:border-navy-800">
-                      <td className="py-1.5 px-2 text-slate-400 whitespace-nowrap">{l.item.code}</td>
-                      <td className="py-1.5 px-2 min-w-0">
+                    <tr key={l.item.id} className="border-t border-slate-100 dark:border-navy-800 hover:bg-slate-50/70 dark:hover:bg-navy-900/50 transition-colors">
+                      <td className="py-2 px-3 text-slate-400 whitespace-nowrap">{l.item.code}</td>
+                      <td className="py-2 px-3 min-w-0">
                         <p className="truncate font-medium text-navy-900 dark:text-white leading-tight">{l.item.name_en}</p>
                       </td>
-                      <td className="py-1.5 px-2">
-                        <div className="flex items-center gap-0.5 justify-center">
-                          <button onClick={() => changeQty(l.item.id, -1)} className="p-0.5 rounded bg-slate-100 dark:bg-navy-800"><Minus size={10} /></button>
-                          <span className="w-6 text-center">{l.quantity}</span>
-                          <button onClick={() => changeQty(l.item.id, 1)} className="p-0.5 rounded bg-slate-100 dark:bg-navy-800"><Plus size={10} /></button>
+                      <td className="py-2 px-3">
+                        <div className="flex items-center gap-1 justify-center">
+                          <button onClick={() => changeQty(l.item.id, -1)} className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 dark:hover:bg-navy-700 transition-colors"><Minus size={11} /></button>
+                          <span className="w-7 text-center font-semibold">{l.quantity}</span>
+                          <button onClick={() => changeQty(l.item.id, 1)} className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 dark:hover:bg-navy-700 transition-colors"><Plus size={11} /></button>
                         </div>
                       </td>
-                      <td className="py-1.5 px-2 text-end whitespace-nowrap">{money(l.unit_price)}</td>
-                      <td className="py-1.5 px-2 text-end font-semibold text-navy-900 dark:text-white whitespace-nowrap">{money(l.quantity * l.unit_price)}</td>
-                      <td className="py-1.5 px-1">
-                        <button onClick={() => removeLine(l.item.id)} className="p-0.5 rounded bg-red-50 dark:bg-red-950 text-red-500"><Trash2 size={11} /></button>
+                      <td className="py-2 px-3 text-end whitespace-nowrap text-slate-500">{money(l.unit_price)}</td>
+                      <td className="py-2 px-3 text-end font-bold text-navy-900 dark:text-white whitespace-nowrap">{money(l.quantity * l.unit_price)}</td>
+                      <td className="py-2 px-2">
+                        <button onClick={() => removeLine(l.item.id)} className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-950 text-red-500 hover:bg-red-100 dark:hover:bg-red-900 transition-colors"><Trash2 size={13} /></button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {!cart.length && <p className="text-center text-xs text-slate-400 py-8">{t('pos.emptyCart')}</p>}
+              {!cart.length && (
+                <div className="text-center py-12">
+                  <ShoppingCart size={28} className="mx-auto text-slate-300 dark:text-navy-700 mb-2" />
+                  <p className="text-sm text-slate-400">{t('pos.emptyCart')}</p>
+                </div>
+              )}
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-sm">
-                {discountPreview && <p className="text-[11px] text-slate-400 line-through">{money(total)}</p>}
-                <div className="flex items-center gap-1.5 font-bold text-base text-navy-900 dark:text-white">
-                  <span>{t('common.total')}</span>
-                  <span>{money(netTotal)}</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div>
+                {discountPreview && <p className="text-xs text-slate-400 line-through">{money(total)}</p>}
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{t('common.total')}</span>
+                  <span className="font-extrabold text-2xl text-navy-900 dark:text-white">{money(netTotal)}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <button onClick={hold} disabled={!cart.length} className="btn-ghost flex items-center justify-center gap-1 text-xs py-1.5 px-3 disabled:opacity-40"><PauseCircle size={13} />{t('pos.hold')}</button>
-                <button onClick={() => setPayOpen(true)} disabled={!cart.length} className="btn-primary flex items-center justify-center gap-1 text-xs py-1.5 px-3 disabled:opacity-40"><CreditCard size={13} />{t('pos.pay')}</button>
+              <div className="flex items-center gap-2">
+                <button onClick={hold} disabled={!cart.length} className="btn-ghost flex items-center justify-center gap-1.5 text-sm py-2.5 px-4 disabled:opacity-40"><PauseCircle size={16} />{t('pos.hold')}</button>
+                <button onClick={() => setPayOpen(true)} disabled={!cart.length} className="btn-primary flex items-center justify-center gap-1.5 text-sm py-2.5 px-6 font-bold shadow-md hover:shadow-lg transition-shadow disabled:opacity-40"><CreditCard size={16} />{t('pos.pay')}</button>
               </div>
             </div>
           </div>
