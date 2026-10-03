@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
+const { amountInWordsEn, amountInWordsAr } = require('./numberToWords');
 
 // ---------------------------------------------------------------------------
 // Palette
@@ -151,6 +152,74 @@ function drawBidi(doc, str, x, y, opts = {}) {
     doc.text(r.text, curX, y, { lineBreak: false });
     curX += doc.widthOfString(r.text);
   });
+}
+
+// Word-wraps a PURE-Arabic paragraph (no mixed script) to `width`, in
+// logical (reading) order, returning an array of lines where each line is an
+// array of words. PDFKit's own .text()/.heightOfString() wrapping cannot be
+// used directly for Arabic: it lays out words in the string's storage
+// (logical) order left-to-right, which is backwards for RTL — same root
+// cause drawBidi works around for single-line cells, but drawBidi never
+// wraps. This + drawArabicLines below do the equivalent for a multi-line
+// paragraph: wrap in logical order, then reverse each line's word order
+// before drawing it so it reads visually right-to-left.
+// A plain space character between two Arabic glyph clusters renders with
+// (near-)zero advance width through PDFKit/fontkit's shaping path here —
+// words end up glued together ("مائةوثمانون" instead of "مائة وثمانون").
+// Fix: never feed a multi-word Arabic string through doc.text() as one
+// string. Measure/draw word-by-word and add this gap ourselves.
+function arabicSpaceWidth(doc, fontSize) {
+  return fontSize * 0.28;
+}
+
+function wrapArabicLines(doc, text, width, fontSize, bold) {
+  const font = bold ? 'Arabic-Bold' : 'Arabic';
+  doc.font(font).fontSize(fontSize);
+  const gap = arabicSpaceWidth(doc, fontSize);
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let current = [];
+  let currentWidth = 0;
+  words.forEach((w) => {
+    const wWidth = doc.widthOfString(w);
+    const candidateWidth = current.length ? currentWidth + gap + wWidth : wWidth;
+    if (current.length && candidateWidth > width) {
+      lines.push(current);
+      current = [w];
+      currentWidth = wWidth;
+    } else {
+      current.push(w);
+      currentWidth = candidateWidth;
+    }
+  });
+  if (current.length) lines.push(current);
+  return lines;
+}
+
+// Draws lines produced by wrapArabicLines (each line's words reversed so the
+// visual order reads right-to-left, right-aligned within `width`), placing
+// each word at an explicitly computed x position rather than drawing the
+// whole line as one string — see arabicSpaceWidth above. Returns the total
+// height consumed.
+function drawArabicLines(doc, lines, x, y, width, fontSize, bold, color) {
+  const font = bold ? 'Arabic-Bold' : 'Arabic';
+  doc.font(font).fontSize(fontSize);
+  if (color) doc.fillColor(color);
+  const gap = arabicSpaceWidth(doc, fontSize);
+  const lineHeight = fontSize * 1.4;
+  lines.forEach((lineWords, i) => {
+    const visualWords = [...lineWords].reverse();
+    const wordWidths = visualWords.map((w) => doc.widthOfString(w));
+    const totalWidth = wordWidths.reduce((a, b) => a + b, 0) + gap * (visualWords.length - 1);
+    const ly = y + i * lineHeight;
+    let cx = x + width - totalWidth;
+    visualWords.forEach((w, idx) => {
+      doc.text(w, cx, ly, { lineBreak: false });
+      cx += wordWidths[idx] + gap;
+    });
+  });
+  doc.fillColor('#000000');
+  return lines.length * lineHeight;
 }
 
 // ---------------------------------------------------------------------------
@@ -418,6 +487,138 @@ function totalsBox(doc, lines, opts = {}) {
     drawBidi(doc, line.value, startX + 12, ly, { width: width - 24, align: 'right', fontSize, color, bold: isLast });
   });
   doc.y = y0 + height + 10;
+}
+
+// Full-width bordered box showing the bilingual "amount in words" sentence
+// (the classic "One Hundred Eighty Kuwaiti Dinars Only" / Arabic equivalent
+// printed on invoices and cheques). Uses plain wrapping text per language
+// (not drawBidi, which never wraps) since each line here is pure single-script
+// text — PDFKit's native wrap + fontkit shaping handles that correctly on its own.
+function amountInWordsBox(doc, enText, arText) {
+  const startX = 40;
+  const width = doc.page.width - 80;
+  const innerWidth = width - 24;
+  const y0 = doc.y;
+
+  doc.font('Helvetica-Bold').fontSize(9.5);
+  const enHeight = doc.heightOfString(enText, { width: innerWidth });
+  const hasArabicFonts = registerArabicFonts(doc);
+  const arLines = hasArabicFonts ? wrapArabicLines(doc, arText, innerWidth, 9.5, true) : [];
+  const arHeight = arLines.length * (9.5 * 1.4);
+  const height = 20 + enHeight + (hasArabicFonts ? 6 + arHeight : 0) + 10;
+
+  doc.roundedRect(startX, y0, width, height, 6).fillAndStroke('#fafbfd', BORDER);
+  doc.font('Helvetica-Bold').fontSize(7.5).fillColor(GRAY).text('AMOUNT IN WORDS', startX + 12, y0 + 8, { lineBreak: false });
+
+  let cy = y0 + 20;
+  doc.font('Helvetica-Bold').fontSize(9.5).fillColor(TEXT_DARK).text(enText, startX + 12, cy, { width: innerWidth });
+  cy += enHeight + 6;
+
+  if (hasArabicFonts) {
+    drawArabicLines(doc, arLines, startX + 12, cy, innerWidth, 9.5, true, TEXT_DARK);
+  }
+
+  doc.fillColor('#000000');
+  doc.y = y0 + height + 14;
+}
+
+// Full-width "Notes" box — always printed (not just when notes text exists)
+// so there's a ruled area left for the client/driver to write something by
+// hand after the invoice is printed, exactly like the blank space at the
+// bottom of a paper invoice pad.
+function notesBox(doc, notes) {
+  const startX = 40;
+  const width = doc.page.width - 80;
+  const innerWidth = width - 24;
+  const y0 = doc.y;
+  const topPad = 20;
+  const blankLines = 3;
+  const lineGap = 16;
+
+  const hasArabic = notes && ARABIC_RE.test(notes);
+  const useArabicWrap = hasArabic && registerArabicFonts(doc);
+  let textHeight = 0;
+  let arNoteLines = [];
+  if (notes) {
+    if (useArabicWrap) {
+      arNoteLines = wrapArabicLines(doc, notes, innerWidth, 9, false);
+      textHeight = arNoteLines.length * (9 * 1.4);
+    } else {
+      doc.font('Helvetica').fontSize(9);
+      textHeight = doc.heightOfString(notes, { width: innerWidth });
+    }
+  }
+  const height = topPad + textHeight + (notes ? 8 : 0) + blankLines * lineGap + 6;
+
+  doc.roundedRect(startX, y0, width, height, 6).fillAndStroke('#fafbfd', BORDER);
+  doc.font('Helvetica-Bold').fontSize(7.5).fillColor(GRAY).text('NOTES', startX + 12, y0 + 8, { lineBreak: false });
+
+  let cy = y0 + topPad;
+  if (notes) {
+    if (useArabicWrap) {
+      drawArabicLines(doc, arNoteLines, startX + 12, cy, innerWidth, 9, false, TEXT_DARK);
+    } else {
+      doc.font('Helvetica').fontSize(9).fillColor(TEXT_DARK).text(notes, startX + 12, cy, { width: innerWidth });
+    }
+    cy += textHeight + 8;
+  }
+
+  for (let i = 0; i < blankLines; i++) {
+    const ly = cy + i * lineGap + 10;
+    doc.moveTo(startX + 12, ly).lineTo(startX + width - 12, ly).lineWidth(0.5).strokeColor(BORDER).stroke();
+  }
+
+  doc.fillColor('#000000');
+  doc.y = y0 + height + 14;
+}
+
+// Bilingual goods-receipt acknowledgment block, modeled on the standard
+// Kuwaiti paper delivery-note pad: a signed statement that the goods were
+// received in good condition, the recipient's name/date, and three signature
+// lines (Buyer / Seller / Warehouse Keeper). Used on sales invoices in place
+// of the generic signatureBlock().
+function acknowledgmentBlock(doc, labels) {
+  if (doc.y + 150 > doc.page.height - doc.page.margins.bottom) doc.addPage();
+
+  const startX = 40;
+  const width = doc.page.width - 80;
+  const y0 = doc.y + 6;
+
+  doc.font('Helvetica-Oblique').fontSize(8.5).fillColor(GRAY)
+    .text('I, the undersigned, acknowledge receipt of the above goods in good condition.', startX, y0, { width: width / 2 - 10 });
+  if (registerArabicFonts(doc)) {
+    const arStatementWidth = width / 2 - 10;
+    const arStatementLines = wrapArabicLines(doc, 'أقر أنا الموقع أدناه باستلام البضاعة أعلاه بحالة جيدة', arStatementWidth, 9, false);
+    drawArabicLines(doc, arStatementLines, startX + width / 2 + 10, y0, arStatementWidth, 9, false, GRAY);
+  }
+  doc.fillColor(TEXT_DARK);
+
+  // Row: Recipient Name / Date / Time
+  const row1Y = y0 + 26;
+  const fields = [
+    { label: 'Recipient Name', width: width * 0.4 },
+    { label: 'Date', width: width * 0.3 },
+    { label: 'Time', width: width * 0.3 },
+  ];
+  let fx = startX;
+  fields.forEach((f) => {
+    const lineY = row1Y + 16;
+    doc.moveTo(fx, lineY).lineTo(fx + f.width - 16, lineY).lineWidth(0.75).strokeColor(BORDER).stroke();
+    doc.font('Helvetica').fontSize(8).fillColor(GRAY).text(f.label, fx, lineY + 4, { width: f.width - 16, lineBreak: false });
+    fx += f.width;
+  });
+
+  // Row: signature lines
+  const row2Y = row1Y + 48;
+  const colWidth = width / labels.length;
+  const lineY2 = row2Y + 30;
+  labels.forEach((label, i) => {
+    const cx = startX + i * colWidth;
+    doc.moveTo(cx, lineY2).lineTo(cx + colWidth - 24, lineY2).lineWidth(0.75).strokeColor(BORDER).stroke();
+    doc.font('Helvetica').fontSize(8.5).fillColor(GRAY).text(label, cx, lineY2 + 6, { width: colWidth - 24, lineBreak: false });
+  });
+
+  doc.y = lineY2 + 26;
 }
 
 function sectionTitle(doc, text) {
@@ -703,7 +904,8 @@ function generateVehiclesPdf(res, rows, company) {
 
 function generateInvoicePdf(res, invoice, company) {
   const doc = newDoc(res, `${invoice.invoice_no}.pdf`);
-  const partyName = invoice.type === 'sales' ? invoice.client?.name_en : invoice.supplier?.name_en;
+  const party = invoice.type === 'sales' ? invoice.client : invoice.supplier;
+  const partyName = party?.name_en;
   header(doc, company, invoice.invoice_no, `${invoice.type === 'sales' ? 'SALES INVOICE' : 'PURCHASE BILL'} · ${invoice.date}`);
 
   // Payment Method: which Payment Setting Option(s) actually settled this
@@ -718,10 +920,12 @@ function generateInvoicePdf(res, invoice, company) {
     { label: 'Status', value: invoice.status, badge: true },
     { label: 'Due Date', value: invoice.due_date || '-' },
     { label: 'Reference', value: invoice.reference_no || '-' },
+    ...(party?.phone ? [{ label: 'Phone', value: party.phone }] : []),
     ...(invoice.branch ? [{ label: 'Branch', value: `${invoice.branch.code} - ${invoice.branch.name_en}` }] : []),
     ...(invoice.delivery_date ? [{ label: 'Delivery Date', value: invoice.delivery_date }] : []),
     ...(paymentMethodLabels ? [{ label: 'Payment Method', value: paymentMethodLabels }] : []),
     ...(invoice.creator?.name ? [{ label: 'Salesperson', value: invoice.creator.name }] : []),
+    { label: invoice.type === 'sales' ? 'Client Address' : 'Supplier Address', value: party?.address || invoice.delivery_address || '-', full: true },
   ]);
 
   if (invoice.delivery_address) {
@@ -750,17 +954,20 @@ function generateInvoicePdf(res, invoice, company) {
   totalsBox(doc, [
     { label: 'Subtotal', value: Number(invoice.subtotal).toFixed(3) },
     ...(discountAmount > 0.0009 ? [{ label: `Discount${invoice.discountCode ? ` (${invoice.discountCode.code})` : ''}`, value: `-${discountAmount.toFixed(3)}`, color: DANGER }] : []),
-    { label: 'Total', value: `${Number(invoice.total).toFixed(3)} ${invoice.currency} فقط` },
+    { label: 'Total', value: `${Number(invoice.total).toFixed(3)} ${invoice.currency}` },
     { label: 'Paid', value: Number(invoice.paid_total).toFixed(3) },
     { label: 'Balance Due', value: balanceDue.toFixed(3), color: balanceDue > 0.001 ? DANGER : SUCCESS },
   ], { width: 260 });
 
-  if (invoice.notes) {
-    drawBidi(doc, `Notes: ${invoice.notes}`, 40, doc.y, { fontSize: 9, color: GRAY, width: doc.page.width - 80 });
-    doc.moveDown(1);
-  }
+  amountInWordsBox(
+    doc,
+    amountInWordsEn(Number(invoice.total), invoice.currency),
+    amountInWordsAr(Number(invoice.total), invoice.currency),
+  );
 
-  signatureBlock(doc, ['Received By', 'Delivered By', 'Authorized Signature']);
+  notesBox(doc, invoice.notes);
+
+  acknowledgmentBlock(doc, ['Buyer Signature', 'Seller Signature', 'Warehouse Keeper Signature']);
 
   footer(doc, company);
   doc.end();
