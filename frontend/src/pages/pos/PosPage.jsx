@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -102,6 +102,7 @@ export default function PosPage() {
   // the always-visible box below, or via the Inventory icon's search popup.
   const [codeEntry, setCodeEntry] = useState('');
   const [codeSuggestions, setCodeSuggestions] = useState([]);
+  const codeInputRef = useRef(null);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   // 'branch' = only this shift's branch stock, 'main' = company-wide across
   // every branch. Defaults to the cashier's own branch since that's what
@@ -277,9 +278,17 @@ export default function PosPage() {
       addToCart(exact || data[0]);
       setCodeEntry('');
       setCodeSuggestions([]);
+      // Keep the cursor in the code box so the cashier can immediately type
+      // (or scan) the next item — Enter effectively "goes to a new line".
+      setTimeout(() => codeInputRef.current?.focus(), 0);
     } catch (e) { /* toast handled globally */ }
   };
-  const pickSuggestion = (item) => { addToCart(item); setCodeEntry(''); setCodeSuggestions([]); };
+  const pickSuggestion = (item) => {
+    addToCart(item);
+    setCodeEntry('');
+    setCodeSuggestions([]);
+    setTimeout(() => codeInputRef.current?.focus(), 0);
+  };
 
   const loadDiscountCodes = () => api.get('/discount-codes').then((r) => setDiscountCodes(r.data)).catch(() => {});
   const applyDiscount = async (codeOverride) => {
@@ -465,6 +474,8 @@ export default function PosPage() {
                 <div className="relative">
                   <Search size={14} className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400" />
                   <input
+                    ref={codeInputRef}
+                    autoFocus
                     className="input ps-8 text-sm py-2"
                     placeholder={t('pos.quickAddByCodeHint')}
                     value={codeEntry}
