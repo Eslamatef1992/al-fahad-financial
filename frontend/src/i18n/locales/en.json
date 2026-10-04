@@ -47,6 +47,7 @@
     "name": "Name",
     "add": "Add New",
     "edit": "Edit",
+    "change": "Change",
     "delete": "Delete",
     "save": "Save",
     "cancel": "Cancel",
@@ -77,6 +78,13 @@
     "address": "Address",
     "notes": "Notes",
     "currency": "Currency",
+    "currencies": {
+      "KWD": "Kuwaiti Dinar (KWD)",
+      "USD": "US Dollar ($)",
+      "AED": "UAE Dirham (د.إ)",
+      "SAR": "Saudi Riyal (ر.س)",
+      "EUR": "Euro (€)"
+    },
     "type": "Type",
     "back": "Back",
     "showInactive": "Show deactivated records",
@@ -127,7 +135,9 @@
     "login": "Sign In",
     "email": "Email Address",
     "password": "Password",
-    "welcome": "Welcome back"
+    "welcome": "Welcome back",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "accounts": {
     "addAccount": "Add Account",

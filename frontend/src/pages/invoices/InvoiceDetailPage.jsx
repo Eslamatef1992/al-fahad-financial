@@ -7,7 +7,9 @@ import api, { downloadFile, printFile } from '@/api/client';
 import PageHeader from '@/components/PageHeader';
 import SlideOver from '@/components/SlideOver';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import InvoicePrintTemplate from '@/components/InvoicePrintTemplate';
 import usePermissions from '@/hooks/usePermissions';
+import { useCompanyStore } from '@/store/companyStore';
 
 const STATUS_COLOR = {
   draft: 'bg-slate-100 text-slate-500', posted: 'bg-blue-50 text-blue-600',
@@ -20,6 +22,7 @@ export default function InvoiceDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { canCreateEdit, canDelete } = usePermissions();
+  const activeCompany = useCompanyStore((s) => s.activeCompany);
   const [invoice, setInvoice] = useState(null);
   const [cashAccounts, setCashAccounts] = useState([]);
   const [confirmAction, setConfirmAction] = useState(null);
@@ -75,13 +78,19 @@ export default function InvoiceDetailPage() {
 
   return (
     <div>
+      {invoice.type === 'sales' && (
+        <div className="hidden print:block">
+          <InvoicePrintTemplate invoice={invoice} company={activeCompany} />
+        </div>
+      )}
+    <div className="print:hidden">
       <button onClick={() => navigate(`/invoices/${invoice.type}`)} className="btn-ghost !px-2 mb-3"><ArrowLeft size={16} /> {t('common.back')}</button>
       <PageHeader
         title={invoice.invoice_no}
         subtitle={`${invoice.type === 'sales' ? t('invoices.salesInvoice') : t('invoices.purchaseBill')} · ${invoice.date}`}
         actions={
           <div className="flex items-center gap-2">
-            <button onClick={() => printFile(`/invoices/${id}/pdf`, {})} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
+            <button onClick={() => (invoice.type === 'sales' ? window.print() : printFile(`/invoices/${id}/pdf`, {}))} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
             <button onClick={() => downloadFile(`/invoices/${id}/pdf`, {}, `${invoice.invoice_no}.pdf`)} className="btn-ghost"><Download size={16} /> PDF</button>
             {invoice.status === 'draft' && canCreateEdit && (
               <button onClick={() => navigate(`/invoices/${invoice.type}/edit/${id}`)} className="btn-ghost"><Pencil size={16} /> {t('common.edit')}</button>
@@ -195,6 +204,7 @@ export default function InvoiceDetailPage() {
         confirmLabel={confirmAction === 'post' ? t('vouchers.postToLedger') : confirmAction === 'cancel' ? t('common.cancel') : t('common.delete')}
         variant={confirmAction === 'post' ? 'primary' : 'danger'}
       />
+    </div>
     </div>
   );
 }

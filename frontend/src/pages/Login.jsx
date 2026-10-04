@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Lock, Mail } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/api/client';
 import { useAuthStore } from '@/store/authStore';
@@ -16,6 +16,7 @@ export default function Login() {
   const { setCompanies, setActiveCompany } = useCompanyStore();
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -64,8 +65,16 @@ export default function Login() {
             <label className="label">{t('auth.password')}</label>
             <div className="relative">
               <Lock size={16} className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400" />
-              <input required type="password" className="input !ps-9" value={form.password}
+              <input required type={showPassword ? 'text' : 'password'} className="input !ps-9 !pe-9" value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                className="absolute top-1/2 -translate-y-1/2 end-3 text-slate-400 hover:text-slate-600"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
           <button type="submit" disabled={loading} className="btn-gold w-full mt-2">

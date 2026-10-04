@@ -49,11 +49,12 @@ export default function InvoiceFormPage() {
   const [loading, setLoading] = useState(isEdit);
 
   // Smart client search (new sales invoices only) — search by name or
-  // phone with a live dropdown; Enter selects the top match, or — if
-  // nothing matches — opens the quick-create card with Name/Phone
-  // prefilled from what was typed (numeric input -> Phone, text -> Name),
-  // the other field left required.
+  // phone with a floating suggestions dropdown; Enter selects the top
+  // match, or — if nothing matches — opens the New Customer modal with
+  // Name/Phone prefilled from what was typed (numeric input -> Phone,
+  // text -> Name), the other field left required.
   const [clientPhoneQuery, setClientPhoneQuery] = useState('');
+  const [newClientModalOpen, setNewClientModalOpen] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
   const [savingClient, setSavingClient] = useState(false);
@@ -147,19 +148,26 @@ export default function InvoiceFormPage() {
     setNewClientName('');
     setNewClientPhone('');
   };
-  // Prefill the quick-create card's Name/Phone the moment the search comes
-  // up empty — only once per search (won't clobber edits the user then
-  // makes directly in the Name/Phone fields as they keep typing the query).
-  useEffect(() => {
-    if (!clientQueryTrimmed || phoneMatches.length > 0 || selectedClient) return;
-    if (newClientName || newClientPhone) return;
-    if (clientQueryIsNumeric) setNewClientPhone(clientQueryTrimmed);
-    else setNewClientName(clientQueryTrimmed);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientQueryTrimmed]);
 
+  // Enter in the search box: jump to the top match, or — if nothing
+  // matches — open the New Customer modal, prefilling whichever field
+  // matches what was typed (numeric -> Phone, text -> Name) and leaving
+  // the other one empty and required.
   const selectTopClientMatch = () => {
-    if (phoneMatches.length) { pickClient(phoneMatches[0].id); setClientPhoneQuery(''); }
+    if (phoneMatches.length) {
+      pickClient(phoneMatches[0].id);
+      setClientPhoneQuery('');
+      return;
+    }
+    if (!clientQueryTrimmed) return;
+    setNewClientName(clientQueryIsNumeric ? '' : clientQueryTrimmed);
+    setNewClientPhone(clientQueryIsNumeric ? clientQueryTrimmed : '');
+    setNewClientModalOpen(true);
+  };
+  const closeNewClientModal = () => {
+    setNewClientModalOpen(false);
+    setNewClientName('');
+    setNewClientPhone('');
   };
   const createQuickClient = async () => {
     if (!newClientName.trim() || !newClientPhone.trim()) return toast.error(t('pos.quickClientRequired'));
@@ -176,6 +184,7 @@ export default function InvoiceFormPage() {
       setNewClientName('');
       setNewClientPhone('');
       setClientPhoneQuery('');
+      setNewClientModalOpen(false);
       toast.success(t('pos.customerAdded'));
     } catch (e) { /* toast handled globally */ }
     finally { setSavingClient(false); }
@@ -388,48 +397,31 @@ export default function InvoiceFormPage() {
                   <div className="relative">
                     <Search size={14} className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400" />
                     <input
-                      className="input ps-8"
+                      className="input !ps-8"
                       value={clientPhoneQuery}
                       onChange={(e) => setClientPhoneQuery(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); selectTopClientMatch(); } }}
                       placeholder={t('pos.searchCustomerHint')}
                     />
                   </div>
-                  {clientPhoneQuery.trim() && (
-                    <div className="mt-1.5 space-y-1">
+                  {clientQueryTrimmed && phoneMatches.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full max-h-56 overflow-auto rounded-lg border border-slate-200 dark:border-navy-700 bg-white dark:bg-navy-900 shadow-lg">
                       {phoneMatches.map((c, i) => (
                         <button
                           type="button"
                           key={c.id}
                           onClick={() => { pickClient(c.id); setClientPhoneQuery(''); }}
-                          className={`w-full text-start px-3 py-2 rounded-lg text-sm flex items-center justify-between transition-colors ${i === 0 ? 'bg-slate-100 dark:bg-navy-800' : 'bg-slate-50 dark:bg-navy-800/50 hover:bg-slate-100 dark:hover:bg-navy-800'}`}
+                          className={`w-full text-start px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors ${i === 0 ? 'bg-slate-100 dark:bg-navy-800' : 'hover:bg-slate-50 dark:hover:bg-navy-800'}`}
                         >
-                          <span>{c.name_en}</span>
-                          <span className="text-xs text-slate-400">{c.phone || '-'}</span>
+                          <span className="truncate">{c.name_en}</span>
+                          <span className="text-xs text-slate-400 shrink-0">{c.phone || '-'}</span>
                         </button>
                       ))}
-                      {phoneMatches.length === 0 && (
-                        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 space-y-2">
-                          <p className="text-xs text-amber-600">{t('pos.noMatchesCreateNew')}</p>
-                          <input
-                            className="input !py-1.5 text-sm"
-                            value={newClientName}
-                            onChange={(e) => setNewClientName(e.target.value)}
-                            placeholder={t('common.name')}
-                            required={clientQueryIsNumeric}
-                          />
-                          <input
-                            className="input !py-1.5 text-sm"
-                            value={newClientPhone}
-                            onChange={(e) => setNewClientPhone(e.target.value)}
-                            placeholder={t('common.phone')}
-                            required={clientQueryIsNumeric ? false : true}
-                          />
-                          <button type="button" onClick={createQuickClient} disabled={savingClient} className="btn-primary !py-1.5 !px-3 text-xs w-full">
-                            {savingClient ? t('common.loading') : t('pos.newCustomer')}
-                          </button>
-                        </div>
-                      )}
+                    </div>
+                  )}
+                  {clientQueryTrimmed && phoneMatches.length === 0 && (
+                    <div className="absolute z-10 mt-1 w-full rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2">
+                      <p className="text-xs text-amber-600">{t('pos.noMatchesCreateNew')}</p>
                     </div>
                   )}
                 </div>
@@ -692,6 +684,44 @@ export default function InvoiceFormPage() {
           )}
         </div>
       </form>
+
+      {newClientModalOpen && (
+        <>
+          <div className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40" onClick={closeNewClientModal} />
+          <div className="fixed z-50 inset-0 flex items-center justify-center p-4">
+            <div className="card p-6 max-w-sm w-full">
+              <p className="font-bold text-lg text-navy-900 dark:text-white mb-4">{t('pos.newCustomer')}</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="label">{t('common.name')}</label>
+                  <input
+                    autoFocus={!newClientName}
+                    className="input"
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label">{t('common.phone')}</label>
+                  <input
+                    autoFocus={!!newClientName}
+                    className="input"
+                    value={newClientPhone}
+                    onChange={(e) => setNewClientPhone(e.target.value)}
+                    placeholder={t('pos.phoneRequiredHint')}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2 mt-6">
+                <button type="button" onClick={closeNewClientModal} className="btn-ghost">{t('common.cancel')}</button>
+                <button type="button" onClick={createQuickClient} disabled={savingClient} className="btn-primary">
+                  {savingClient ? t('common.loading') : t('pos.newCustomer')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

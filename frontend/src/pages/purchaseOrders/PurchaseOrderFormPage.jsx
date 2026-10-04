@@ -26,8 +26,9 @@ export default function PurchaseOrderFormPage() {
 
   const [header, setHeader] = useState({
     supplier_id: '', date: new Date().toISOString().slice(0, 10), expected_date: '',
-    cost_center_id: '', branch_id: '', notes: '',
+    cost_center_id: '', branch_id: '', currency: 'KWD', notes: '',
   });
+  const currencyCodes = ['KWD', 'USD', 'AED', 'SAR', 'EUR'];
   const [lines, setLines] = useState([emptyLine()]);
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function PurchaseOrderFormPage() {
       const po = r.data;
       setHeader({
         supplier_id: po.supplier_id || '', date: po.date, expected_date: po.expected_date || '',
-        cost_center_id: po.cost_center_id || '', branch_id: po.branch_id || '', notes: po.notes || '',
+        cost_center_id: po.cost_center_id || '', branch_id: po.branch_id || '', currency: po.currency || 'KWD', notes: po.notes || '',
       });
       setLines(po.lines.map((l) => ({
         item_id: l.item_id || '', account_id: l.account_id, description: l.description || '',
@@ -134,6 +135,12 @@ export default function PurchaseOrderFormPage() {
               {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
             </select>
           </div>
+          <div>
+            <label className="label">{t('common.currency')}</label>
+            <select className="input" value={header.currency} onChange={(e) => setHeader({ ...header, currency: e.target.value })}>
+              {currencyCodes.map((c) => <option key={c} value={c}>{t(`common.currencies.${c}`)}</option>)}
+            </select>
+          </div>
           <div className="sm:col-span-2"><label className="label">{t('common.notes')}</label><textarea className="input" rows={2} value={header.notes} onChange={(e) => setHeader({ ...header, notes: e.target.value })} /></div>
         </div>
 
@@ -157,7 +164,10 @@ export default function PurchaseOrderFormPage() {
                 </select>
                 <input placeholder={t('common.description')} className="input col-span-2 !py-2" value={line.description} onChange={(e) => updateLine(idx, { description: e.target.value })} />
                 <input type="number" step="0.001" placeholder={t('common.qty')} className="input col-span-1 !py-2" value={line.quantity} onChange={(e) => updateLine(idx, { quantity: e.target.value })} />
-                <input type="number" step="0.001" placeholder={t('common.unitPrice')} className="input col-span-2 !py-2" value={line.unit_price} onChange={(e) => updateLine(idx, { unit_price: e.target.value })} />
+                <div className="col-span-2 relative">
+                  <input type="number" step="0.001" placeholder={t('common.unitPrice')} className="input !py-2 !pe-12" value={line.unit_price} onChange={(e) => updateLine(idx, { unit_price: e.target.value })} />
+                  <span className="absolute top-1/2 -translate-y-1/2 end-2 text-xs text-slate-400 pointer-events-none">{header.currency}</span>
+                </div>
                 <input type="number" step="0.01" placeholder={t('common.taxPercent')} className="input col-span-1 !py-2" value={line.tax_rate} onChange={(e) => updateLine(idx, { tax_rate: e.target.value })} />
                 <button type="button" onClick={() => removeLine(idx)} className="col-span-1 p-2 rounded-lg hover:bg-red-50 text-red-500 justify-self-center"><Trash2 size={15} /></button>
               </motion.div>
@@ -165,9 +175,9 @@ export default function PurchaseOrderFormPage() {
           </div>
 
           <div className="flex items-center justify-end gap-6 mt-4 pt-4 border-t border-slate-100 dark:border-navy-800 text-sm">
-            <div><span className="text-slate-400">{t('common.subtotal')}: </span><span className="font-semibold">{subtotal.toFixed(3)}</span></div>
-            <div><span className="text-slate-400">{t('common.tax')}: </span><span className="font-semibold">{taxTotal.toFixed(3)}</span></div>
-            <div><span className="text-slate-400">{t('common.total')}: </span><span className="font-bold text-base">{total.toFixed(3)}</span></div>
+            <div><span className="text-slate-400">{t('common.subtotal')}: </span><span className="font-semibold">{subtotal.toFixed(3)} {header.currency}</span></div>
+            <div><span className="text-slate-400">{t('common.tax')}: </span><span className="font-semibold">{taxTotal.toFixed(3)} {header.currency}</span></div>
+            <div><span className="text-slate-400">{t('common.total')}: </span><span className="font-bold text-base">{total.toFixed(3)} {header.currency}</span></div>
           </div>
         </div>
 
