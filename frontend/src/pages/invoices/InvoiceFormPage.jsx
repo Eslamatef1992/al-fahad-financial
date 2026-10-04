@@ -386,7 +386,7 @@ export default function InvoiceFormPage() {
         <div className="card p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {type === 'sales' && !isEdit ? (
             <div>
-              <label className="label flex items-center gap-1"><Users size={13} />{t('common.client')}</label>
+              <label className="label !flex items-center gap-1"><Users size={13} />{t('common.client')}</label>
               {selectedClient ? (
                 <div className="flex items-center justify-between gap-2 input !py-2">
                   <span className="text-sm truncate">{selectedClient.name_en}{selectedClient.phone ? ` — ${selectedClient.phone}` : ''}</span>
@@ -447,7 +447,7 @@ export default function InvoiceFormPage() {
           {type === 'sales' && (
             <>
               <div>
-                <label className="label flex items-center gap-1"><CalendarClock size={13} />{t('invoices.deliveryDate')}</label>
+                <label className="label !flex items-center gap-1"><CalendarClock size={13} />{t('invoices.deliveryDate')}</label>
                 <input type="date" className="input" value={header.delivery_date} onChange={(e) => setHeader({ ...header, delivery_date: e.target.value })} />
               </div>
               <div className="sm:col-span-2">
@@ -473,7 +473,7 @@ export default function InvoiceFormPage() {
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label className="label flex items-center gap-1.5"><Tag size={13} /> {t('invoices.discountCode')}</label>
+            <label className="label !flex items-center gap-1.5"><Tag size={13} /> {t('invoices.discountCode')}</label>
             {!hasLineDiscounts && (
               <>
                 <div className="flex gap-2">
@@ -654,7 +654,7 @@ export default function InvoiceFormPage() {
               )}
               {activePaymentMethods.map((pm) => (
                 <div key={pm.id}>
-                  <label className="label flex items-center gap-1"><Banknote size={13} />{pm.name_en}</label>
+                  <label className="label !flex items-center gap-1"><Banknote size={13} />{pm.name_en}</label>
                   <input
                     type="number" step="0.001" className="input"
                     value={tenderAmounts[pm.id] || ''}
@@ -663,7 +663,7 @@ export default function InvoiceFormPage() {
                 </div>
               ))}
               <div>
-                <label className="label flex items-center gap-1"><Users size={13} />{t('pos.credit')}</label>
+                <label className="label !flex items-center gap-1"><Users size={13} />{t('pos.credit')}</label>
                 <input type="number" step="0.001" className="input" value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} disabled={!header.client_id} />
                 {!header.client_id && <p className="text-xs text-amber-500 mt-1">{t('pos.creditNeedsClient')}</p>}
               </div>

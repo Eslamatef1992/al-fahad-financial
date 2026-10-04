@@ -1401,7 +1401,7 @@ export default function PosPage() {
 								)}
 								{activePaymentMethods.map((pm) => (
 									<div key={pm.id}>
-										<label className="label flex items-center gap-1">
+										<label className="label !flex items-center gap-1">
 											<Banknote size={13} />
 											{pm.name_en}
 										</label>
@@ -1434,7 +1434,7 @@ export default function PosPage() {
 								))}
 								{canCredit && (
 									<div>
-										<label className="label flex items-center gap-1">
+										<label className="label !flex items-center gap-1">
 											<Users size={13} />
 											{t("pos.credit")}
 										</label>
