@@ -9,12 +9,9 @@ import {
 	Trash2,
 	ShoppingCart,
 	PauseCircle,
-	XCircle,
 	Lock,
 	Unlock,
 	CreditCard,
-	Banknote,
-	Landmark,
 	Users,
 	CalendarClock,
 	RotateCcw,
@@ -27,13 +24,23 @@ import {
 	PieChart,
 	Tag,
 	History,
-	Printer,
 } from "lucide-react";
 import api, { printFile } from "@/api/client";
 import { useCompanyStore } from "@/store/companyStore";
 import PageHeader from "@/components/PageHeader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import useFinancialDefaults from "@/hooks/useFinancialDefaults";
+import InventorySearchModal from "./Modals/InventorySearchModal";
+import HeldSalesModal from "./Modals/HeldSalesModal";
+import DeliveryModal from "./Modals/DeliveryModal";
+import ManufactureOrderModal from "./Modals/ManufactureOrderModal";
+import CouponsModal from "./Modals/CouponsModal";
+import PaymentModal from "./Modals/PaymentModal";
+import CloseShiftModal from "./Modals/CloseShiftModal";
+import NewClientModal from "./Modals/NewClientModal";
+import HistoryModal from "./Modals/HistoryModal";
+import RefundModal from "./Modals/RefundModal";
+import InvoiceSuccessModal from "./Modals/InvoiceSuccessModal";
 
 const money = (n) => Number(n || 0).toFixed(3);
 
@@ -120,6 +127,7 @@ export default function PosPage() {
 	const [closeOpen, setCloseOpen] = useState(false);
 	const [countedCash, setCountedCash] = useState("");
 	const [voidTarget, setVoidTarget] = useState(null);
+	const [completedInvoiceId, setCompletedInvoiceId] = useState(null);
 
 	const [historyOpen, setHistoryOpen] = useState(false);
 	const [historyLoading, setHistoryLoading] = useState(false);
@@ -590,7 +598,7 @@ export default function PosPage() {
 			});
 			if (Number(creditAmount) > 0)
 				payments.push({ method: "credit", amount: Number(creditAmount) });
-			await api.post("/pos/sales", {
+			const { data } = await api.post("/pos/sales", {
 				client_id: clientId || null,
 				action: "complete",
 				lines: buildLines(),
@@ -605,6 +613,7 @@ export default function PosPage() {
 			setPayOpen(false);
 			resetTender();
 			clearCart();
+			setCompletedInvoiceId(data.id);
 		} catch (e) {
 			/* toast handled globally */
 		} finally {
@@ -1077,441 +1086,83 @@ export default function PosPage() {
 					/>
 				</div>
 			</div>
-
-			{/* Inventory search popup — add items by browsing/searching */}
-			{inventoryOpen && (
-				<>
-					<div
-						className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40"
-						onClick={() => setInventoryOpen(false)}
-					/>
-					<div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-						<div className="card p-4 max-w-4xl w-full max-h-[85vh] flex flex-col">
-							<div className="flex items-center justify-between mb-3">
-								<p className="font-bold text-navy-900 dark:text-white flex items-center gap-2">
-									<Boxes size={16} />
-									{t("pos.searchFullInventory")}
-								</p>
-								<button onClick={() => setInventoryOpen(false)}>
-									<X size={18} />
-								</button>
-							</div>
-							<div className="flex gap-1.5 mb-3">
-								<button
-									onClick={() => setInventoryTab("branch")}
-									className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${inventoryTab === "branch" ? "bg-navy-900 text-white dark:bg-white dark:text-navy-900" : "bg-slate-100 dark:bg-navy-800 text-slate-500"}`}>
-									{t("pos.tabBranchInventory")}
-								</button>
-								<button
-									onClick={() => setInventoryTab("main")}
-									className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${inventoryTab === "main" ? "bg-navy-900 text-white dark:bg-white dark:text-navy-900" : "bg-slate-100 dark:bg-navy-800 text-slate-500"}`}>
-									{t("pos.tabMainInventory")}
-								</button>
-							</div>
-							<div className="relative mb-3">
-								<Search
-									size={14}
-									className="absolute top-1/2 -translate-y-1/2 start-2.5 text-slate-400"
-								/>
-								<input
-									className="input !ps-8 text-sm"
-									placeholder={t("pos.searchProducts")}
-									value={query}
-									onChange={(e) => setQuery(e.target.value)}
-									autoFocus
-								/>
-							</div>
-							<div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5 overflow-y-auto pe-1">
-								{products.map((p) => (
-									<button
-										key={p.id}
-										onClick={() => addToCart(p)}
-										disabled={Number(p.available_quantity) <= 0}
-										className="card p-1.5 text-start hover:shadow-md transition-shadow disabled:opacity-40 disabled:cursor-not-allowed">
-										<p className="font-semibold text-xs text-navy-900 dark:text-white truncate leading-tight">
-											{p.name_en}
-										</p>
-										<p className="text-[10px] text-slate-400 truncate">
-											{p.code}
-										</p>
-										<div className="flex items-center justify-between mt-1">
-											<span className="font-bold text-xs text-navy-900 dark:text-white">
-												{money(p.selling_price)}
-											</span>
-											<span
-												className={`text-[9px] px-1 py-0.5 rounded-full ${Number(p.available_quantity) > 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"}`}>
-												{Number(p.available_quantity)} {t("pos.available")}
-											</span>
-										</div>
-										{Number(p.booked_quantity) > 0 && (
-											<p className="text-[9px] text-amber-500 mt-0.5">
-												{Number(p.booked_quantity)} {t("items.booked")}
-											</p>
-										)}
-									</button>
-								))}
-								{!products.length && (
-									<p className="col-span-full text-center text-sm text-slate-400 py-8">
-										{t("pos.noProducts")}
-									</p>
-								)}
-							</div>
-						</div>
-					</div>
-				</>
-			)}
-
-			{/* Held invoices */}
-			{heldOpen && (
-				<>
-					<div
-						className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40"
-						onClick={() => setHeldOpen(false)}
-					/>
-					<div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-						<div className="card p-4 max-w-md w-full max-h-[80vh] flex flex-col">
-							<div className="flex items-center justify-between mb-3">
-								<p className="font-bold text-navy-900 dark:text-white flex items-center gap-2">
-									<PauseCircle size={16} />
-									{t("pos.heldSales")}
-								</p>
-								<button onClick={() => setHeldOpen(false)}>
-									<X size={18} />
-								</button>
-							</div>
-							<div className="space-y-1.5 overflow-y-auto">
-								{held.map((h) => (
-									<div
-										key={h.id}
-										className="flex items-center justify-between gap-2 bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 rounded-lg px-3 py-2 text-sm">
-										<button
-											onClick={() => {
-												resumeHeld(h);
-												setHeldOpen(false);
-											}}
-											className="font-medium hover:underline text-start">
-											{h.invoice_no} — {money(h.total)}
-										</button>
-										{canVoid && (
-											<button onClick={() => setVoidTarget(h)}>
-												<XCircle size={14} />
-											</button>
-										)}
-									</div>
-								))}
-								{!held.length && (
-									<p className="text-center text-sm text-slate-400 py-6">
-										{t("common.noData")}
-									</p>
-								)}
-							</div>
-						</div>
-					</div>
-				</>
-			)}
-
-			{/* Delivery date/address */}
-			{deliveryOpen && (
-				<>
-					<div
-						className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40"
-						onClick={() => setDeliveryOpen(false)}
-					/>
-					<div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-						<div className="card p-6 max-w-sm w-full">
-							<p className="font-bold text-lg text-navy-900 dark:text-white mb-4 flex items-center gap-2">
-								<CalendarClock size={18} />
-								{t("invoices.deliveryDate")}
-							</p>
-							<label className="label">{t("invoices.deliveryDate")}</label>
-							<input
-								type="date"
-								min={todayStr()}
-								className="input mb-3"
-								value={deliveryDate}
-								onChange={(e) => setDeliveryDate(e.target.value)}
-							/>
-							<label className="label">{t("invoices.deliveryAddress")}</label>
-							<textarea
-								className="input"
-								rows={3}
-								value={deliveryAddress}
-								onChange={(e) => setDeliveryAddress(e.target.value)}
-								placeholder={t("invoices.deliveryAddressHint")}
-							/>
-							<div className="flex items-center justify-end gap-2 mt-6">
-								<button
-									onClick={() => setDeliveryOpen(false)}
-									className="btn-primary">
-									{t("common.done")}
-								</button>
-							</div>
-						</div>
-					</div>
-				</>
-			)}
-
-			{/* Manufacture Order tag — checking the box and picking a manufacturer
-          only tags this sale for later filtering/reporting, it does not open
-          any purchasing flow. */}
-			{manufactureOrderOpen && (
-				<>
-					<div
-						className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40"
-						onClick={() => setManufactureOrderOpen(false)}
-					/>
-					<div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-						<div className="card p-6 max-w-sm w-full">
-							<p className="font-bold text-lg text-navy-900 dark:text-white mb-4 flex items-center gap-2">
-								<Factory size={18} />
-								{t("pos.railManufactureOrder")}
-							</p>
-							<label className="flex items-center gap-2 text-sm text-navy-900 dark:text-white mb-3 cursor-pointer">
-								<input
-									type="checkbox"
-									className="rounded"
-									checked={isManufactureOrder}
-									onChange={(e) => setIsManufactureOrder(e.target.checked)}
-								/>
-								{t("pos.manufactureOrderCheckbox")}
-							</label>
-							{isManufactureOrder && (
-								<div>
-									<label className="label">{t("nav.manufacturers")}</label>
-									<select
-										className="input"
-										value={manufacturerId}
-										onChange={(e) => setManufacturerId(e.target.value)}>
-										<option value="">{t("common.select")}</option>
-										{manufacturers
-											.filter((m) => m.is_active)
-											.map((m) => (
-												<option key={m.id} value={m.id}>
-													{m.name_en}
-												</option>
-											))}
-									</select>
-								</div>
-							)}
-							<div className="flex items-center justify-end gap-2 mt-6">
-								<button
-									onClick={() => setManufactureOrderOpen(false)}
-									className="btn-primary">
-									{t("common.done")}
-								</button>
-							</div>
-						</div>
-					</div>
-				</>
-			)}
-
-			{/* Available coupons */}
-			{couponsOpen && (
-				<>
-					<div
-						className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40"
-						onClick={() => setCouponsOpen(false)}
-					/>
-					<div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-						<div className="card p-4 max-w-md w-full max-h-[80vh] flex flex-col">
-							<div className="flex items-center justify-between mb-3">
-								<p className="font-bold text-navy-900 dark:text-white flex items-center gap-2">
-									<Ticket size={16} />
-									{t("pos.railCoupons")}
-								</p>
-								<button onClick={() => setCouponsOpen(false)}>
-									<X size={18} />
-								</button>
-							</div>
-							<div className="flex items-center gap-2 mb-3">
-								<input
-									className="input text-sm"
-									placeholder={t("invoices.discountCodePlaceholder")}
-									value={discountCode}
-									onChange={(e) =>
-										setDiscountCode(e.target.value.toUpperCase())
-									}
-								/>
-								<button
-									onClick={() => applyDiscount()}
-									disabled={applyingDiscount || !discountCode.trim()}
-									className="btn-primary shrink-0">
-									{t("invoices.applyDiscount")}
-								</button>
-							</div>
-							{discountError && (
-								<p className="text-xs text-red-500 mb-2">{discountError}</p>
-							)}
-							<div className="space-y-1.5 overflow-y-auto">
-								{discountCodes
-									.filter((c) => c.is_active)
-									.map((c) => (
-										<button
-											key={c.id}
-											onClick={() => applyDiscount(c.code)}
-											className="w-full flex items-center justify-between gap-2 border border-slate-100 dark:border-navy-800 rounded-lg px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-navy-900 text-start">
-											<div className="min-w-0">
-												<p className="font-semibold text-navy-900 dark:text-white">
-													{c.code}
-												</p>
-												{c.description && (
-													<p className="text-xs text-slate-400 truncate">
-														{c.description}
-													</p>
-												)}
-											</div>
-											<span className="text-xs font-semibold text-emerald-600 shrink-0">
-												{c.type === "percentage"
-													? `${Number(c.value)}%`
-													: money(c.value)}
-											</span>
-										</button>
-									))}
-								{!discountCodes.length && (
-									<p className="text-center text-sm text-slate-400 py-6">
-										{t("common.noData")}
-									</p>
-								)}
-							</div>
-						</div>
-					</div>
-				</>
-			)}
-
-			{/* Payment modal */}
-			{payOpen && (
-				<>
-					<div
-						className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40"
-						onClick={() => setPayOpen(false)}
-					/>
-					<div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-						<div className="card p-6 max-w-sm w-full">
-							<p className="font-bold text-lg text-navy-900 dark:text-white mb-1">
-								{t("pos.pay")}
-							</p>
-							<p className="text-sm text-slate-500 mb-4">
-								{t("pos.amountDue", { amount: money(netTotal) })}
-							</p>
-							<div className="space-y-3">
-								{activePaymentMethods.length === 0 && (
-									<p className="text-xs text-amber-500">
-										{t("pos.noPaymentMethods")}
-									</p>
-								)}
-								{activePaymentMethods.map((pm) => (
-									<div key={pm.id}>
-										<label className="label !flex items-center gap-1">
-											<Banknote size={13} />
-											{pm.name_en}
-										</label>
-										<input
-											type="number"
-											step="0.001"
-											className="input"
-											value={tenderAmounts[pm.id] || ""}
-											onChange={(e) =>
-												setTenderAmounts({
-													...tenderAmounts,
-													[pm.id]: e.target.value,
-												})
-											}
-										/>
-										{Number(tenderAmounts[pm.id]) > 0 && (
-											<input
-												className="input mt-1.5"
-												value={tenderRefs[pm.id] || ""}
-												onChange={(e) =>
-													setTenderRefs({
-														...tenderRefs,
-														[pm.id]: e.target.value,
-													})
-												}
-												placeholder={t("pos.referenceOptionalPlaceholder")}
-											/>
-										)}
-									</div>
-								))}
-								{canCredit && (
-									<div>
-										<label className="label !flex items-center gap-1">
-											<Users size={13} />
-											{t("pos.credit")}
-										</label>
-										<input
-											type="number"
-											step="0.001"
-											className="input"
-											value={creditAmount}
-											onChange={(e) => setCreditAmount(e.target.value)}
-											disabled={!clientId}
-										/>
-										{!clientId && (
-											<p className="text-xs text-amber-500 mt-1">
-												{t("pos.creditNeedsClient")}
-											</p>
-										)}
-									</div>
-								)}
-								<div className="flex items-center justify-between text-sm pt-2 border-t border-slate-100 dark:border-navy-800">
-									<span className="text-slate-500">{t("pos.tendered")}</span>
-									<span
-										className={`font-semibold ${Math.abs(tenderTotal - netTotal) > 0.001 ? "text-red-500" : "text-emerald-500"}`}>
-										{money(tenderTotal)}
-									</span>
-								</div>
-							</div>
-							<div className="flex items-center justify-end gap-2 mt-6">
-								<button onClick={() => setPayOpen(false)} className="btn-ghost">
-									{t("common.cancel")}
-								</button>
-								<button
-									onClick={submitPayment}
-									disabled={paying}
-									className="btn-primary">
-									{paying ? t("common.loading") : t("pos.completeSale")}
-								</button>
-							</div>
-						</div>
-					</div>
-				</>
-			)}
-
-			{/* Close shift modal */}
-			{closeOpen && (
-				<>
-					<div
-						className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40"
-						onClick={() => setCloseOpen(false)}
-					/>
-					<div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-						<div className="card p-6 max-w-sm w-full">
-							<p className="font-bold text-lg text-navy-900 dark:text-white mb-4">
-								{t("pos.closeShift")}
-							</p>
-							<label className="label">{t("pos.countedCash")}</label>
-							<input
-								type="number"
-								step="0.001"
-								className="input"
-								value={countedCash}
-								onChange={(e) => setCountedCash(e.target.value)}
-							/>
-							<div className="flex items-center justify-end gap-2 mt-6">
-								<button
-									onClick={() => setCloseOpen(false)}
-									className="btn-ghost">
-									{t("common.cancel")}
-								</button>
-								<button onClick={doCloseShift} className="btn-primary">
-									{t("pos.closeShift")}
-								</button>
-							</div>
-						</div>
-					</div>
-				</>
-			)}
-
+			<InventorySearchModal
+				open={inventoryOpen}
+				onClose={() => setInventoryOpen(false)}
+				t={t}
+				inventoryTab={inventoryTab}
+				setInventoryTab={setInventoryTab}
+				query={query}
+				setQuery={setQuery}
+				products={products}
+				addToCart={addToCart}
+			/>
+			<HeldSalesModal
+				open={heldOpen}
+				onClose={() => setHeldOpen(false)}
+				t={t}
+				held={held}
+				canVoid={canVoid}
+				resumeHeld={resumeHeld}
+				setVoidTarget={setVoidTarget}
+			/>
+			<DeliveryModal
+				open={deliveryOpen}
+				onClose={() => setDeliveryOpen(false)}
+				t={t}
+				deliveryDate={deliveryDate}
+				setDeliveryDate={setDeliveryDate}
+				deliveryAddress={deliveryAddress}
+				setDeliveryAddress={setDeliveryAddress}
+				todayStr={todayStr}
+			/>
+			<ManufactureOrderModal
+				open={manufactureOrderOpen}
+				onClose={() => setManufactureOrderOpen(false)}
+				t={t}
+				isManufactureOrder={isManufactureOrder}
+				setIsManufactureOrder={setIsManufactureOrder}
+				manufacturerId={manufacturerId}
+				setManufacturerId={setManufacturerId}
+				manufacturers={manufacturers}
+			/>
+			<CouponsModal
+				open={couponsOpen}
+				onClose={() => setCouponsOpen(false)}
+				t={t}
+				discountCode={discountCode}
+				setDiscountCode={setDiscountCode}
+				applyDiscount={applyDiscount}
+				applyingDiscount={applyingDiscount}
+				discountError={discountError}
+				discountCodes={discountCodes}
+			/>
+			<PaymentModal
+				open={payOpen}
+				onClose={() => setPayOpen(false)}
+				t={t}
+				netTotal={netTotal}
+				activePaymentMethods={activePaymentMethods}
+				tenderAmounts={tenderAmounts}
+				setTenderAmounts={setTenderAmounts}
+				tenderRefs={tenderRefs}
+				setTenderRefs={setTenderRefs}
+				canCredit={canCredit}
+				creditAmount={creditAmount}
+				setCreditAmount={setCreditAmount}
+				clientId={clientId}
+				tenderTotal={tenderTotal}
+				paying={paying}
+				submitPayment={submitPayment}
+			/>
+			<CloseShiftModal
+				open={closeOpen}
+				onClose={() => setCloseOpen(false)}
+				t={t}
+				countedCash={countedCash}
+				setCountedCash={setCountedCash}
+				doCloseShift={doCloseShift}
+			/>
 			<ConfirmDialog
 				open={!!voidTarget}
 				onCancel={() => setVoidTarget(null)}
@@ -1519,226 +1170,44 @@ export default function PosPage() {
 				message={t("pos.confirmVoid")}
 				confirmLabel={t("pos.void")}
 			/>
-
-			{/* New customer quick-add */}
-			{newClientOpen && (
-				<>
-					<div
-						className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40"
-						onClick={() => setNewClientOpen(false)}
-					/>
-					<div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-						<div className="card p-6 max-w-sm w-full">
-							<div className="flex items-center justify-between mb-4">
-								<p className="font-bold text-lg text-navy-900 dark:text-white flex items-center gap-2">
-									<UserPlus size={18} />
-									{t("pos.newCustomer")}
-								</p>
-								<button onClick={() => setNewClientOpen(false)}>
-									<X size={18} />
-								</button>
-							</div>
-							<div className="space-y-3">
-								<div>
-									<label className="label">{t("common.nameEn")}</label>
-									<input
-										className="input"
-										value={newClient.name_en}
-										onChange={(e) =>
-											setNewClient({ ...newClient, name_en: e.target.value })
-										}
-									/>
-								</div>
-								<div>
-									<label className="label">{t("common.phone")}</label>
-									<input
-										className="input"
-										value={newClient.phone}
-										onChange={(e) =>
-											setNewClient({ ...newClient, phone: e.target.value })
-										}
-										placeholder={t("pos.phoneRequiredHint")}
-									/>
-								</div>
-							</div>
-							<div className="flex items-center justify-end gap-2 mt-6">
-								<button
-									onClick={() => setNewClientOpen(false)}
-									className="btn-ghost">
-									{t("common.cancel")}
-								</button>
-								<button
-									onClick={createQuickClient}
-									disabled={savingClient}
-									className="btn-primary">
-									{savingClient ? t("common.loading") : t("common.save")}
-								</button>
-							</div>
-						</div>
-					</div>
-				</>
-			)}
-
-			{/* Sales history: Invoices By Date + Customer search + Refund */}
-			{historyOpen && (
-				<>
-					<div
-						className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40"
-						onClick={() => setHistoryOpen(false)}
-					/>
-					<div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-						<div className="card p-6 max-w-3xl w-full max-h-[85vh] flex flex-col">
-							<div className="flex items-center justify-between mb-4">
-								<p className="font-bold text-lg text-navy-900 dark:text-white flex items-center gap-2">
-									<History size={18} />
-									{t("pos.invoiceHistory")}
-								</p>
-								<button onClick={() => setHistoryOpen(false)}>
-									<X size={18} />
-								</button>
-							</div>
-							<div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
-								<input
-									type="date"
-									className="input"
-									value={historyFilters.date_from}
-									onChange={(e) =>
-										setHistoryFilters({
-											...historyFilters,
-											date_from: e.target.value,
-										})
-									}
-								/>
-								<input
-									type="date"
-									className="input"
-									value={historyFilters.date_to}
-									onChange={(e) =>
-										setHistoryFilters({
-											...historyFilters,
-											date_to: e.target.value,
-										})
-									}
-								/>
-								<input
-									className="input sm:col-span-1"
-									placeholder={t("pos.historySearchPlaceholder")}
-									value={historyFilters.q}
-									onChange={(e) =>
-										setHistoryFilters({ ...historyFilters, q: e.target.value })
-									}
-								/>
-								<button onClick={loadHistory} className="btn-primary">
-									{t("common.applyFilters")}
-								</button>
-							</div>
-							<div className="flex-1 overflow-y-auto space-y-2">
-								{historyLoading && (
-									<p className="text-center text-sm text-slate-400 py-6">
-										{t("common.loading")}
-									</p>
-								)}
-								{!historyLoading && !historyRows.length && (
-									<p className="text-center text-sm text-slate-400 py-6">
-										{t("common.noData")}
-									</p>
-								)}
-								{!historyLoading &&
-									historyRows.map((row) => (
-										<div
-											key={row.id}
-											className="flex items-center justify-between gap-3 border-b border-slate-100 dark:border-navy-800 pb-2 text-sm">
-											<div className="min-w-0">
-												<p className="font-medium text-navy-900 dark:text-white">
-													{row.invoice_no} — {row.date}
-												</p>
-												<p className="text-xs text-slate-400 truncate">
-													{row.client
-														? `${row.client.name_en}${row.client.phone ? " — " + row.client.phone : ""}`
-														: t("pos.walkIn")}
-												</p>
-												{row.delivery_date && (
-													<p className="text-xs text-amber-500 truncate">
-														{t("invoices.deliveryDate")}: {row.delivery_date}
-													</p>
-												)}
-											</div>
-											<div className="flex items-center gap-3 shrink-0">
-												<span className="font-semibold text-navy-900 dark:text-white">
-													{money(row.total)}
-												</span>
-												<span
-													className={`text-[11px] px-1.5 py-0.5 rounded-full ${row.status === "cancelled" ? "bg-slate-100 text-slate-400" : row.status === "paid" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
-													{t(`pos.status_${row.status}`)}
-												</span>
-												<button
-													onClick={() => printHistoryInvoice(row)}
-													disabled={row.date !== todayStr()}
-													title={
-														row.date === todayStr()
-															? t("common.print")
-															: t("pos.printTodayOnly")
-													}
-													className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 text-slate-500 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent">
-													<Printer size={14} />
-												</button>
-												{canRefund &&
-													["paid", "partially_paid"].includes(row.status) && (
-														<button
-															onClick={() => setRefundTarget(row)}
-															title={t("pos.refund")}
-															className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-red-500">
-															<RotateCcw size={14} />
-														</button>
-													)}
-											</div>
-										</div>
-									))}
-							</div>
-						</div>
-					</div>
-				</>
-			)}
-
-			{/* Refund confirm */}
-			{!!refundTarget && (
-				<>
-					<div
-						className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm z-40"
-						onClick={() => setRefundTarget(null)}
-					/>
-					<div className="fixed z-50 inset-0 flex items-center justify-center p-4">
-						<div className="card p-6 max-w-sm w-full">
-							<p className="font-bold text-lg text-navy-900 dark:text-white mb-2">
-								{t("pos.refund")}
-							</p>
-							<p className="text-sm text-slate-500 mb-4">
-								{t("pos.confirmRefund", { invoice: refundTarget.invoice_no })}
-							</p>
-							<label className="label">{t("pos.refundReason")}</label>
-							<textarea
-								className="input"
-								rows={2}
-								value={refundReason}
-								onChange={(e) => setRefundReason(e.target.value)}
-							/>
-							<div className="flex items-center justify-end gap-2 mt-6">
-								<button
-									onClick={() => setRefundTarget(null)}
-									className="btn-ghost">
-									{t("common.cancel")}
-								</button>
-								<button
-									onClick={confirmRefund}
-									disabled={refunding}
-									className="btn-primary">
-									{refunding ? t("common.loading") : t("pos.refund")}
-								</button>
-							</div>
-						</div>
-					</div>
-				</>
-			)}
+			<NewClientModal
+				open={newClientOpen}
+				onClose={() => setNewClientOpen(false)}
+				t={t}
+				newClient={newClient}
+				setNewClient={setNewClient}
+				savingClient={savingClient}
+				createQuickClient={createQuickClient}
+			/>
+			<HistoryModal
+				open={historyOpen}
+				onClose={() => setHistoryOpen(false)}
+				t={t}
+				historyFilters={historyFilters}
+				setHistoryFilters={setHistoryFilters}
+				loadHistory={loadHistory}
+				historyLoading={historyLoading}
+				historyRows={historyRows}
+				canRefund={canRefund}
+				printHistoryInvoice={printHistoryInvoice}
+				setRefundTarget={setRefundTarget}
+				todayStr={todayStr}
+			/>
+			<RefundModal
+				refundTarget={refundTarget}
+				onClose={() => setRefundTarget(null)}
+				t={t}
+				refundReason={refundReason}
+				setRefundReason={setRefundReason}
+				confirmRefund={confirmRefund}
+				refunding={refunding}
+			/>
+			<InvoiceSuccessModal
+				invoiceId={completedInvoiceId}
+				onClose={() => setCompletedInvoiceId(null)}
+				t={t}
+				activeCompany={activeCompany}
+			/>
 		</div>
 	);
 }
