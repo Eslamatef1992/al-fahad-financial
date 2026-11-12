@@ -4,7 +4,7 @@ import { Wallet, TrendingUp, TrendingDown, Users, Truck, Receipt, FileText, Shop
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
-import PageHeader from '@/components/PageHeader';
+import { useAuthStore } from '@/store/authStore';
 import StatCard from '@/components/StatCard';
 
 function monthRange(monthsBack) {
@@ -16,6 +16,7 @@ function monthRange(monthsBack) {
 export default function Dashboard() {
   const { t } = useTranslation();
   const activeCompany = useCompanyStore((s) => s.activeCompany);
+  const user = useAuthStore((s) => s.user);
   const [pnl, setPnl] = useState(null);
   const [counts, setCounts] = useState({
     clients: 0, suppliers: 0, vehicles: 0, vouchers: 0,
@@ -62,21 +63,24 @@ export default function Dashboard() {
 
   return (
     <div>
-      <PageHeader title={t('nav.dashboard')} subtitle={activeCompany ? (activeCompany.name_en) : ''} />
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold text-navy-900 dark:text-white">{t('dashboard.welcome', { name: user?.name || '' })}</h1>
+        {activeCompany && <p className="text-sm text-slate-500 mt-0.5">{activeCompany.name_en}</p>}
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('nav.profitAndLoss')} value={typeof pnl?.net_profit === 'number' ? pnl.net_profit.toFixed(3) : '—'} icon={pnl?.net_profit >= 0 ? TrendingUp : TrendingDown} tone={pnl?.net_profit >= 0 ? 'green' : 'red'} delay={0} />
         <StatCard label={t('nav.clients')} value={counts.clients} icon={Users} tone="navy" delay={0.05} />
         <StatCard label={t('nav.vehicles')} value={counts.vehicles} icon={Truck} tone="gold" delay={0.1} />
-        <StatCard label={t('nav.vouchers')} value={counts.vouchers} icon={Receipt} tone="navy" delay={0.15} />
+        <StatCard label={t('nav.vouchers')} value={counts.vouchers} icon={Receipt} tone="blue" delay={0.15} />
         <StatCard label={t('nav.salesInvoices')} value={counts.salesInvoices} icon={FileText} tone="green" delay={0.2} />
-        <StatCard label={t('nav.purchaseInvoices')} value={counts.purchaseInvoices} icon={ShoppingCart} tone="gold" delay={0.25} />
+        <StatCard label={t('nav.purchaseInvoices')} value={counts.purchaseInvoices} icon={ShoppingCart} tone="pink" delay={0.25} />
         <StatCard label={t('nav.employees')} value={counts.employees} icon={Briefcase} tone="navy" delay={0.3} />
         <StatCard label={t('nav.costCenters')} value={counts.costCenters} icon={Layers} tone="gold" delay={0.35} />
-        <StatCard label={t('dashboard.admins')} value={counts.admins} icon={ShieldCheck} tone="navy" delay={0.4} />
+        <StatCard label={t('dashboard.admins')} value={counts.admins} icon={ShieldCheck} tone="blue" delay={0.4} />
       </div>
 
-      <div className="card p-5">
+      <div className="card p-6 !rounded-3xl">
         <h3 className="font-bold text-navy-900 dark:text-white mb-4 flex items-center gap-2">
           <Wallet size={18} className="text-gold-500" /> Voucher Activity (last 6 months)
         </h3>
@@ -85,20 +89,20 @@ export default function Dashboard() {
             <AreaChart data={trend}>
               <defs>
                 <linearGradient id="debitColor" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2a3c68" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#2a3c68" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="creditColor" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#c9a227" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#c9a227" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Area type="monotone" dataKey="debit" stroke="#2a3c68" fill="url(#debitColor)" strokeWidth={2} />
-              <Area type="monotone" dataKey="credit" stroke="#c9a227" fill="url(#creditColor)" strokeWidth={2} />
+              <Area type="monotone" dataKey="debit" stroke="#6366f1" fill="url(#debitColor)" strokeWidth={2} />
+              <Area type="monotone" dataKey="credit" stroke="#f59e0b" fill="url(#creditColor)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         ) : (

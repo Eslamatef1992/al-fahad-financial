@@ -4,7 +4,8 @@
     "tagline": "Integrated Financial System"
   },
   "dashboard": {
-    "admins": "Admins"
+    "admins": "Admins",
+    "welcome": "Welcome, {{name}}!"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -40,7 +41,12 @@
     "pos": "Point of Sale",
     "posCashiers": "POS Cashier Access",
     "damages": "Damages",
-    "deliverySchedule": "Delivery Schedule"
+    "deliverySchedule": "Delivery Schedule",
+    "groupSales": "Sales",
+    "groupInventory": "Inventory",
+    "groupAccounting": "Accounting",
+    "groupMore": "More",
+    "allApps": "All pages"
   },
   "common": {
     "search": "Search...",

@@ -4,7 +4,8 @@
     "tagline": "نظام مالي متكامل"
   },
   "dashboard": {
-    "admins": "المشرفون"
+    "admins": "المشرفون",
+    "welcome": "مرحباً، {{name}}!"
   },
   "nav": {
     "dashboard": "لوحة التحكم",
@@ -40,7 +41,12 @@
     "pos": "نقطة البيع",
     "posCashiers": "صلاحيات كاشير نقطة البيع",
     "damages": "التوالف",
-    "deliverySchedule": "جدول التسليم"
+    "deliverySchedule": "جدول التسليم",
+    "groupSales": "المبيعات",
+    "groupInventory": "المخزون",
+    "groupAccounting": "المحاسبة",
+    "groupMore": "المزيد",
+    "allApps": "جميع الصفحات"
   },
   "common": {
     "search": "بحث...",
