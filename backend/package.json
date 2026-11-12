@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "db:sync": "node src/scripts/syncDb.js",
-    "db:seed": "node src/scripts/seed.js"
+    "db:seed": "node src/scripts/seed.js",
+    "verify:amount-in-words": "node src/scripts/verifyAmountInWords.js"
   },
   "dependencies": {
     "@fontsource/noto-naskh-arabic": "^5.2.11",

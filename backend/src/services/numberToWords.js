@@ -74,7 +74,7 @@ const CURRENCIES = {
 const AR_ONES = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة'];
 const AR_TEENS = ['عشرة', 'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
 const AR_TENS = ['', '', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
-const AR_HUNDREDS = ['', 'مائة', 'مئتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
+const AR_HUNDREDS = ['', 'مائة', 'مائتان', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
 
 function arThreeDigits(num) {
   const h = Math.floor(num / 100);
@@ -189,6 +189,12 @@ function splitAmount(amount, decimals) {
 function amountInWordsEn(amount, currencyCode) {
   const cur = CURRENCIES[currencyCode] || CURRENCIES.DEFAULT;
   const { whole, frac } = splitAmount(amount, cur.decimals);
+  // Sub-1-unit amounts (e.g. 0.500) read as just "Five Hundred Fils Only" —
+  // not "Zero Kuwaiti Dinars and Five Hundred Fils Only".
+  if (whole === 0 && frac > 0) {
+    const minorName = frac === 1 ? cur.en.minorSingular : cur.en.minorPlural;
+    return `${numberToEnglishWords(frac)} ${minorName} Only`;
+  }
   const majorName = whole === 1 ? cur.en.majorSingular : cur.en.majorPlural;
   let sentence = `${numberToEnglishWords(whole)} ${majorName}`;
   if (frac > 0) {
@@ -201,6 +207,9 @@ function amountInWordsEn(amount, currencyCode) {
 function amountInWordsAr(amount, currencyCode) {
   const cur = CURRENCIES[currencyCode] || CURRENCIES.DEFAULT;
   const { whole, frac } = splitAmount(amount, cur.decimals);
+  // Sub-1-unit amounts (e.g. 0.500) read as just "خمسمائة فلس فقط لا غير" —
+  // not "صفر دينار كويتي وخمسمائة فلس فقط لا غير".
+  if (whole === 0 && frac > 0) return `${arAmountPhrase(frac, cur.ar.minor)} فقط لا غير`;
   let sentence = arAmountPhrase(whole, cur.ar.major);
   if (frac > 0) sentence += ` و${arAmountPhrase(frac, cur.ar.minor)}`;
   return `${sentence} فقط لا غير`;

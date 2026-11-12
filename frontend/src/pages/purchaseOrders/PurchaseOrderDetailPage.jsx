@@ -74,7 +74,8 @@ export default function PurchaseOrderDetailPage() {
       <div className="card p-5 mb-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.supplier')}</p><p className="text-sm mt-1 font-medium">{po.supplier?.name_en || '—'}</p></div>
         <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.status')}</p><span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-bold capitalize ${STATUS_COLOR[po.status]}`}>{t(`purchaseOrders.status.${po.status}`)}</span></div>
-        <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.total')}</p><p className="text-sm mt-1 font-bold">{Number(po.total).toFixed(3)}</p></div>
+        <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.currency')}</p><p className="text-sm mt-1 font-medium">{po.currency}</p></div>
+        <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.total')}</p><p className="text-sm mt-1 font-bold">{Number(po.total).toFixed(3)} {po.currency}</p></div>
         <div>
           <p className="text-xs text-slate-400 uppercase font-semibold">{t('purchaseOrders.bill')}</p>
           {po.convertedInvoice ? (
@@ -100,9 +101,9 @@ export default function PurchaseOrderDetailPage() {
               <tr key={l.id} className="border-b border-slate-50 dark:border-navy-800/60 last:border-0">
                 <td className="px-4 py-3">{l.item ? `${l.item.name_en}${l.description ? ' - ' + l.description : ''}` : (l.description || l.account?.name_en)}</td>
                 <td className="px-4 py-3 text-end">{Number(l.quantity).toFixed(2)}</td>
-                <td className="px-4 py-3 text-end">{Number(l.unit_price).toFixed(3)}</td>
+                <td className="px-4 py-3 text-end">{Number(l.unit_price).toFixed(3)} {po.currency}</td>
                 <td className="px-4 py-3 text-end">{Number(l.tax_rate).toFixed(1)}</td>
-                <td className="px-4 py-3 text-end font-medium">{Number(l.line_total).toFixed(3)}</td>
+                <td className="px-4 py-3 text-end font-medium">{Number(l.line_total).toFixed(3)} {po.currency}</td>
               </tr>
             ))}
           </tbody>
