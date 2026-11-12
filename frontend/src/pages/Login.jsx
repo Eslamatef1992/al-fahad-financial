@@ -1,3 +1,4 @@
+import BrandLogo from '@/components/BrandLogo';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -36,56 +37,66 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy-950 relative overflow-hidden p-4">
-      <div className="absolute -top-40 -start-40 w-96 h-96 rounded-full bg-navy-700/40 blur-3xl" />
-      <div className="absolute -bottom-40 -end-40 w-96 h-96 rounded-full bg-gold-500/20 blur-3xl" />
+    <div className="min-h-screen flex flex-col bg-white dark:bg-navy-950">
+      <header className="bg-navy-900 h-16 px-6 lg:px-12 flex items-center justify-between">
+        <div className="bg-white rounded-xl px-3 py-1"><BrandLogo className="h-8" /></div>
+        <LanguageSwitcher />
+      </header>
 
-      <div className="absolute top-5 end-5"><LanguageSwitcher /></div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}
-        className="relative z-10 w-full max-w-sm"
-      >
-        <div className="text-center mb-8">
-          <img src="/Logo.jpeg" alt={t('app.name')} className="w-16 h-16 rounded-2xl object-cover mx-auto mb-4 shadow-lg" />
-          <h1 className="text-white font-bold text-2xl">{t('app.name')}</h1>
-          <p className="text-slate-400 text-sm mt-1">{t('app.tagline')}</p>
+      <div className="flex-1 grid lg:grid-cols-2">
+        {/* Brand panel */}
+        <div className="hidden lg:flex flex-col items-center justify-center bg-white p-12 text-center">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}>
+            <BrandLogo className="h-48" />
+          </motion.div>
+          <p className="mt-10 text-lg text-slate-600 max-w-sm leading-relaxed">{t('app.tagline')}</p>
         </div>
 
-        <form onSubmit={submit} className="card p-6 space-y-4 bg-white/95">
-          <div>
-            <label className="label">{t('auth.email')}</label>
-            <div className="relative">
-              <Mail size={16} className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400" />
-              <input required type="email" className="input !ps-9" value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@company.com" />
-            </div>
-          </div>
-          <div>
-            <label className="label">{t('auth.password')}</label>
-            <div className="relative">
-              <Lock size={16} className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400" />
-              <input required type={showPassword ? 'text' : 'password'} className="input !ps-9 !pe-9" value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                className="absolute top-1/2 -translate-y-1/2 end-3 text-slate-400 hover:text-slate-600"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-          <button type="submit" disabled={loading} className="btn-gold w-full mt-2">
-            {loading ? t('common.loading') : t('auth.login')}
-          </button>
-        </form>
+        {/* Form panel */}
+        <div className="flex items-center bg-sky-50 dark:bg-navy-900 px-6 sm:px-12 lg:px-20 py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}
+            className="w-full max-w-md mx-auto"
+          >
+            <div className="lg:hidden mb-6 flex justify-center"><BrandLogo className="h-24" /></div>
+            <h1 className="text-3xl font-bold text-slate-700 dark:text-white mb-8">{t('auth.login')}</h1>
 
-        <p className="text-center text-xs text-slate-500 mt-6">
-          Powered by <a href="https://teknulugy.com" target="_blank" rel="noreferrer" className="text-gold-500 hover:text-gold-400 font-medium">Teknulugy</a>
-        </p>
-      </motion.div>
+            <form onSubmit={submit} className="space-y-5">
+              <div>
+                <label className="label">{t('auth.email')}</label>
+                <div className="relative">
+                  <Mail size={16} className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400" />
+                  <input required type="email" className="input !ps-9 !py-3.5" value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@company.com" />
+                </div>
+              </div>
+              <div>
+                <label className="label">{t('auth.password')}</label>
+                <div className="relative">
+                  <Lock size={16} className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400" />
+                  <input required type={showPassword ? 'text' : 'password'} className="input !ps-9 !pe-9 !py-3.5" value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                    className="absolute top-1/2 -translate-y-1/2 end-3 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+              <button type="submit" disabled={loading} className="btn-primary w-full !py-3.5 !bg-navy-900 hover:!bg-navy-800 text-base">
+                {loading ? t('common.loading') : t('auth.login')}
+              </button>
+            </form>
+
+            <p className="text-center text-xs text-slate-500 mt-10">
+              Powered by <a href="https://teknulugy.com" target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-500 font-medium">Teknulugy</a>
+            </p>
+          </motion.div>
+        </div>
+      </div>
     </div>
   );
 }

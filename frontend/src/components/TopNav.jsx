@@ -12,6 +12,7 @@ import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { useCompanyStore } from '@/store/companyStore';
 import usePermissions from '@/hooks/usePermissions';
+import BrandLogo from './BrandLogo';
 import CompanySwitcher from './CompanySwitcher';
 import LanguageSwitcher from './LanguageSwitcher';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -124,7 +125,7 @@ export default function TopNav() {
             {open === 'launcher' ? <X size={20} /> : <LayoutGrid size={20} />}
           </button>
           <NavLink to="/" className="flex items-center gap-2 px-2 shrink-0">
-            <img src="/Logo.jpeg" alt={t('app.name')} className="w-8 h-8 rounded-lg object-cover" />
+            <BrandLogo className="h-9" />
           </NavLink>
 
           <nav className="hidden lg:flex items-center gap-0.5 ms-1">
@@ -209,7 +210,7 @@ export default function TopNav() {
 
       {/* Quick Access: flat list of every page + company switcher (OSOSS-style) */}
       {open === 'launcher' && (
-        <div className="absolute start-3 top-full mt-2 w-72 rounded-3xl border border-slate-100 dark:border-navy-800 bg-white dark:bg-navy-900 shadow-card-hover p-3 max-h-[75vh] overflow-auto">
+        <div className="absolute start-3 top-full mt-2 w-80 rounded-3xl border border-slate-100 dark:border-navy-800 bg-white dark:bg-navy-900 shadow-card-hover px-4 py-3 max-h-[75vh] overflow-auto">
           <p className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-400">
             <Zap size={13} />Quick Access
           </p>
@@ -219,12 +220,11 @@ export default function TopNav() {
               to={item.to}
               end={item.to === '/'}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
+                `flex items-center gap-3 rounded-xl px-3 py-3 text-[15px] transition-colors ${
                   isActive ? 'bg-indigo-50 text-indigo-700 font-semibold dark:bg-navy-800 dark:text-white' : 'hover:bg-slate-50 dark:hover:bg-navy-800'
                 }`
               }
             >
-              <item.icon size={16} className="text-slate-400 shrink-0" />
               <span className="truncate">{t(`nav.${item.key}`)}</span>
             </NavLink>
           ))}

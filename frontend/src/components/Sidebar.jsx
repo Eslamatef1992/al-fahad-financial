@@ -50,7 +50,7 @@ export default function Sidebar() {
       className="h-screen sticky top-0 flex flex-col bg-navy-900 text-slate-200 shrink-0 overflow-hidden"
     >
       <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-        <img src="/Logo.jpeg" alt={t('app.name')} className="w-9 h-9 rounded-xl object-cover shrink-0" />
+        <img src="/naqdix-logo.png" alt="Naqdix" className="w-9 h-9 rounded-xl object-contain bg-white shrink-0" />
         {!sidebarCollapsed && (
           <div className="min-w-0">
             <p className="font-bold text-white text-sm truncate">{t('app.name')}</p>
