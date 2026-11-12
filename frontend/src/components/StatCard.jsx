@@ -17,8 +17,9 @@ export default function StatCard({ label, value, icon: Icon, tone = 'navy', dela
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.25 }}
       whileHover={{ y: -3 }}
-      className={`rounded-3xl p-5 flex flex-col gap-3 min-h-[120px] ${c.card}`}
+      className={`relative overflow-hidden rounded-3xl p-5 flex flex-col gap-3 min-h-[120px] ${c.card}`}
     >
+      <div className="pointer-events-none absolute -top-8 -end-8 w-28 h-28 rounded-full bg-white/40 dark:bg-white/5" />
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-semibold text-slate-600 dark:text-slate-300 truncate">{label}</p>
         <div className={`w-9 h-9 rounded-xl bg-white/80 dark:bg-white/10 flex items-center justify-center shrink-0 ${c.icon}`}>

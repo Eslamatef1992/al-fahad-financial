@@ -18,9 +18,17 @@ html[dir='ltr'] body { font-family: 'Inter', 'Tajawal', sans-serif; }
 ::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-navy-700 rounded-full; }
 ::-webkit-scrollbar-track { @apply bg-transparent; }
 
+/* Base surface used by every panel/list/form block in the app. Soft, diffused
+   shadow with a barely-there border (reads "floating", not "boxed"). */
 .card {
-  @apply bg-white dark:bg-navy-900 rounded-2xl shadow-card border border-slate-100 dark:border-navy-800;
+  @apply bg-white dark:bg-navy-900 rounded-2xl shadow-card border border-slate-100/80 dark:border-navy-800 transition-shadow duration-200;
 }
+/* Larger, rounder variant for page-level panels (charts, big sections). */
+.card-lg { @apply card rounded-3xl; }
+/* Clickable cards: lift + deeper shadow on hover. */
+.card-hover { @apply card cursor-pointer hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200; }
+/* Section title row inside a card. */
+.card-title { @apply text-base font-bold text-navy-900 dark:text-white flex items-center gap-2; }
 
 .btn {
   @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none;

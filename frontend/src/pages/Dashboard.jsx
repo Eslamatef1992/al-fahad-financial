@@ -80,7 +80,7 @@ export default function Dashboard() {
         <StatCard label={t('dashboard.admins')} value={counts.admins} icon={ShieldCheck} tone="blue" delay={0.4} />
       </div>
 
-      <div className="card p-6 !rounded-3xl">
+      <div className="card-lg p-6">
         <h3 className="font-bold text-navy-900 dark:text-white mb-4 flex items-center gap-2">
           <Wallet size={18} className="text-gold-500" /> Voucher Activity (last 6 months)
         </h3>
