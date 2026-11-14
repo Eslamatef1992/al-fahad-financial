@@ -51,6 +51,14 @@ exports.heldSales = async (req, res) => {
   res.json(held);
 };
 
+exports.addAttachments = async (req, res) => {
+  const profile = await profileFor(req);
+  if (!profile.hasAccess) return res.status(403).json({ message: 'You do not have POS access' });
+  if (!req.files || !req.files.length) return res.status(400).json({ message: 'No files uploaded' });
+  const invoice = await posService.appendAttachments(req.companyId, req.params.id, req.files);
+  res.json({ id: invoice.id, attachments: invoice.attachments });
+};
+
 exports.pendingSales = async (req, res) => {
   res.json(await posService.pendingSales(req.companyId));
 };

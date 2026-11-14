@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Wallet, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Wallet, Pencil, Trash2, Paperclip, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api, { downloadFile, printFile } from '@/api/client';
+import api, { downloadFile, printFile, fileUrl } from '@/api/client';
 import PageHeader from '@/components/PageHeader';
 import SlideOver from '@/components/SlideOver';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -189,6 +189,22 @@ export default function InvoiceDetailPage() {
           </tbody>
         </table>
       </div>
+
+      {invoice.attachments?.length > 0 && (
+        <div className="card p-5 mb-4">
+          <h3 className="font-bold mb-3 flex items-center gap-2"><Paperclip size={16} />{t('pos.attachments', { defaultValue: 'Photos / attachments' })}</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            {invoice.attachments.map((a) => (
+              <a key={a.url} href={fileUrl(a.url)} target="_blank" rel="noreferrer"
+                className="aspect-square rounded-xl overflow-hidden border border-slate-100 dark:border-navy-800 bg-slate-50 dark:bg-navy-800/40 flex items-center justify-center hover:shadow-card-hover transition-shadow">
+                {/\.pdf$/i.test(a.url)
+                  ? <div className="text-center px-2"><FileText size={28} className="mx-auto text-slate-400" /><p className="text-[11px] text-slate-500 truncate">{a.name || 'PDF'}</p></div>
+                  : <img src={fileUrl(a.url)} alt={a.name || ''} className="w-full h-full object-cover" />}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card p-5">
         <h3 className="font-bold mb-3">{t('invoices.paymentHistory')}</h3>

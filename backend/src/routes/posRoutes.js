@@ -2,6 +2,7 @@ const router = require('express').Router();
 const ctrl = require('../controllers/posController');
 const { requireAuth, requireCompany } = require('../middleware/auth');
 const { requireMinRole } = require('../middleware/permissions');
+const { upload, withCategory } = require('../middleware/upload');
 
 router.use(requireAuth, requireCompany);
 
@@ -15,6 +16,7 @@ router.post('/sales', ctrl.createSale);
 router.get('/sales/held', ctrl.heldSales);
 router.get('/sales/pending', requireMinRole('admin'), ctrl.pendingSales);
 router.get('/sales/history', ctrl.salesHistory);
+router.post('/sales/:id/attachments', withCategory('pos-attachments'), upload.array('files', 10), ctrl.addAttachments);
 router.post('/sales/:id/void', ctrl.voidSale);
 router.post('/sales/:id/refund', ctrl.refundSale);
 

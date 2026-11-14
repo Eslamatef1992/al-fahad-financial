@@ -116,7 +116,7 @@ async function creditOutstanding(companyId, clientId, excludeInvoiceId) {
 // the client's normal AR account — no separate ledger mechanism needed, it's
 // exactly how any partially-paid invoice already behaves.
 async function createSale(companyId, userId, posProfile, payload) {
-  const { branch_id, client_id, lines, discount_code, notes, action, payments, cost_center_id, delivery_date, delivery_address, is_manufacture_order, manufacturer_id, reference_no, date, due_date } = payload;
+  const { branch_id, client_id, lines, discount_code, notes, action, payments, cost_center_id, delivery_date, delivery_address, is_manufacture_order, manufacturer_id, reference_no, date, due_date, attachments } = payload;
 
   const shift = await getOpenShift(companyId, userId);
   if (!shift) throw badRequest('Open a shift before starting a sale');
@@ -139,6 +139,12 @@ async function createSale(companyId, userId, posProfile, payload) {
     is_manufacture_order: !!is_manufacture_order,
     manufacturer_id: manufacturer_id || null,
   });
+
+  // Re-attach files carried over from a resumed held sale (same company folder only).
+  const keep = (Array.isArray(attachments) ? attachments : [])
+    .filter((a) => a && typeof a.url === 'string' && a.url.startsWith(`/uploads/${companyId}/pos-attachments/`) && !a.url.includes('..'))
+    .map((a) => ({ url: a.url, name: String(a.name || '').slice(0, 120) }));
+  if (keep.length) await invoice.update({ attachments: keep });
 
   if (action === 'hold') return invoice;
 
@@ -228,6 +234,15 @@ async function heldSales(companyId, userId) {
 
 // Back-office view: every held/pending POS order across ALL cashiers (the
 // cashier-facing heldSales above only returns the caller's own).
+async function appendAttachments(companyId, invoiceId, files) {
+  const invoice = await Invoice.findOne({ where: { id: invoiceId, company_id: companyId, channel: 'pos' } });
+  if (!invoice) throw notFound('Sale not found');
+  const { toPublicPath } = require('../middleware/upload');
+  const added = files.map((f) => ({ url: toPublicPath(f, companyId, 'pos-attachments'), name: f.originalname }));
+  await invoice.update({ attachments: [...(invoice.attachments || []), ...added] });
+  return invoice;
+}
+
 async function pendingSales(companyId) {
   return Invoice.findAll({
     where: { company_id: companyId, channel: 'pos', status: 'draft' },
@@ -302,6 +317,7 @@ module.exports = {
   voidSale,
   heldSales,
   pendingSales,
+  appendAttachments,
   salesHistory,
   refundSale,
   creditOutstanding,

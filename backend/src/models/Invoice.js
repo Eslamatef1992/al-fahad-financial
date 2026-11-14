@@ -58,6 +58,9 @@ module.exports = (sequelize, DataTypes) => {
     refunded_at: { type: DataTypes.DATE, allowNull: true },
     refund_reason: { type: DataTypes.STRING(255), allowNull: true },
     refunded_by: { type: DataTypes.UUID, allowNull: true },
+    // Photos / files attached at sale time (e.g. a customer's reference image for a
+    // Manufacture Order): [{ url, name }]. Files live under /uploads/<company>/pos-attachments/.
+    attachments: { type: DataTypes.JSON, defaultValue: [] },
   }, {
     tableName: 'invoices',
     indexes: [{ unique: true, fields: ['company_id', 'type', 'invoice_no'] }],

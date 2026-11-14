@@ -24,6 +24,7 @@ import {
 	PieChart,
 	Tag,
 	History,
+	Paperclip,
 } from "lucide-react";
 import api, { printFile } from "@/api/client";
 import { useCompanyStore } from "@/store/companyStore";
@@ -100,6 +101,10 @@ export default function PosPage() {
 	const [manufactureOrderOpen, setManufactureOrderOpen] = useState(false);
 	const [isManufactureOrder, setIsManufactureOrder] = useState(false);
 	const [manufacturerId, setManufacturerId] = useState("");
+	// Manufacture-order photos/files: new ones picked from the computer (uploaded after the
+	// sale is saved) + ones already stored on a resumed held sale.
+	const [attachFiles, setAttachFiles] = useState([]);
+	const [savedAttachments, setSavedAttachments] = useState([]);
 
 	const [openFloat, setOpenFloat] = useState("");
 	const [openBranch, setOpenBranch] = useState("");
@@ -451,8 +456,22 @@ export default function PosPage() {
 		setDiscountPreview(null);
 		setDiscountError("");
 		setCodeEntry("");
-		setIsManufactureOrder(false);
+				setIsManufactureOrder(false);
 		setManufacturerId("");
+		setAttachFiles([]);
+		setSavedAttachments([]);
+	};
+	const uploadAttachments = async (invoiceId) => {
+		if (!isManufactureOrder || !attachFiles.length) return;
+		try {
+			const fd = new FormData();
+			attachFiles.forEach((f) => fd.append("files", f));
+			await api.post(`/pos/sales/${invoiceId}/attachments`, fd, {
+				headers: { "Content-Type": "multipart/form-data" },
+			});
+		} catch (e) {
+			toast.error(t("pos.attachUploadFailed", { defaultValue: "Sale saved, but the attached files could not be uploaded." }));
+		}
 	};
 	// "Invoice" rail icon — starts a fresh blank sale.
 	const newInvoice = () => clearCart();
@@ -589,8 +608,9 @@ export default function PosPage() {
 		try {
 			if (bookedLineMissingDate())
 				return toast.error(t("invoices.bookedNeedsDate"));
-			await api.post("/pos/sales", {
+			const { data: heldData } = await api.post("/pos/sales", {
 				...headerFields(),
+				attachments: isManufactureOrder ? savedAttachments : undefined,
 				client_id: clientId || null,
 				action: "hold",
 				lines: buildLines(),
@@ -600,6 +620,7 @@ export default function PosPage() {
 				is_manufacture_order: isManufactureOrder,
 				manufacturer_id: isManufactureOrder ? manufacturerId || null : null,
 			});
+						await uploadAttachments(heldData.id);
 			toast.success(t("pos.saleHeld"));
 			clearCart();
 			loadHeld();
@@ -635,7 +656,11 @@ export default function PosPage() {
 		setInvoiceDate(sale.date || new Date().toISOString().slice(0, 10));
 		setDueDate(sale.due_date || "");
 		setInvoiceBranch(sale.branch_id || "");
-		setInvoiceNotes(sale.notes || "");
+				setInvoiceNotes(sale.notes || "");
+		setIsManufactureOrder(!!sale.is_manufacture_order);
+		setManufacturerId(sale.manufacturer_id || "");
+		setSavedAttachments(Array.isArray(sale.attachments) ? sale.attachments : []);
+		setAttachFiles([]);
 		voidHeldSilently(sale.id);
 	};
 	const voidHeldSilently = async (id) => {
@@ -679,6 +704,7 @@ export default function PosPage() {
 			}
 			const { data } = await api.post("/pos/sales", {
 				...headerFields(),
+				attachments: isManufactureOrder ? savedAttachments : undefined,
 				client_id: clientId || null,
 				action: "complete",
 				lines: buildLines(),
@@ -689,6 +715,7 @@ export default function PosPage() {
 				is_manufacture_order: isManufactureOrder,
 				manufacturer_id: isManufactureOrder ? manufacturerId || null : null,
 			});
+						await uploadAttachments(data.id);
 			toast.success(t("pos.saleCompleted"));
 			setPayOpen(false);
 			resetTender();
@@ -1007,8 +1034,14 @@ export default function PosPage() {
 									)}
 								</div>
 
-								{isManufactureOrder && (
-									<p className="flex items-center gap-1.5 mt-2 text-xs font-medium text-amber-600">
+								{isManufactureOrder && attachFiles.length + savedAttachments.length > 0 && (
+										<p className="flex items-center gap-1.5 mt-2 text-xs font-medium text-indigo-600">
+											<Paperclip size={13} className="shrink-0" />
+											{attachFiles.length + savedAttachments.length} {t("pos.attachedFiles", { defaultValue: "attached file(s)" })}
+										</p>
+									)}
+									{isManufactureOrder && (
+										<p className="flex items-center gap-1.5 mt-2 text-xs font-medium text-amber-600">
 										<Factory size={13} className="shrink-0" />
 										<span className="truncate">
 											{t("pos.railManufactureOrder")}
@@ -1310,6 +1343,10 @@ export default function PosPage() {
 				manufacturerId={manufacturerId}
 				setManufacturerId={setManufacturerId}
 				manufacturers={manufacturers}
+				attachFiles={attachFiles}
+				setAttachFiles={setAttachFiles}
+				savedAttachments={savedAttachments}
+				setSavedAttachments={setSavedAttachments}
 			/>
 			<CouponsModal
 				open={couponsOpen}
