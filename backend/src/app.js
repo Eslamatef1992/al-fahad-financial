@@ -34,6 +34,7 @@ app.use('/api/vehicles', require('./routes/vehicleRoutes'));
 app.use('/api/cash-accounts', require('./routes/cashAccountRoutes'));
 app.use('/api/vouchers', require('./routes/voucherRoutes'));
 app.use('/api/invoices', require('./routes/invoiceRoutes'));
+app.use('/api/manufacture-orders', require('./routes/manufactureOrderRoutes'));
 app.use('/api/recurring-invoices', require('./routes/recurringInvoiceRoutes'));
 app.use('/api/recurring-vouchers', require('./routes/recurringVoucherRoutes'));
 app.use('/api/items', require('./routes/itemRoutes'));

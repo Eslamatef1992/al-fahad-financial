@@ -49,6 +49,7 @@ import PosCashiersPage from '@/pages/pos/PosCashiersPage';
 import AccountingModule from '@/pages/accounting/AccountingModule';
 import { AccDashboard, AccIncome, AccExpense, AccOnline, AccJournal, AccSettings } from '@/pages/accounting/AccountingPages';
 import RecurringVouchersPage from '@/pages/accounting/RecurringVouchersPage';
+import ManufactureOrdersPage from '@/pages/manufactureOrders/ManufactureOrdersPage';
 import QuickAccessPage from '@/pages/QuickAccess';
 import PosModule from '@/pages/posModule/PosModule';
 import {
@@ -116,6 +117,7 @@ export default function App() {
             <Route path="vouchers" element={<VouchersPage />} />
             <Route path="recurring" element={<RecurringVouchersPage />} />
             <Route path="journal" element={<AccJournal />} />
+            <Route path="manufacture" element={<ManufactureOrdersPage />} />
             <Route path="chart" element={<ChartOfAccountsPage />} />
             <Route path="reports" element={<ReportsHubPage />} />
             <Route path="settings" element={<AccSettings />} />
@@ -124,6 +126,7 @@ export default function App() {
             <Route index element={<PosDashboard />} />
             <Route path="orders" element={<PosOrders />} />
             <Route path="pending" element={<PosPending />} />
+            <Route path="manufacture" element={<ManufactureOrdersPage />} />
             <Route path="canceled" element={<PosCanceled />} />
             <Route path="consolidated" element={<PosConsolidated />} />
             <Route path="refunded" element={<PosRefunded />} />

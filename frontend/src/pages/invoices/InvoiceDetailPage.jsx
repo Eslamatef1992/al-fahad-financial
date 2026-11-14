@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Wallet, Pencil, Trash2, Paperclip, FileText } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Wallet, Pencil, Trash2, Paperclip, FileText, Factory } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { downloadFile, printFile, fileUrl } from '@/api/client';
 import PageHeader from '@/components/PageHeader';
@@ -31,6 +31,11 @@ export default function InvoiceDetailPage() {
   const [paying, setPaying] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const captureRef = useRef(null);
+  const [mfg, setMfg] = useState(null); // manufacture-order cost/profit summary, when this invoice is one
+  useEffect(() => {
+    if (!invoice?.is_manufacture_order || !invoice?.id) { setMfg(null); return; }
+    api.get(`/manufacture-orders/${invoice.id}`).then((r) => setMfg(r.data.order)).catch(() => setMfg(null));
+  }, [invoice?.id, invoice?.is_manufacture_order]);
 
   // Sales invoices: download the exact print layout (InvoicePrintTemplate, A5)
   // as a PDF by rasterizing it off-screen. Other types use the server PDF.
@@ -189,6 +194,22 @@ export default function InvoiceDetailPage() {
           </tbody>
         </table>
       </div>
+
+      {invoice.is_manufacture_order && mfg && (
+        <div className="card p-5 mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 className="font-bold flex items-center gap-2"><Factory size={16} />Manufacture order</h3>
+            <button type="button" onClick={() => navigate(`/accounting/manufacture?open=${invoice.id}`)} className="btn-ghost !py-1 text-xs">Open in Manufactured Orders</button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
+            <div><p className="text-xs text-slate-400">Manufacturer</p><p className="font-semibold">{mfg.manufacturer?.name_en || '—'}</p></div>
+            <div><p className="text-xs text-slate-400">Status</p><p className="font-semibold capitalize">{String(mfg.manufacture_status).replace('_', ' ')}</p></div>
+            <div><p className="text-xs text-slate-400">Total cost</p><p className="font-semibold">{Number(mfg.total_cost).toFixed(3)}</p></div>
+            <div><p className="text-xs text-slate-400">Profit</p><p className={`font-bold ${Number(mfg.profit) < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{Number(mfg.profit).toFixed(3)}</p></div>
+            <div><p className="text-xs text-slate-400">Branch</p><p className="font-semibold">{mfg.branch?.name_en || '—'}</p></div>
+          </div>
+        </div>
+      )}
 
       {invoice.attachments?.length > 0 && (
         <div className="card p-5 mb-4">

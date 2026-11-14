@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard, ArrowDownToLine, ArrowUpFromLine, CreditCard, Ticket, RefreshCw, BookOpenCheck,
-  ListTree, BarChart3, Settings, CalendarDays, Building2,
+  ListTree, BarChart3, Settings, CalendarDays, Building2, Factory,
 } from 'lucide-react';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
@@ -21,6 +21,7 @@ export const ACC_MENU = [
   { to: 'vouchers', icon: Ticket, en: 'Vouchers', ar: 'السندات' },
   { to: 'recurring', icon: RefreshCw, en: 'Recurring Vouchers', ar: 'السندات المتكررة' },
   { to: 'journal', icon: BookOpenCheck, en: 'Journal Entries', ar: 'قيود اليومية', filters: true },
+  { to: 'manufacture', icon: Factory, en: 'Manufactured Orders', ar: 'طلبات التصنيع', filters: true },
   { to: 'chart', icon: ListTree, en: 'Chart of Account', ar: 'دليل الحسابات' },
   { to: 'reports', icon: BarChart3, en: 'Reports', ar: 'التقارير' },
   { to: 'settings', icon: Settings, en: 'Settings', ar: 'الإعدادات' },
