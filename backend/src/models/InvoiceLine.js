@@ -27,6 +27,7 @@ module.exports = (sequelize, DataTypes) => {
     // manufacturer charges per unit, snapshotted at sale time so later catalog
     // price changes never rewrite history. Null for ordinary stock/freehand lines.
     manufacture_item_id: { type: DataTypes.UUID, allowNull: true },
+    mfg_details: { type: DataTypes.JSON, allowNull: true }, // { size, height, color, notes } for manufacture orders
     manufacture_unit_cost: { type: DataTypes.DECIMAL(18, 3), allowNull: true },
   }, { tableName: 'invoice_lines' });
 };

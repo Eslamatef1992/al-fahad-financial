@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { mfgDetailParts } from '@/utils/mfgDetails';
 import { Link, useOutletContext, useSearchParams } from 'react-router-dom';
 import { Factory, Wallet, Hammer, TrendingUp, Paperclip, FileText, ExternalLink, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -168,7 +169,7 @@ export default function ManufactureOrdersPage() {
                 <tbody>
                   {detail.lines.map((l) => (
                     <tr key={l.id} className="border-t border-slate-100 dark:border-navy-800">
-                      <td className="px-3 py-2">{l.description}{l.is_booked && <span className="ms-2 text-[10px] text-amber-600">({L('booked', 'محجوز')} {l.delivery_date || ''})</span>}</td>
+                      <td className="px-3 py-2">{l.description}{mfgDetailParts(l.mfg_details, isAr).length > 0 && <div className="text-[11px] text-amber-600">{mfgDetailParts(l.mfg_details, isAr).join(' · ')}</div>}{l.is_booked && <span className="ms-2 text-[10px] text-amber-600">({L('booked', 'محجوز')} {l.delivery_date || ''})</span>}</td>
                       <td className="px-3 py-2">{l.quantity}</td><td className="px-3 py-2">{n3(l.unit_price)}</td>
                       <td className="px-3 py-2">{n3(l.revenue)}</td><td className="px-3 py-2">{n3(l.cost)}</td>
                       <td className={`px-3 py-2 font-semibold ${profitCls(l.profit)}`}>{n3(l.profit)}</td>

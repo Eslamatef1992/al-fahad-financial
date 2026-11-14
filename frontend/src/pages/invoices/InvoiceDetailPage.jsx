@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { mfgDetailParts } from '@/utils/mfgDetails';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Wallet, Pencil, Trash2, Paperclip, FileText, Factory } from 'lucide-react';
@@ -185,7 +186,7 @@ export default function InvoiceDetailPage() {
               <tr key={l.id} className="border-b border-slate-50 dark:border-navy-800/60 last:border-0">
                 <td className="px-4 py-3 text-center text-slate-400">{i + 1}</td>
                 <td className="px-4 py-3 text-slate-400">{l.variant?.sku || l.item?.sku || '-'}</td>
-                <td className="px-4 py-3">{l.description || l.account?.name_en}</td>
+                <td className="px-4 py-3">{l.description || l.account?.name_en}{mfgDetailParts(l.mfg_details, document.documentElement.dir === 'rtl').length > 0 && <div className="text-xs text-amber-600 mt-0.5">{mfgDetailParts(l.mfg_details, document.documentElement.dir === 'rtl').join(' · ')}</div>}</td>
                 <td className="px-4 py-3 text-end">{Number(l.quantity).toFixed(2)}</td>
                 <td className="px-4 py-3 text-end">{Number(l.unit_price).toFixed(3)}</td>
                 <td className="px-4 py-3 text-end font-medium">{Number(l.line_total).toFixed(3)}</td>

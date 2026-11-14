@@ -2,30 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import {
-	Search,
-	Plus,
-	Minus,
-	Trash2,
-	ShoppingCart,
-	PauseCircle,
-	Lock,
-	Unlock,
-	CreditCard,
-	Users,
-	CalendarClock,
-	RotateCcw,
-	UserPlus,
-	X,
-	FileText,
-	Boxes,
-	Factory,
-	Ticket,
-	PieChart,
-	Tag,
-	History,
-	Paperclip,
-} from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingCart, PauseCircle, Lock, Unlock, CreditCard, Users, CalendarClock, RotateCcw, UserPlus, X, FileText, Boxes, Factory, Ticket, PieChart, Tag, History, Paperclip } from "lucide-react";
 import api, { printFile } from "@/api/client";
 import { useCompanyStore } from "@/store/companyStore";
 import PageHeader from "@/components/PageHeader";
@@ -623,6 +600,7 @@ export default function PosPage() {
 	const buildLines = () =>
 		cart.map((l) => l.item.is_manufacture ? ({
 			manufacture_item_id: l.item.manufacture_item_id,
+			mfg_details: isManufactureOrder ? l.mfg_details : undefined,
 			description: l.description || l.item.name_en,
 			quantity: l.quantity,
 			unit_price: l.unit_price,
@@ -630,6 +608,7 @@ export default function PosPage() {
 		}) : ({
 			account_id: l.item.income_account_id,
 			item_id: l.item.id,
+			mfg_details: isManufactureOrder ? l.mfg_details : undefined,
 			description: l.description || l.item.name_en,
 			quantity: l.quantity,
 			unit_price: l.unit_price,
@@ -693,6 +672,8 @@ export default function PosPage() {
 				quantity: Number(l.quantity),
 				unit_price: Number(l.unit_price),
 				description: l.description || "",
+				mfg_details: l.mfg_details || null,
+				mfg_open: !!l.mfg_details,
 				discount_code: "",
 				discount_preview: null,
 				discount_error: "",
@@ -1261,6 +1242,28 @@ export default function PosPage() {
 		</div>
 	</td>
 </tr>
+{isManufactureOrder && (
+<tr className="bg-slate-50/50 dark:bg-navy-900/30">
+	<td colSpan={6} className="px-3 pb-2.5 pt-0">
+		<button type="button" onClick={() => updateCartLine(l.item.id, { mfg_open: !l.mfg_open })}
+			className="flex items-center gap-1 text-xs font-semibold text-amber-600 hover:text-amber-700">
+			{l.mfg_open ? <Minus size={13} /> : <Plus size={13} />}
+			{t("pos.addDetails", { defaultValue: "Details (size, height, color, notes)" })}
+			{!l.mfg_open && Object.values(l.mfg_details || {}).some(Boolean) && <span className="text-[10px] text-slate-400">✓</span>}
+		</button>
+		{l.mfg_open && (
+			<div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+				{[["size", t("pos.mfgSize", { defaultValue: "Size" })], ["height", t("pos.mfgHeight", { defaultValue: "Height" })], ["color", t("pos.mfgColor", { defaultValue: "Color" })]].map(([k, lab]) => (
+					<input key={k} className="input !py-1 text-xs" placeholder={lab} value={l.mfg_details?.[k] || ""}
+						onChange={(e) => updateCartLine(l.item.id, { mfg_details: { ...(l.mfg_details || {}), [k]: e.target.value } })} />
+				))}
+				<textarea rows={1} className="input !py-1 text-xs col-span-2 sm:col-span-4" placeholder={t("pos.mfgExtra", { defaultValue: "Extra details" })} value={l.mfg_details?.notes || ""}
+					onChange={(e) => updateCartLine(l.item.id, { mfg_details: { ...(l.mfg_details || {}), notes: e.target.value } })} />
+			</div>
+		)}
+	</td>
+</tr>
+)}
 </Fragment>
 ))}
 								</tbody>

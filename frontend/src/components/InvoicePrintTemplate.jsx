@@ -262,6 +262,9 @@ export default function InvoicePrintTemplate({ invoice, company }) {
 											</span>
 										)}
 										<span style={{ display: "block" }}>{nameEn}</span>
+										{mfgDetailParts(l.mfg_details).length > 0 && (
+											<span style={{ display: "block", fontSize: "0.85em" }}>{mfgDetailParts(l.mfg_details).join(" · ")}</span>
+										)}
 									</td>
 									<td style={{ textAlign: "center" }}>
 										{Number(l.quantity).toFixed(2)}

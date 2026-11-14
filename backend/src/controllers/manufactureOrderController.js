@@ -128,7 +128,7 @@ exports.get = async (req, res) => {
     return {
       id: l.id, item_id: l.item_id, description: l.description, quantity: Number(l.quantity), unit_price: Number(l.unit_price),
       discount_amount: Number(l.discount_amount || 0), revenue: r3(revenue), cost: r3(cost), profit: r3(revenue - cost),
-      is_booked: !!l.is_booked, delivery_date: l.delivery_date, is_manufacture_item: !!l.manufacture_item_id,
+      is_booked: !!l.is_booked, delivery_date: l.delivery_date, is_manufacture_item: !!l.manufacture_item_id, mfg_details: l.mfg_details || null,
     };
   });
 

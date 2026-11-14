@@ -45,6 +45,17 @@ async function buildInvoiceLines(companyId, { lines, discount_code, excludeInvoi
 }
 
 // Creates a draft invoice with computed line totals. No ledger impact yet.
+// Optional made-to-order details typed by the POS operator; null when blank.
+function cleanMfgDetails(d) {
+  if (!d || typeof d !== 'object') return null;
+  const o = {};
+  for (const k of ['size', 'height', 'color', 'notes']) {
+    const v = String(d[k] ?? '').trim().slice(0, 500);
+    if (v) o[k] = v;
+  }
+  return Object.keys(o).length ? o : null;
+}
+
 async function createInvoice(companyId, userId, payload) {
   const { type, client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines, discount_code, channel, pos_shift_id, delivery_date, delivery_address, is_manufacture_order, manufacturer_id } = payload;
 
@@ -110,6 +121,7 @@ async function createInvoice(companyId, userId, payload) {
       is_booked: !!l.is_booked,
       delivery_date: l.is_booked ? l.delivery_date : null,
       manufacture_item_id: l.manufacture_item_id || null,
+      mfg_details: cleanMfgDetails(l.mfg_details),
       manufacture_unit_cost: l.manufacture_item_id ? Number(l.manufacture_unit_cost || 0) : null,
     }, { transaction: t })));
 
