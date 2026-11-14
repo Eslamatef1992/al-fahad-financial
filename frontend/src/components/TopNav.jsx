@@ -119,7 +119,7 @@ export default function TopNav() {
 
   const toggle = (k) => setOpen((cur) => (cur === k ? null : k));
   const linkCls = ({ isActive }) =>
-    `px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+    `px-2.5 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
       isActive ? 'text-navy-900 dark:text-white bg-slate-100 dark:bg-navy-800' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-800'
     }`;
   const initial = (user?.name || '?').trim().charAt(0).toUpperCase();
@@ -149,7 +149,7 @@ export default function TopNav() {
                 <div key={g.key} className="relative">
                   <button
                     onClick={() => toggle(g.key)}
-                    className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`flex items-center gap-1 px-2.5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                       open === g.key || active
                         ? 'text-navy-900 dark:text-white bg-slate-100 dark:bg-navy-800'
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-800'

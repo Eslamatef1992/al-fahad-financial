@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -111,6 +111,12 @@ export default function PosPage() {
 	const [clientSearch, setClientSearch] = useState("");
 	const [deliveryDate, setDeliveryDate] = useState("");
 	const [deliveryAddress, setDeliveryAddress] = useState("");
+	// Full sales-invoice header (same fields as the back-office New Sales Invoice).
+	const [referenceNo, setReferenceNo] = useState("");
+	const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
+	const [dueDate, setDueDate] = useState("");
+	const [invoiceBranch, setInvoiceBranch] = useState("");
+	const [invoiceNotes, setInvoiceNotes] = useState("");
 	const [newClientOpen, setNewClientOpen] = useState(false);
 	const [newClient, setNewClient] = useState({ name_en: "", phone: "" });
 	const [savingClient, setSavingClient] = useState(false);
@@ -248,9 +254,16 @@ export default function PosPage() {
 			cart.reduce((s, l) => s + Number(l.quantity) * Number(l.unit_price), 0),
 		[cart],
 	);
-	const netTotal = discountPreview
-		? Math.max(total - Number(discountPreview.discount_amount || 0), 0)
-		: total;
+	const hasLineDiscounts = cart.some((l) => l.discount_code || l.discount_preview);
+	const lineDiscountTotal = cart.reduce(
+		(s, l) => s + Number(l.discount_preview?.discount_amount || 0),
+		0,
+	);
+	const headerDiscountAmount = discountPreview
+		? Number(discountPreview.discount_amount || 0)
+		: 0;
+	const totalDiscount = discountPreview ? headerDiscountAmount : lineDiscountTotal;
+	const netTotal = Math.max(total - totalDiscount, 0);
 	const canCredit =
 		access?.level === "operator" ||
 		access?.posPermissions?.includes("credit_sale");
@@ -372,7 +385,17 @@ export default function PosPage() {
 			}
 			return [
 				...prev,
-				{ item, quantity: 1, unit_price: Number(item.selling_price || 0) },
+				{
+					item,
+					quantity: 1,
+					unit_price: Number(item.selling_price || 0),
+					description: item.name_en,
+					discount_code: "",
+					discount_preview: null,
+					discount_error: "",
+					is_booked: false,
+					delivery_date: "",
+				},
 			];
 		});
 	};
@@ -393,11 +416,37 @@ export default function PosPage() {
 	};
 	const removeLine = (itemId) =>
 		setCart((prev) => prev.filter((l) => l.item.id !== itemId));
+	const updateCartLine = (itemId, patch) =>
+		setCart((prev) => prev.map((l) => (l.item.id === itemId ? { ...l, ...patch } : l)));
+	const applyLineDiscount = async (l) => {
+		const code = (l.discount_code || "").trim();
+		if (!code) return;
+		try {
+			const { data } = await api.post("/discount-codes/preview", {
+				code,
+				base_amount: Number(l.quantity) * Number(l.unit_price),
+				scope: "line",
+			});
+			updateCartLine(l.item.id, { discount_preview: data, discount_error: "" });
+		} catch (err) {
+			updateCartLine(l.item.id, {
+				discount_preview: null,
+				discount_error: err.response?.data?.message || t("common.error"),
+			});
+		}
+	};
+	const removeLineDiscount = (itemId) =>
+		updateCartLine(itemId, { discount_code: "", discount_preview: null, discount_error: "" });
 	const clearCart = () => {
 		setCart([]);
 		setClientId("");
 		setDeliveryDate("");
 		setDeliveryAddress("");
+		setReferenceNo("");
+		setInvoiceDate(new Date().toISOString().slice(0, 10));
+		setDueDate("");
+		setInvoiceBranch("");
+		setInvoiceNotes("");
 		setDiscountCode("");
 		setDiscountPreview(null);
 		setDiscountError("");
@@ -519,15 +568,29 @@ export default function PosPage() {
 		cart.map((l) => ({
 			account_id: l.item.income_account_id,
 			item_id: l.item.id,
-			description: l.item.name_en,
+			description: l.description || l.item.name_en,
 			quantity: l.quantity,
 			unit_price: l.unit_price,
+			discount_code: l.discount_code?.trim() || undefined,
+			is_booked: !!l.is_booked,
+			delivery_date: l.is_booked ? l.delivery_date : undefined,
 		}));
+	const headerFields = () => ({
+		reference_no: referenceNo || undefined,
+		date: invoiceDate || undefined,
+		due_date: dueDate || undefined,
+		branch_id: invoiceBranch || undefined,
+		notes: invoiceNotes || undefined,
+	});
+	const bookedLineMissingDate = () => cart.some((l) => l.is_booked && !l.delivery_date);
 
 	const hold = async () => {
 		if (!cart.length) return;
 		try {
+			if (bookedLineMissingDate())
+				return toast.error(t("invoices.bookedNeedsDate"));
 			await api.post("/pos/sales", {
+				...headerFields(),
 				client_id: clientId || null,
 				action: "hold",
 				lines: buildLines(),
@@ -557,11 +620,22 @@ export default function PosPage() {
 				},
 				quantity: Number(l.quantity),
 				unit_price: Number(l.unit_price),
+				description: l.description || "",
+				discount_code: "",
+				discount_preview: null,
+				discount_error: "",
+				is_booked: !!l.is_booked,
+				delivery_date: l.delivery_date || "",
 			})),
 		);
 		setClientId(sale.client_id || "");
 		setDeliveryDate(sale.delivery_date || "");
 		setDeliveryAddress(sale.delivery_address || "");
+		setReferenceNo(sale.reference_no || "");
+		setInvoiceDate(sale.date || new Date().toISOString().slice(0, 10));
+		setDueDate(sale.due_date || "");
+		setInvoiceBranch(sale.branch_id || "");
+		setInvoiceNotes(sale.notes || "");
 		voidHeldSilently(sale.id);
 	};
 	const voidHeldSilently = async (id) => {
@@ -599,7 +673,12 @@ export default function PosPage() {
 			});
 			if (Number(creditAmount) > 0)
 				payments.push({ method: "credit", amount: Number(creditAmount) });
+			if (bookedLineMissingDate()) {
+				setPaying(false);
+				return toast.error(t("invoices.bookedNeedsDate"));
+			}
 			const { data } = await api.post("/pos/sales", {
+				...headerFields(),
 				client_id: clientId || null,
 				action: "complete",
 				lines: buildLines(),
@@ -805,7 +884,75 @@ export default function PosPage() {
 									onChange={(e) => setDeliveryDate(e.target.value)}
 								/>
 							</div>
-							<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-indigo-50/40 dark:bg-indigo-950/10 sm:col-span-2">
+															<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+									<label className="label !text-[11px] !mb-1.5">{t("invoices.referenceNo", { defaultValue: "Reference No." })}</label>
+									<input className="input text-sm py-2" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
+								</div>
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+									<label className="label !text-[11px] !mb-1.5">{t("common.date", { defaultValue: "Date" })}</label>
+									<input type="date" className="input text-sm py-2" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+								</div>
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+									<label className="label !text-[11px] !mb-1.5">{t("invoices.dueDate", { defaultValue: "Due Date" })}</label>
+									<input type="date" className="input text-sm py-2" value={dueDate} min={invoiceDate} onChange={(e) => setDueDate(e.target.value)} />
+								</div>
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+									<label className="label !text-[11px] !mb-1.5">{t("common.branch", { defaultValue: "Branch" })}</label>
+									<select className="input text-sm py-2" value={invoiceBranch} onChange={(e) => setInvoiceBranch(e.target.value)}>
+										<option value="">
+											{access?.shift?.branch_id
+												? `${t("pos.shiftBranch", { defaultValue: "Shift branch" })} — ${branches.find((b) => b.id === access.shift.branch_id)?.name_en || ""}`
+												: t("common.none")}
+										</option>
+										{branches.map((b) => (
+											<option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>
+										))}
+									</select>
+								</div>
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40 sm:col-span-2">
+									<label className="label !text-[11px] !mb-1.5">{t("invoices.deliveryAddress", { defaultValue: "Delivery Address" })}</label>
+									<textarea
+										rows={2}
+										className="input text-sm py-2"
+										value={deliveryAddress}
+										onChange={(e) => setDeliveryAddress(e.target.value)}
+										placeholder={t("invoices.deliveryAddressHint", { defaultValue: "Where this order should be delivered (prefilled from the client's address, editable)" })}
+									/>
+								</div>
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-pink-50/40 dark:bg-pink-950/10 sm:col-span-2">
+									<label className="flex items-center gap-1.5 text-xs font-bold text-pink-700 dark:text-pink-400 uppercase tracking-wide mb-2">
+										<Tag size={13} />
+										{t("invoices.discountCode", { defaultValue: "Discount Code" })}
+									</label>
+									{!hasLineDiscounts ? (
+										<>
+											<div className="flex gap-2">
+												<input
+													className="input text-sm py-2"
+													value={discountCode}
+													onChange={(e) => { setDiscountCode(e.target.value.toUpperCase()); setDiscountPreview(null); setDiscountError(""); }}
+													disabled={!!discountPreview}
+													placeholder={t("invoices.discountCodePlaceholder", { defaultValue: "Enter a code..." })}
+												/>
+												{discountPreview ? (
+													<button type="button" onClick={removeDiscount} className="btn-ghost shrink-0">{t("invoices.removeDiscount", { defaultValue: "Remove" })}</button>
+												) : (
+													<button type="button" onClick={() => applyDiscount()} disabled={applyingDiscount || !discountCode.trim()} className="btn-ghost shrink-0">{t("invoices.applyDiscount", { defaultValue: "Apply" })}</button>
+												)}
+											</div>
+											{discountPreview && <p className="text-xs text-emerald-600 mt-1.5">{t("invoices.discountAppliedAmount", { amount: money(discountPreview.discount_amount) })}</p>}
+											{discountError && <p className="text-xs text-red-500 mt-1.5">{discountError}</p>}
+											<p className="text-xs text-slate-400 mt-1.5">{t("invoices.invoiceDiscountHint", { defaultValue: "Applies to the whole invoice. Leave blank if you're applying codes on individual lines instead." })}</p>
+										</>
+									) : (
+										<p className="text-xs text-slate-400">{t("invoices.lineDiscountHint", { defaultValue: "Discount codes are applied on individual lines." })}</p>
+									)}
+								</div>
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40 sm:col-span-2">
+									<label className="label !text-[11px] !mb-1.5">{t("common.notes", { defaultValue: "Notes" })}</label>
+									<textarea rows={2} className="input text-sm py-2" value={invoiceNotes} onChange={(e) => setInvoiceNotes(e.target.value)} />
+								</div>
+<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-indigo-50/40 dark:bg-indigo-950/10 sm:col-span-2">
 								<label className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wide mb-2">
 									<FileText size={13} />
 									{t("pos.quickAddByCode")}
@@ -860,32 +1007,6 @@ export default function PosPage() {
 									)}
 								</div>
 
-								{discountPreview ? (
-									<div className="flex items-center justify-between mt-2 text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950 rounded-lg px-2 py-1.5">
-										<span className="flex items-center gap-1">
-											<Tag size={12} />
-											{discountPreview.code} —{" "}
-											{t("invoices.discountAppliedAmount", {
-												amount: money(discountPreview.discount_amount),
-											})}
-										</span>
-										<button onClick={removeDiscount} className="text-red-500">
-											<X size={13} />
-										</button>
-									</div>
-								) : discountError ? (
-									<p className="text-xs text-red-500 mt-2">{discountError}</p>
-								) : null}
-								{!!deliveryAddress && (
-									<p className="flex items-start gap-1.5 mt-2 text-xs text-slate-500">
-										<CalendarClock size={13} className="shrink-0 mt-0.5" />
-										<span className="truncate">
-											{deliveryDate ? `${deliveryDate} — ` : ""}
-											{deliveryAddress}
-										</span>
-									</p>
-								)}
-
 								{isManufactureOrder && (
 									<p className="flex items-center gap-1.5 mt-2 text-xs font-medium text-amber-600">
 										<Factory size={13} className="shrink-0" />
@@ -924,16 +1045,18 @@ export default function PosPage() {
 								</thead>
 								<tbody>
 									{cart.map((l) => (
-										<tr
-											key={l.item.id}
+<Fragment key={l.item.id}>
+<tr
 											className="border-t border-slate-100 dark:border-navy-800 hover:bg-slate-50/70 dark:hover:bg-navy-900/50 transition-colors">
 											<td className="py-2 px-3 text-slate-400 whitespace-nowrap">
 												{l.item.code}
 											</td>
 											<td className="py-2 px-3 min-w-0">
-												<p className="truncate font-medium text-navy-900 dark:text-white leading-tight">
-													{l.item.name_en}
-												</p>
+												<input
+														className="input !py-1.5 text-sm"
+														value={l.description ?? l.item.name_en}
+														onChange={(e) => updateCartLine(l.item.id, { description: e.target.value })}
+													/>
 											</td>
 											<td className="py-2 px-3">
 												<div className="flex items-center gap-1 justify-center">
@@ -952,11 +1075,22 @@ export default function PosPage() {
 													</button>
 												</div>
 											</td>
-											<td className="py-2 px-3 text-end whitespace-nowrap text-slate-500">
-												{money(l.unit_price)}
-											</td>
+											<td className="py-2 px-3 text-end whitespace-nowrap">
+													<input
+														type="number"
+														step="0.001"
+														className="input !py-1.5 text-sm text-end !w-28"
+														value={l.unit_price}
+														onChange={(e) =>
+															updateCartLine(l.item.id, {
+																unit_price: e.target.value,
+																discount_preview: null,
+															})
+														}
+													/>
+												</td>
 											<td className="py-2 px-3 text-end font-bold text-navy-900 dark:text-white whitespace-nowrap">
-												{money(l.quantity * l.unit_price)}
+												{money(l.quantity * l.unit_price - Number(l.discount_preview?.discount_amount || 0))}
 											</td>
 											<td className="py-2 px-2">
 												<button
@@ -966,7 +1100,57 @@ export default function PosPage() {
 												</button>
 											</td>
 										</tr>
-									))}
+<tr className="bg-slate-50/50 dark:bg-navy-900/30">
+	<td colSpan={6} className="px-3 pb-2.5 pt-0">
+		<div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+			<label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+				<input
+					type="checkbox"
+					className="rounded"
+					checked={!!l.is_booked}
+					onChange={(e) => updateCartLine(l.item.id, { is_booked: e.target.checked, delivery_date: e.target.checked ? l.delivery_date : "" })}
+				/>
+				<CalendarClock size={13} className="text-slate-400" />
+				{t("invoices.bookForLater", { defaultValue: "Book for later delivery" })}
+			</label>
+			{l.is_booked && (
+				<input
+					required
+					type="date"
+					min={todayStr()}
+					className="input !py-1 !w-auto text-xs"
+					value={l.delivery_date}
+					onChange={(e) => updateCartLine(l.item.id, { delivery_date: e.target.value })}
+				/>
+			)}
+			{!discountPreview && (
+				<div className="flex items-center gap-1.5">
+					<Tag size={12} className="text-slate-400 shrink-0" />
+					<input
+						className="input !py-1 text-xs !w-36"
+						value={l.discount_code}
+						disabled={!!l.discount_preview}
+						placeholder={t("invoices.discountCodePlaceholder", { defaultValue: "Enter a code..." })}
+						onChange={(e) => updateCartLine(l.item.id, { discount_code: e.target.value.toUpperCase(), discount_preview: null, discount_error: "" })}
+					/>
+					{l.discount_preview ? (
+						<>
+							<span className="text-xs text-emerald-600">{t("invoices.discountAppliedAmount", { amount: money(l.discount_preview.discount_amount) })}</span>
+							<button type="button" onClick={() => removeLineDiscount(l.item.id)} className="p-1 rounded hover:bg-red-50 text-red-500"><X size={13} /></button>
+						</>
+					) : (
+						<button type="button" onClick={() => applyLineDiscount(l)} disabled={!l.discount_code.trim()} className="btn-ghost !py-1 !px-2 text-xs">
+							{t("invoices.applyDiscount", { defaultValue: "Apply" })}
+						</button>
+					)}
+					{l.discount_error && <span className="text-xs text-red-500">{l.discount_error}</span>}
+				</div>
+			)}
+		</div>
+	</td>
+</tr>
+</Fragment>
+))}
 								</tbody>
 							</table>
 							{!cart.length && (
