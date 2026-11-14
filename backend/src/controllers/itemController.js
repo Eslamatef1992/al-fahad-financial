@@ -232,6 +232,10 @@ exports.stockByBranch = async (req, res) => {
   res.json(breakdown);
 };
 
+exports.balanceDetails = async (req, res) => {
+  res.json(await itemService.getBalanceDetails(req.companyId, req.params.id));
+};
+
 exports.transactions = async (req, res) => {
   const item = await Item.findOne({ where: { id: req.params.id, company_id: req.companyId } });
   if (!item) return res.status(404).json({ message: 'Item not found' });

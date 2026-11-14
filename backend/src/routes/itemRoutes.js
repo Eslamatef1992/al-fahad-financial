@@ -11,6 +11,7 @@ router.get('/pdf', ctrl.pdf);
 router.get('/:id', ctrl.get);
 router.get('/:id/transactions', ctrl.transactions);
 router.get('/:id/stock', ctrl.stockByBranch);
+router.get('/:id/balance', ctrl.balanceDetails);
 router.get('/:id/variants', ctrl.listVariants);
 router.get('/:id/variants/pdf', ctrl.variantsPdf);
 router.get('/:id/variants/excel', ctrl.variantsExcel);

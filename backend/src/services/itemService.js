@@ -607,7 +607,109 @@ async function adjustStock(companyId, itemId, userId, { quantity_delta, unit_cos
   });
 }
 
+// The item card's "Balance" tab: one row per store (the unbranched pool + every
+// branch) with on-hand / booked / available / required (draft purchase orders) /
+// average cost / sold quantity / last sale date, a totals row, plus the item's
+// latest purchase prices. Read-only aggregation — nothing here writes.
+async function getBalanceDetails(companyId, itemId) {
+  const { QueryTypes } = require('sequelize');
+  const item = await Item.findOne({ where: { id: itemId, company_id: companyId } });
+  if (!item) throw notFound();
+
+  const branches = await Branch.findAll({ where: { company_id: companyId }, order: [['code', 'ASC']] });
+  const branchStocks = await ItemBranchStock.findAll({ where: { item_id: itemId, company_id: companyId } });
+  const variants = await ItemVariant.findAll({ where: { item_id: itemId, company_id: companyId } });
+  const variantIds = variants.map((v) => v.id);
+  const variantBranch = variantIds.length
+    ? await ItemVariantBranchStock.findAll({ where: { company_id: companyId, variant_id: variantIds } })
+    : [];
+
+  const bookedRows = await sequelize.query(
+    `SELECT branch_id, COALESCE(SUM(quantity),0) AS qty FROM item_bookings
+     WHERE company_id = :companyId AND item_id = :itemId AND status = 'pending' GROUP BY branch_id`,
+    { replacements: { companyId, itemId }, type: QueryTypes.SELECT },
+  );
+  const requiredRows = await sequelize.query(
+    `SELECT po.branch_id, COALESCE(SUM(l.quantity),0) AS qty FROM purchase_order_lines l
+     JOIN purchase_orders po ON po.id = l.purchase_order_id
+     WHERE po.company_id = :companyId AND l.item_id = :itemId AND po.status = 'draft' GROUP BY po.branch_id`,
+    { replacements: { companyId, itemId }, type: QueryTypes.SELECT },
+  );
+  const soldRows = await sequelize.query(
+    `SELECT i.branch_id, COALESCE(SUM(l.quantity),0) AS qty, MAX(i.date) AS last_date FROM invoice_lines l
+     JOIN invoices i ON i.id = l.invoice_id
+     WHERE i.company_id = :companyId AND l.item_id = :itemId AND i.type = 'sales'
+       AND i.status IN ('posted','partially_paid','paid') GROUP BY i.branch_id`,
+    { replacements: { companyId, itemId }, type: QueryTypes.SELECT },
+  );
+  const purchases = await sequelize.query(
+    `SELECT l.unit_price, l.quantity, i.date, i.invoice_no, i.id AS invoice_id, s.name_en AS supplier_en, s.name_ar AS supplier_ar
+     FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id LEFT JOIN suppliers s ON s.id = i.supplier_id
+     WHERE i.company_id = :companyId AND l.item_id = :itemId AND i.type = 'purchase'
+       AND i.status IN ('posted','partially_paid','paid')
+     ORDER BY i.date DESC, i.created_at DESC LIMIT 5`,
+    { replacements: { companyId, itemId }, type: QueryTypes.SELECT },
+  );
+
+  const keyOf = (id) => id || 'pool';
+  const mapOf = (rows, f = 'qty') => new Map(rows.map((r) => [keyOf(r.branch_id), Number(r[f])]));
+  const booked = mapOf(bookedRows);
+  const required = mapOf(requiredRows);
+  const sold = mapOf(soldRows);
+  const lastSale = new Map(soldRows.map((r) => [keyOf(r.branch_id), r.last_date]));
+
+  // qty/value per store, folding in variant stock so the numbers match the Items list.
+  const locations = [{ id: null, code: '—', name_en: 'Main store (unbranched)', name_ar: 'المخزن الرئيسي' },
+    ...branches.map((b) => ({ id: b.id, code: b.code, name_en: b.name_en, name_ar: b.name_ar }))];
+  const rows = locations.map((loc) => {
+    const own = loc.id ? branchStocks.find((r) => r.branch_id === loc.id) : null;
+    let qty = loc.id ? Number(own?.quantity_on_hand || 0) : Number(item.quantity_on_hand);
+    let value = qty * Number(loc.id ? own?.cost_price || 0 : item.cost_price);
+    if (loc.id) {
+      variantBranch.filter((r) => r.branch_id === loc.id).forEach((r) => { qty += Number(r.quantity_on_hand); value += Number(r.quantity_on_hand) * Number(r.cost_price); });
+    } else {
+      variants.forEach((v) => { qty += Number(v.quantity_on_hand); value += Number(v.quantity_on_hand) * Number(v.cost_price); });
+    }
+    const k = keyOf(loc.id);
+    const b = booked.get(k) || 0;
+    return {
+      branch_id: loc.id, code: loc.code, name_en: loc.name_en, name_ar: loc.name_ar,
+      on_hand: qty, booked: b, available: qty - b, required: required.get(k) || 0,
+      cost: qty > 0 ? value / qty : Number(loc.id ? own?.cost_price || 0 : item.cost_price),
+      value, sold_qty: sold.get(k) || 0, last_sale_date: lastSale.get(k) || null,
+    };
+  });
+
+  const totQty = rows.reduce((s, r) => s + r.on_hand, 0);
+  const totValue = rows.reduce((s, r) => s + r.value, 0);
+  const lastSaleDates = rows.map((r) => r.last_sale_date).filter(Boolean).sort();
+  return {
+    rows,
+    totals: {
+      on_hand: totQty,
+      booked: rows.reduce((s, r) => s + r.booked, 0),
+      available: rows.reduce((s, r) => s + r.available, 0),
+      required: rows.reduce((s, r) => s + r.required, 0),
+      value: totValue,
+      sold_qty: rows.reduce((s, r) => s + r.sold_qty, 0),
+      last_sale_date: lastSaleDates.length ? lastSaleDates[lastSaleDates.length - 1] : null,
+    },
+    avg_cost: totQty > 0 ? totValue / totQty : Number(item.cost_price),
+    reorder_level: Number(item.reorder_level),
+    last_purchase: purchases[0] ? {
+      unit_price: Number(purchases[0].unit_price), quantity: Number(purchases[0].quantity), date: purchases[0].date,
+      invoice_no: purchases[0].invoice_no, invoice_id: purchases[0].invoice_id,
+      supplier_en: purchases[0].supplier_en, supplier_ar: purchases[0].supplier_ar,
+    } : null,
+    purchase_history: purchases.map((p) => ({
+      unit_price: Number(p.unit_price), quantity: Number(p.quantity), date: p.date, invoice_no: p.invoice_no, invoice_id: p.invoice_id,
+      supplier_en: p.supplier_en, supplier_ar: p.supplier_ar,
+    })),
+  };
+}
+
 module.exports = {
+  getBalanceDetails,
   nextItemCode, createItem, updateItem, receiveStock, issueStock, adjustStock, validateAccount,
   transferStock, nextTransferNo, getOrCreateBranchStock, getOrCreateVariantBranchStock, getStockBreakdown, validateBranch,
   validateVariant, createVariant, updateVariant, deactivateVariant, resolveTarget, validateCategory,

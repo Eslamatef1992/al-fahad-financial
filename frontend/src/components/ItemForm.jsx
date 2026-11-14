@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   X, Upload, Trash2, Plus, Package, Wrench, Boxes, CheckCircle2, Ruler, Tag, Wallet, ListPlus, FileText, Image as ImageIcon,
 } from 'lucide-react';
-import { fileUrl } from '@/api/client';
+import api, { fileUrl } from '@/api/client';
 
 // Full "item card" form (OSOSS-style tabbed modal). Presentational: ItemsPage owns
 // the state and API calls and passes everything in through props.
@@ -46,6 +46,21 @@ export default function ItemForm({
   const L = (en, ar) => (isAr ? ar : en);
   const [tab, setTab] = useState('basic');
   useEffect(() => { if (open) setTab('basic'); }, [open, editing?.id]);
+
+  // Per-store balance + latest purchase prices (existing items only).
+  const [bal, setBal] = useState(null);
+  const [balLoading, setBalLoading] = useState(false);
+  useEffect(() => {
+    if (!open || !editing?.id) { setBal(null); return undefined; }
+    let cancelled = false;
+    setBalLoading(true);
+    api.get(`/items/${editing.id}/balance`)
+      .then((r) => { if (!cancelled) setBal(r.data); })
+      .catch(() => { if (!cancelled) setBal(null); })
+      .finally(() => { if (!cancelled) setBalLoading(false); });
+    return () => { cancelled = true; };
+  }, [open, editing?.id]);
+  const q3 = (v) => Number(v || 0).toFixed(3);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const catName = (c) => (isAr ? c.name_ar || c.name_en : c.name_en);
@@ -293,6 +308,20 @@ export default function ItemForm({
 
               {tab === 'prices' && (
                 <div className="space-y-5">
+                  {editing && (
+                    <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/30 p-4 flex flex-wrap items-center gap-x-8 gap-y-2">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500">{L('Last purchase price', 'آخر سعر شراء')}</p>
+                        <p className="text-2xl font-extrabold text-amber-600">{bal?.last_purchase ? q3(bal.last_purchase.unit_price) : '—'}</p>
+                      </div>
+                      {bal?.last_purchase && (
+                        <p className="text-xs text-slate-500">
+                          {bal.last_purchase.date} · {isAr ? bal.last_purchase.supplier_ar || bal.last_purchase.supplier_en : bal.last_purchase.supplier_en || '—'} · {bal.last_purchase.invoice_no}
+                        </p>
+                      )}
+                      {!balLoading && !bal?.last_purchase && <p className="text-xs text-slate-400">{L('No purchase recorded yet', 'لا توجد مشتريات مسجلة')}</p>}
+                    </div>
+                  )}
                   <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Field label={t('items.sellingPrice')}><input type="number" step="0.001" onWheel={onTypeNumberWheel} className="input" value={form.selling_price} onChange={set('selling_price')} /></Field>
                     <Field label={L('Wholesale price', 'سعر الجملة')}><input type="number" step="0.001" onWheel={onTypeNumberWheel} className="input" value={form.wholesale_price ?? 0} onChange={set('wholesale_price')} /></Field>
@@ -319,20 +348,80 @@ export default function ItemForm({
 
               {tab === 'balance' && (
                 editing ? (
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[
-                      [L('Stock on hand', 'الرصيد الحالي'), Number(editing.total_quantity_on_hand ?? editing.quantity_on_hand ?? 0).toFixed(2)],
-                      [L('Booked', 'المحجوز'), Number(editing.booked_quantity ?? 0).toFixed(2)],
-                      [L('Available', 'المتاح'), Number(editing.available_quantity ?? editing.total_quantity_on_hand ?? 0).toFixed(2)],
-                      [L('Average cost', 'متوسط التكلفة'), Number(editing.cost_price ?? 0).toFixed(3)],
-                    ].map(([label, val]) => (
-                      <div key={label} className="rounded-2xl bg-indigo-50 dark:bg-navy-800 p-4">
-                        <p className="text-xs font-semibold text-slate-500">{label}</p>
-                        <p className="text-2xl font-extrabold text-indigo-600 mt-1">{val}</p>
+                  <div className="space-y-5">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {[
+                        [L('Actual balance', 'الرصيد الفعلي'), q3(bal?.totals.on_hand ?? editing.total_quantity_on_hand ?? 0)],
+                        [L('Available', 'المتاح'), q3(bal?.totals.available ?? editing.available_quantity ?? 0)],
+                        [L('Average cost', 'متوسط التكلفة'), q3(bal?.avg_cost ?? editing.cost_price ?? 0)],
+                        [L('Last purchase price', 'آخر سعر شراء'), bal?.last_purchase ? q3(bal.last_purchase.unit_price) : '—'],
+                      ].map(([label, val]) => (
+                        <div key={label} className="rounded-2xl bg-indigo-50 dark:bg-navy-800 p-4">
+                          <p className="text-xs font-semibold text-slate-500">{label}</p>
+                          <p className="text-2xl font-extrabold text-indigo-600 mt-1">{val}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-100 dark:border-navy-800 overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-navy-700 text-white text-xs">
+                            {[
+                              L('Store', 'المخزن'), L('Actual balance', 'الرصيد الفعلي'), L('Booked', 'المحجوز'), L('Available', 'المتاح'),
+                              L('Required', 'مطلوب'), L('Cost', 'التكلفة'), L('Qty sold', 'الكمية المباعة'), L('Last sale', 'آخر عملية بيع'), L('Minimum', 'الحد الأدنى'),
+                            ].map((h) => <th key={h} className="px-3 py-2.5 text-start font-semibold whitespace-nowrap">{h}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {balLoading && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">{t('common.loading')}</td></tr>}
+                          {bal?.rows.map((r) => (
+                            <tr key={r.branch_id || 'pool'} className="border-t border-slate-100 dark:border-navy-800 hover:bg-sky-50/50 dark:hover:bg-navy-800/40">
+                              <td className="px-3 py-2.5 font-medium whitespace-nowrap">{r.code !== '—' ? `${r.code} · ` : ''}{isAr ? r.name_ar : r.name_en}</td>
+                              <td className="px-3 py-2.5">{q3(r.on_hand)}</td>
+                              <td className="px-3 py-2.5">{q3(r.booked)}</td>
+                              <td className="px-3 py-2.5 font-semibold">{q3(r.available)}</td>
+                              <td className="px-3 py-2.5">{q3(r.required)}</td>
+                              <td className="px-3 py-2.5">{q3(r.cost)}</td>
+                              <td className="px-3 py-2.5">{q3(r.sold_qty)}</td>
+                              <td className="px-3 py-2.5 whitespace-nowrap">{r.last_sale_date || '—'}</td>
+                              <td className="px-3 py-2.5">{q3(bal.reorder_level)}</td>
+                            </tr>
+                          ))}
+                          {bal && (
+                            <tr className="border-t-2 border-indigo-200 bg-indigo-50 dark:bg-navy-800 font-bold">
+                              <td className="px-3 py-2.5">{L('Total', 'الإجمالي')}</td>
+                              <td className="px-3 py-2.5">{q3(bal.totals.on_hand)}</td>
+                              <td className="px-3 py-2.5">{q3(bal.totals.booked)}</td>
+                              <td className="px-3 py-2.5">{q3(bal.totals.available)}</td>
+                              <td className="px-3 py-2.5">{q3(bal.totals.required)}</td>
+                              <td className="px-3 py-2.5" title={L('Total stock value', 'إجمالي قيمة المخزون')}>{q3(bal.totals.value)}</td>
+                              <td className="px-3 py-2.5">{q3(bal.totals.sold_qty)}</td>
+                              <td className="px-3 py-2.5 whitespace-nowrap">{bal.totals.last_sale_date || '—'}</td>
+                              <td className="px-3 py-2.5" />
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                    {bal && <p className="text-sm font-semibold text-slate-600">{L('Average cost', 'متوسط التكلفة')}: <span className="text-indigo-600">{q3(bal.avg_cost)}</span></p>}
+
+                    {bal?.purchase_history?.length > 0 && (
+                      <div>
+                        <p className="label">{L('Recent purchases', 'آخر المشتريات')}</p>
+                        <div className="rounded-2xl border border-slate-100 dark:border-navy-800 divide-y divide-slate-100 dark:divide-navy-800">
+                          {bal.purchase_history.map((p, i) => (
+                            <div key={`${p.invoice_id}-${i}`} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
+                              <span className="text-slate-500">{p.date} · {p.invoice_no}</span>
+                              <span>{isAr ? p.supplier_ar || p.supplier_en : p.supplier_en || '—'}</span>
+                              <span className="font-semibold">{q3(p.quantity)} × {q3(p.unit_price)}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                    <p className="sm:col-span-2 lg:col-span-4 text-xs text-slate-400">
-                      {L('Stock changes only through purchases, sales, transfers and stock adjustments (use the adjust icon on the item row).', 'يتغير الرصيد فقط من خلال المشتريات والمبيعات والتحويلات وتسويات المخزون (استخدم أيقونة التسوية في صف الصنف).')}
+                    )}
+                    <p className="text-xs text-slate-400">
+                      {L('Stock changes only through purchases, sales, transfers and stock adjustments (use the adjust icon on the item row). "Required" = quantity on draft purchase orders.', 'يتغير الرصيد فقط من خلال المشتريات والمبيعات والتحويلات وتسويات المخزون (استخدم أيقونة التسوية). "مطلوب" = الكمية في أوامر الشراء المسودة.')}
                     </p>
                   </div>
                 ) : form.variant_attributes.length > 0 ? (
