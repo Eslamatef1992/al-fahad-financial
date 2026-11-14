@@ -46,6 +46,7 @@
     "groupInventory": "Inventory",
     "groupAccounting": "Accounting",
     "groupMore": "More",
+    "posModule": "POS Back Office",
     "allApps": "All pages"
   },
   "common": {

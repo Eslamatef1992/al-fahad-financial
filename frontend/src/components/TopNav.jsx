@@ -6,7 +6,7 @@ import {
   Landmark, Wallet, PieChart, Building2, UserCog, ShieldCheck, FileText, FileMinus,
   RefreshCw, Boxes, ClipboardList, ArrowRightLeft, Percent, Ruler, Settings2, CalendarClock,
   ShoppingCart, UserCheck, AlertTriangle, Factory, CreditCard, ChevronDown, LayoutGrid,
-  Sun, Moon, LogOut, KeyRound, X, Zap, Briefcase,
+  Sun, Moon, LogOut, KeyRound, X, Zap, Briefcase, MonitorSmartphone,
 } from 'lucide-react';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -31,6 +31,7 @@ function buildGroups({ isSuperAdmin, isCompanyAdmin }) {
         { to: '/bookings', icon: CalendarClock, key: 'bookings' },
         { to: '/delivery-schedule', icon: Truck, key: 'deliverySchedule' },
         { to: '/discount-codes', icon: Percent, key: 'discountCodes' },
+        ...(isCompanyAdmin ? [{ to: '/pos-module', icon: MonitorSmartphone, key: 'posModule' }] : []),
       ],
     },
     {

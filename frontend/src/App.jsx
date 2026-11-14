@@ -46,6 +46,11 @@ import FinancialSettingsPage from '@/pages/financialSettings/FinancialSettingsPa
 import BookingsPage from '@/pages/bookings/BookingsPage';
 import PosPage from '@/pages/pos/PosPage';
 import PosCashiersPage from '@/pages/pos/PosCashiersPage';
+import PosModule from '@/pages/posModule/PosModule';
+import {
+  PosDashboard, PosOrders, PosPending, PosCanceled, PosConsolidated, PosRefunded, PosExchange, PosBranches,
+  PosBackorder, PosTransactions, PosSessions, PosUsers, PosReports, PosSettings,
+} from '@/pages/posModule/PosModulePages';
 import DamagesPage from '@/pages/damages/DamagesPage';
 import DeliverySchedulePage from '@/pages/deliverySchedule/DeliverySchedulePage';
 
@@ -98,6 +103,22 @@ export default function App() {
           <Route path="/bookings" element={<BookingsPage />} />
           <Route path="/pos" element={<PosPage />} />
           <Route path="/pos-cashiers" element={<PosCashiersPage />} />
+          <Route path="/pos-module" element={<PosModule />}>
+            <Route index element={<PosDashboard />} />
+            <Route path="orders" element={<PosOrders />} />
+            <Route path="pending" element={<PosPending />} />
+            <Route path="canceled" element={<PosCanceled />} />
+            <Route path="consolidated" element={<PosConsolidated />} />
+            <Route path="refunded" element={<PosRefunded />} />
+            <Route path="exchange" element={<PosExchange />} />
+            <Route path="branches" element={<PosBranches />} />
+            <Route path="backorder" element={<PosBackorder />} />
+            <Route path="transactions" element={<PosTransactions />} />
+            <Route path="sessions" element={<PosSessions />} />
+            <Route path="users" element={<PosUsers />} />
+            <Route path="reports" element={<PosReports />} />
+            <Route path="settings" element={<PosSettings />} />
+          </Route>
           <Route path="/damages" element={<DamagesPage />} />
           <Route path="/delivery-schedule" element={<DeliverySchedulePage />} />
           <Route path="/stock-transfers" element={<StockTransfersPage />} />

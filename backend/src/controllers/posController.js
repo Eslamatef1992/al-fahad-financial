@@ -51,6 +51,10 @@ exports.heldSales = async (req, res) => {
   res.json(held);
 };
 
+exports.pendingSales = async (req, res) => {
+  res.json(await posService.pendingSales(req.companyId));
+};
+
 exports.voidSale = async (req, res) => {
   const profile = await profileFor(req);
   const result = await posService.voidSale(req.companyId, req.user.id, profile, req.params.id);

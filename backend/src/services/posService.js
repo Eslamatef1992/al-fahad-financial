@@ -224,6 +224,16 @@ async function heldSales(companyId, userId) {
   });
 }
 
+// Back-office view: every held/pending POS order across ALL cashiers (the
+// cashier-facing heldSales above only returns the caller's own).
+async function pendingSales(companyId) {
+  return Invoice.findAll({
+    where: { company_id: companyId, channel: 'pos', status: 'draft' },
+    order: [['created_at', 'DESC']],
+    include: [{ association: 'client' }, { model: InvoiceLine, as: 'lines' }],
+  });
+}
+
 // Backs the POS toolbar's "Invoices By Date" + "Customer" lookup: every
 // completed (non-draft) POS-channel sale, filterable by date range, a
 // specific client, status, or a free-text `q` that matches an invoice number
@@ -289,6 +299,7 @@ module.exports = {
   createSale,
   voidSale,
   heldSales,
+  pendingSales,
   salesHistory,
   refundSale,
   creditOutstanding,
