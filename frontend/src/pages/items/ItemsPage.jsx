@@ -7,10 +7,20 @@ import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
+import ItemForm from '@/components/ItemForm';
 import usePermissions from '@/hooks/usePermissions';
 import useFinancialDefaults from '@/hooks/useFinancialDefaults';
 
+const EXT_DEFAULTS = {
+  barcode: '', item_type: 'stock', is_rental: false, is_quick_search: false, dead_stock_months: 0,
+  item_class: '', origin_country: '', color: '', brand: '', size: '', weight: '', model: '', model_part: '', part_number: '', season: '',
+  category2_id: '', category3_id: '', category4_id: '', manufacturer_id: '', supplier_id: '', original_item_id: '', alternative_item_id: '',
+  wholesale_price: 0, min_price: 0, notes: '', sort_order: 0, extra_data: [],
+};
+const EXT_KEYS = Object.keys(EXT_DEFAULTS);
+
 const empty = {
+  ...EXT_DEFAULTS,
   name_en: '', name_ar: '', category_id: '', unit: 'pcs', unit_id: '', sku: '', variant_attributes: [],
   inventory_account_id: '', income_account_id: '', cogs_account_id: '',
   selling_price: 0, reorder_level: 0, opening_quantity: 0, opening_cost: 0,
@@ -27,6 +37,8 @@ export default function ItemsPage() {
   const [accounts, setAccounts] = useState([]);
   const [branches, setBranches] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [manufacturers, setManufacturers] = useState([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [addingCategory, setAddingCategory] = useState(false);
   const [units, setUnits] = useState([]);
@@ -79,6 +91,8 @@ export default function ItemsPage() {
       api.get('/branches').then((r) => setBranches(r.data));
       loadCategories();
       loadUnits();
+      api.get('/suppliers').then((r) => setSuppliers(r.data)).catch(() => {});
+      api.get('/manufacturers').then((r) => setManufacturers(r.data)).catch(() => {});
     }
   }, [activeCompany, showInactive, filterBranch, dateFrom, dateTo]);
 
@@ -112,6 +126,7 @@ export default function ItemsPage() {
       sku: row.sku || '', variant_attributes: row.variant_attributes || [],
       inventory_account_id: row.inventory_account_id, income_account_id: row.income_account_id, cogs_account_id: row.cogs_account_id,
       selling_price: row.selling_price, reorder_level: row.reorder_level, opening_quantity: 0, opening_cost: 0,
+      ...Object.fromEntries(EXT_KEYS.map((k) => [k, row[k] ?? EXT_DEFAULTS[k]])),
     });
     setAttrInput('');
     setNewCategoryName('');
@@ -157,12 +172,20 @@ export default function ItemsPage() {
   };
   const removeAttrName = (name) => setForm({ ...form, variant_attributes: form.variant_attributes.filter((a) => a !== name) });
 
-  const submit = async (e) => {
-    e.preventDefault(); setSaving(true);
+  const submit = async (e, andNew = false) => {
+    e.preventDefault();
+    if (!form.inventory_account_id || !form.cogs_account_id) {
+      toast.error(t('items.inventoryAccount') + ' / ' + t('items.cogsAccount') + ' — ' + t('common.select'));
+      return;
+    }
+    setSaving(true);
     try {
       if (editing) await api.put(`/items/${editing.id}`, form);
       else await api.post('/items', form);
-      toast.success(t('common.save')); setOpen(false); load();
+      toast.success(t('common.save'));
+      load();
+      if (andNew && !editing) openNew();
+      else setOpen(false);
     } finally { setSaving(false); }
   };
 
@@ -255,6 +278,7 @@ export default function ItemsPage() {
     ) : <span className="text-slate-300">—</span> },
     { key: 'code', label: t('common.code') },
     { key: 'sku', label: t('items.sku'), render: (r) => r.sku || '—' },
+    { key: 'barcode', label: 'Barcode', render: (r) => r.barcode || '—' },
     { key: 'name_en', label: t('common.nameEn') },
     { key: 'category', label: t('items.category'), render: (r) => r.category_name || '—' },
     { key: 'unit', label: t('items.unit'), render: (r) => (
@@ -367,145 +391,16 @@ export default function ItemsPage() {
         pageSize={25}
       />
 
-      <SlideOver open={open} onClose={() => setOpen(false)} title={editing ? t('common.edit') : t('common.add')} onSubmit={submit} submitting={saving}>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">{t('common.code')}</label>
-            <input disabled className="input opacity-60" value={editing ? editing.code : 'Auto-generated on save'} />
-          </div>
-          <div>
-            <label className="label">{t('items.unit')}</label>
-            <select className="input" value={form.unit_id} onChange={(e) => selectUnit(e.target.value)}>
-              <option value="">{t('common.select')}</option>
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name_en}{u.base_unit_id ? ` (1 = ${Number(u.conversion_factor)} ${u.baseUnit?.name_en || ''})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div>
-          <label className="label">{t('items.addUnit')}</label>
-          <div className="flex gap-2">
-            <input
-              className="input"
-              value={newUnitName}
-              onChange={(e) => setNewUnitName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addUnit(); } }}
-              placeholder={t('items.newUnitPlaceholder')}
-            />
-            <button type="button" onClick={addUnit} disabled={addingUnit || !newUnitName.trim()} className="btn-ghost shrink-0">{t('common.add')}</button>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">{t('items.addUnitHint')}</p>
-        </div>
-        <div><label className="label">{t('common.nameEn')}</label><input required className="input" value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} /></div>
-        <div><label className="label">{t('common.nameAr')}</label><input required dir="rtl" className="input" value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} /></div>
-
-        <div>
-          <label className="label">{t('items.image')}</label>
-          {editing ? (
-            <div className="flex items-center gap-3">
-              {editing.image_url ? (
-                <img src={fileUrl(editing.image_url)} alt="" className="w-14 h-14 rounded-xl object-cover border border-slate-200 dark:border-navy-700" />
-              ) : (
-                <div className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-navy-800 flex items-center justify-center text-slate-400 text-xs">{t('common.none')}</div>
-              )}
-              <label className="btn-ghost cursor-pointer !py-1.5">
-                <Upload size={14} /> {uploadingImage ? t('common.loading') : (editing.image_url ? t('items.replaceImage') : t('items.uploadImage'))}
-                <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" className="hidden" disabled={uploadingImage} onChange={uploadImage} />
-              </label>
-              {editing.image_url && (
-                <button type="button" onClick={removeImage} disabled={uploadingImage} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-red-500"><Trash2 size={15} /></button>
-              )}
-            </div>
-          ) : (
-            <p className="text-xs text-slate-400">{t('items.imageHint')}</p>
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">{t('items.category')}</label>
-            <select className="input" value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
-              <option value="">{t('common.none')}</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name_en}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="label">{t('items.sku')}</label>
-            <input className="input" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder={t('items.skuPlaceholder')} />
-          </div>
-        </div>
-        <div>
-          <label className="label">{t('items.addCategory')}</label>
-          <div className="flex gap-2">
-            <input
-              className="input"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCategory(); } }}
-              placeholder={t('items.newCategoryPlaceholder')}
-            />
-            <button type="button" onClick={addCategory} disabled={addingCategory || !newCategoryName.trim()} className="btn-ghost shrink-0">{t('common.add')}</button>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">{t('items.addCategoryHint')}</p>
-        </div>
-
-        <div>
-          <label className="label">{t('items.variantAttributes')}</label>
-          <div className="flex gap-2">
-            <input
-              className="input"
-              value={attrInput}
-              onChange={(e) => setAttrInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAttrName(); } }}
-              placeholder={t('items.variantAttributesPlaceholder')}
-            />
-            <button type="button" onClick={addAttrName} className="btn-ghost shrink-0">{t('common.add')}</button>
-          </div>
-          {form.variant_attributes.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {form.variant_attributes.map((a) => (
-                <span key={a} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-purple-50 dark:bg-purple-950 text-purple-600 text-xs font-medium">
-                  {a}
-                  <button type="button" onClick={() => removeAttrName(a)}><X size={12} /></button>
-                </span>
-              ))}
-            </div>
-          )}
-          <p className="text-xs text-slate-400 mt-1">{t('items.variantAttributesHint')}</p>
-        </div>
-
-        <div>
-          <label className="label">{t('items.inventoryAccount')}</label>
-          <select required className="input" value={form.inventory_account_id} onChange={(e) => setForm({ ...form, inventory_account_id: e.target.value })}>
-            <option value="">{t('common.select')}</option>
-            {assetAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} - {a.name_en}</option>)}
-          </select>
-          <p className="text-xs text-slate-400 mt-1">{t('items.inventoryAccountHint')}</p>
-        </div>
-        <div>
-          <label className="label">{t('items.cogsAccount')}</label>
-          <select required className="input" value={form.cogs_account_id} onChange={(e) => setForm({ ...form, cogs_account_id: e.target.value })}>
-            <option value="">{t('common.select')}</option>
-            {expenseAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} - {a.name_en}</option>)}
-          </select>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className="label">{t('items.sellingPrice')}</label><input type="number" step="0.001" className="input" value={form.selling_price} onChange={(e) => setForm({ ...form, selling_price: e.target.value })} /></div>
-          <div><label className="label">{t('items.reorderLevel')}</label><input type="number" step="0.001" className="input" value={form.reorder_level} onChange={(e) => setForm({ ...form, reorder_level: e.target.value })} /></div>
-        </div>
-        {!editing && form.variant_attributes.length === 0 && (
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="label">{t('items.openingQuantity')}</label><input type="number" step="0.001" className="input" value={form.opening_quantity} onChange={(e) => setForm({ ...form, opening_quantity: e.target.value })} /></div>
-            <div><label className="label">{t('items.openingCost')}</label><input type="number" step="0.001" className="input" value={form.opening_cost} onChange={(e) => setForm({ ...form, opening_cost: e.target.value })} /></div>
-          </div>
-        )}
-        {form.variant_attributes.length > 0 && (
-          <p className="text-xs text-slate-400">{t('items.variantsOpeningHint')}</p>
-        )}
-      </SlideOver>
+      <ItemForm
+        open={open} onClose={() => setOpen(false)} editing={editing} form={form} setForm={setForm}
+        onSubmit={submit} saving={saving}
+        units={units} categories={categories} suppliers={suppliers} manufacturers={manufacturers} items={items}
+        assetAccounts={assetAccounts} expenseAccounts={expenseAccounts}
+        selectUnit={selectUnit} newUnitName={newUnitName} setNewUnitName={setNewUnitName} addUnit={addUnit} addingUnit={addingUnit}
+        newCategoryName={newCategoryName} setNewCategoryName={setNewCategoryName} addCategory={addCategory} addingCategory={addingCategory}
+        attrInput={attrInput} setAttrInput={setAttrInput} addAttrName={addAttrName} removeAttrName={removeAttrName}
+        uploadImage={uploadImage} removeImage={removeImage} uploadingImage={uploadingImage}
+      />
 
       <SlideOver open={!!adjustItem} onClose={() => setAdjustItem(null)} title={t('items.adjustStock')} onSubmit={submitAdjust} submitting={adjusting}>
         {adjustItem && (

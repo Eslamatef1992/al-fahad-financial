@@ -35,6 +35,39 @@ module.exports = (sequelize, DataTypes) => {
     quantity_on_hand: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 }, // running stock balance
     reorder_level: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
+
+    // ---- Extended item card (matches the classic ERP "Items" screen) ----
+    // All nullable / defaulted so existing rows and API callers are unaffected.
+    barcode: { type: DataTypes.STRING(60), allowNull: true },
+    // stock (مخزني) | service (خدمي) | assembled (مجمع) | finished (منتج نهائي)
+    item_type: { type: DataTypes.STRING(20), defaultValue: 'stock' },
+    is_rental: { type: DataTypes.BOOLEAN, defaultValue: false },       // صنف إيجار
+    is_quick_search: { type: DataTypes.BOOLEAN, defaultValue: false }, // أصناف سريعة في البحث
+    dead_stock_months: { type: DataTypes.INTEGER, defaultValue: 0 },   // عدد أشهر الركود
+    item_class: { type: DataTypes.STRING(60), allowNull: true },       // النوع
+    origin_country: { type: DataTypes.STRING(60), allowNull: true },   // البلد
+    color: { type: DataTypes.STRING(60), allowNull: true },            // اللون
+    brand: { type: DataTypes.STRING(60), allowNull: true },            // الماركة
+    size: { type: DataTypes.STRING(60), allowNull: true },             // المقاس
+    weight: { type: DataTypes.DECIMAL(18, 3), allowNull: true },       // الوزن
+    model: { type: DataTypes.STRING(60), allowNull: true },            // الموديل
+    model_part: { type: DataTypes.STRING(60), allowNull: true },       // جزء الموديل
+    part_number: { type: DataTypes.STRING(60), allowNull: true },      // رقم القطعة
+    season: { type: DataTypes.STRING(60), allowNull: true },           // الموسم
+    category2_id: { type: DataTypes.UUID, allowNull: true },           // الفئة الثانية
+    category3_id: { type: DataTypes.UUID, allowNull: true },           // الفئة الثالثة
+    category4_id: { type: DataTypes.UUID, allowNull: true },           // الفئة الرابعة
+    manufacturer_id: { type: DataTypes.UUID, allowNull: true },        // الشركة المصنعة
+    supplier_id: { type: DataTypes.UUID, allowNull: true },            // المورد
+    original_item_id: { type: DataTypes.UUID, allowNull: true },       // رقم الصنف الأصلي
+    alternative_item_id: { type: DataTypes.UUID, allowNull: true },    // رقم البديل
+    wholesale_price: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
+    min_price: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
+    notes: { type: DataTypes.TEXT, allowNull: true },                  // ملاحظات
+    sort_order: { type: DataTypes.INTEGER, defaultValue: 0 },          // ترتيب
+    extra_data: { type: DataTypes.JSON, defaultValue: [] },            // بيانات إضافية: [{key, value}]
+    created_by_name: { type: DataTypes.STRING(120), allowNull: true }, // القائم بالادخال
+    updated_by_name: { type: DataTypes.STRING(120), allowNull: true }, // القائم بالتعديل
   }, {
     tableName: 'items',
     indexes: [

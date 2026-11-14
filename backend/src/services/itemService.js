@@ -117,6 +117,36 @@ async function resolveTarget(companyId, itemId, { branchId, variantId }, t) {
   return { item, variant, target, label };
 }
 
+// Extended item-card fields (see Item model). Whitelisted + normalised here so
+// create and update share one definition: '' -> null for optional text/uuid/
+// number fields, booleans coerced, extra_data kept as a clean [{key,value}] list.
+const EXT_TEXT = ['barcode', 'item_class', 'origin_country', 'color', 'brand', 'size', 'model', 'model_part', 'part_number', 'season', 'notes'];
+const EXT_UUID = ['category2_id', 'category3_id', 'category4_id', 'manufacturer_id', 'supplier_id', 'original_item_id', 'alternative_item_id'];
+const EXT_NUM = ['wholesale_price', 'min_price'];
+const EXT_INT = ['dead_stock_months', 'sort_order'];
+const EXT_BOOL = ['is_rental', 'is_quick_search'];
+const ITEM_TYPES = ['stock', 'service', 'assembled', 'finished'];
+
+function pickExtended(payload) {
+  const out = {};
+  EXT_TEXT.forEach((k) => { if (payload[k] !== undefined) out[k] = String(payload[k] ?? '').trim() || null; });
+  EXT_UUID.forEach((k) => { if (payload[k] !== undefined) out[k] = payload[k] || null; });
+  EXT_NUM.forEach((k) => { if (payload[k] !== undefined) out[k] = Number(payload[k] || 0); });
+  EXT_INT.forEach((k) => { if (payload[k] !== undefined) out[k] = parseInt(payload[k], 10) || 0; });
+  EXT_BOOL.forEach((k) => { if (payload[k] !== undefined) out[k] = !!payload[k]; });
+  if (payload.weight !== undefined) out.weight = payload.weight === '' || payload.weight === null ? null : Number(payload.weight);
+  if (payload.item_type !== undefined) {
+    if (!ITEM_TYPES.includes(payload.item_type)) throw badRequest('Invalid item_type');
+    out.item_type = payload.item_type;
+  }
+  if (payload.extra_data !== undefined) {
+    out.extra_data = (Array.isArray(payload.extra_data) ? payload.extra_data : [])
+      .filter((r) => r && String(r.key || '').trim())
+      .map((r) => ({ key: String(r.key).trim(), value: String(r.value ?? '').trim() }));
+  }
+  return out;
+}
+
 // Creates a new inventory item. If opening_quantity/opening_cost are given,
 // seeds the initial stock balance and logs a matching 'opening' movement so
 // the balance is traceable from day one, exactly like any other stock change.
@@ -176,6 +206,9 @@ async function createItem(companyId, userId, payload) {
       reorder_level: Number(reorder_level || 0),
       cost_price: cost,
       quantity_on_hand: qty,
+      ...pickExtended(payload),
+      created_by_name: payload._by || null,
+      updated_by_name: payload._by || null,
     }, { transaction: t });
 
     if (qty > 0) {
@@ -238,6 +271,8 @@ async function updateItem(companyId, itemId, payload) {
       selling_price: selling_price !== undefined ? Number(selling_price) : item.selling_price,
       reorder_level: reorder_level !== undefined ? Number(reorder_level) : item.reorder_level,
       is_active: is_active !== undefined ? is_active : item.is_active,
+      ...pickExtended(payload),
+      updated_by_name: payload._by || item.updated_by_name,
     }, { transaction: t });
 
     return item;

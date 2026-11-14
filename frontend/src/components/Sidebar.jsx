@@ -180,7 +180,7 @@ export default function Sidebar() {
       </button>
       {!sidebarCollapsed && (
         <p className="px-5 pb-3 text-[10px] text-slate-500 text-center">
-          Powered by <a href="https://teknulugy.com" target="_blank" rel="noreferrer" className="text-gold-500/80 hover:text-gold-400">Teknulugy</a>
+          Powered by <a href="https://naqdix.com" target="_blank" rel="noreferrer" className="text-gold-500/80 hover:text-gold-400">Naqdi X</a>
         </p>
       )}
     </motion.aside>

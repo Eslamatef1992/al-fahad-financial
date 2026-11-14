@@ -92,7 +92,7 @@ export default function Login() {
             </form>
 
             <p className="text-center text-xs text-slate-500 mt-10">
-              Powered by <a href="https://teknulugy.com" target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-500 font-medium">Teknulugy</a>
+              Powered by <a href="https://naqdix.com" target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-500 font-medium">Naqdi X</a>
             </p>
           </motion.div>
         </div>

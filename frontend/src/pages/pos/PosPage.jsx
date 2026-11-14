@@ -426,7 +426,8 @@ export default function PosPage() {
 			const exact = data.find(
 				(p) =>
 					p.code?.toLowerCase() === code.toLowerCase() ||
-					p.sku?.toLowerCase() === code.toLowerCase(),
+					p.sku?.toLowerCase() === code.toLowerCase() ||
+					p.barcode?.toLowerCase() === code.toLowerCase(),
 			);
 			addToCart(exact || data[0]);
 			setCodeEntry("");

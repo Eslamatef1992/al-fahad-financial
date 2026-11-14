@@ -144,7 +144,7 @@ async function queryItems(companyId, query) {
   }
   if (q) {
     const needle = q.toLowerCase();
-    withTotals = withTotals.filter((i) => [i.name_en, i.name_ar, i.code, i.sku, i.category_name, i.unit_name]
+    withTotals = withTotals.filter((i) => [i.name_en, i.name_ar, i.code, i.sku, i.barcode, i.category_name, i.unit_name]
       .some((f) => String(f || '').toLowerCase().includes(needle)));
   }
   return withTotals;
@@ -162,13 +162,13 @@ exports.get = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const item = await itemService.createItem(req.companyId, req.user.id, req.body);
+  const item = await itemService.createItem(req.companyId, req.user.id, { ...req.body, _by: req.user.name });
   const withAccounts = await Item.findByPk(item.id, { include: accountInclude });
   res.status(201).json(withAccounts);
 };
 
 exports.update = async (req, res) => {
-  const item = await itemService.updateItem(req.companyId, req.params.id, req.body);
+  const item = await itemService.updateItem(req.companyId, req.params.id, { ...req.body, _by: req.user.name });
   const withAccounts = await Item.findByPk(item.id, { include: accountInclude });
   res.json(withAccounts);
 };
