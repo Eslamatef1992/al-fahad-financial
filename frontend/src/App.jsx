@@ -46,6 +46,7 @@ import FinancialSettingsPage from '@/pages/financialSettings/FinancialSettingsPa
 import BookingsPage from '@/pages/bookings/BookingsPage';
 import PosPage from '@/pages/pos/PosPage';
 import PosCashiersPage from '@/pages/pos/PosCashiersPage';
+import QuickAccessPage from '@/pages/QuickAccess';
 import PosModule from '@/pages/posModule/PosModule';
 import {
   PosDashboard, PosOrders, PosPending, PosCanceled, PosConsolidated, PosRefunded, PosExchange, PosBranches,
@@ -68,6 +69,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/quick-access" element={<QuickAccessPage />} />
           <Route path="/chart-of-accounts" element={<ChartOfAccountsPage />} />
           <Route path="/vouchers" element={<VouchersPage />} />
           <Route path="/vouchers/new" element={<VoucherFormPage />} />
