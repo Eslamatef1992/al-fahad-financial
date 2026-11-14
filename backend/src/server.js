@@ -3,6 +3,7 @@ const app = require('./app');
 const sequelize = require('./config/db');
 const models = require('./models'); // ensure associations are registered
 const { generateDueInvoices } = require('./services/recurringInvoiceService');
+const { generateDueVouchers } = require('./services/recurringVoucherService');
 
 const PORT = process.env.PORT || 5000;
 
@@ -36,6 +37,12 @@ async function start() {
         if (generated.length) console.log(`Recurring invoices: generated ${generated.length} draft invoice(s).`);
       } catch (err) {
         console.error('Recurring invoice generation failed:', err.message);
+      }
+      try {
+        const vouchers = await generateDueVouchers();
+        if (vouchers.length) console.log(`Recurring vouchers: generated ${vouchers.length} draft voucher(s).`);
+      } catch (err) {
+        console.error('Recurring voucher generation failed:', err.message);
       }
     });
   } catch (err) {

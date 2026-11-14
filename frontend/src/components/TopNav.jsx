@@ -17,6 +17,7 @@ import CompanySwitcher from './CompanySwitcher';
 import LanguageSwitcher from './LanguageSwitcher';
 import ChangePasswordModal from './ChangePasswordModal';
 import { POS_MENU } from '@/pages/posModule/PosModule';
+import { ACC_MENU } from '@/pages/accounting/AccountingModule';
 
 // Navigation is grouped like a typical SaaS top bar: a couple of always-visible
 // links (Dashboard, POS) plus dropdown groups. The "app launcher" grid button
@@ -59,12 +60,10 @@ export function buildGroups({ isSuperAdmin, isCompanyAdmin }) {
     {
       key: 'accounting', label: 'groupAccounting',
       items: [
-        { to: '/chart-of-accounts', icon: BookText, key: 'chartOfAccounts' },
-        { to: '/vouchers', icon: Receipt, key: 'vouchers' },
+        ...ACC_MENU.map((m) => ({ to: m.to ? `/accounting/${m.to}` : '/accounting', icon: m.icon, en: m.en, ar: m.ar, end: m.end })),
         { to: '/ledger', icon: ScrollText, key: 'ledger' },
         { to: '/cash-control', icon: Wallet, key: 'cashControl' },
         { to: '/cost-centers', icon: Landmark, key: 'costCenters' },
-        { to: '/reports', icon: PieChart, key: 'reports' },
       ],
     },
     {

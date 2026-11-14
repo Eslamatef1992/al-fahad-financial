@@ -23,6 +23,7 @@ const InvoiceLine = require('./InvoiceLine')(sequelize, DataTypes);
 const InvoicePayment = require('./InvoicePayment')(sequelize, DataTypes);
 const RecurringInvoice = require('./RecurringInvoice')(sequelize, DataTypes);
 const RecurringInvoiceLine = require('./RecurringInvoiceLine')(sequelize, DataTypes);
+const RecurringVoucher = require('./RecurringVoucher')(sequelize, DataTypes);
 const EmployeeLeave = require('./EmployeeLeave')(sequelize, DataTypes);
 const Item = require('./Item')(sequelize, DataTypes);
 const InventoryTransaction = require('./InventoryTransaction')(sequelize, DataTypes);
@@ -54,7 +55,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit, FinancialSetting, ItemBooking, PosShift, ItemDamage, Manufacturer, PaymentMethod];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, RecurringVoucher, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit, FinancialSetting, ItemBooking, PosShift, ItemDamage, Manufacturer, PaymentMethod];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -257,6 +258,7 @@ module.exports = {
   InvoicePayment,
   RecurringInvoice,
   RecurringInvoiceLine,
+  RecurringVoucher,
   Account,
   CostCenter,
   Client,

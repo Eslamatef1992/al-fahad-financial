@@ -46,6 +46,9 @@ import FinancialSettingsPage from '@/pages/financialSettings/FinancialSettingsPa
 import BookingsPage from '@/pages/bookings/BookingsPage';
 import PosPage from '@/pages/pos/PosPage';
 import PosCashiersPage from '@/pages/pos/PosCashiersPage';
+import AccountingModule from '@/pages/accounting/AccountingModule';
+import { AccDashboard, AccIncome, AccExpense, AccOnline, AccJournal, AccSettings } from '@/pages/accounting/AccountingPages';
+import RecurringVouchersPage from '@/pages/accounting/RecurringVouchersPage';
 import QuickAccessPage from '@/pages/QuickAccess';
 import PosModule from '@/pages/posModule/PosModule';
 import {
@@ -105,6 +108,18 @@ export default function App() {
           <Route path="/bookings" element={<BookingsPage />} />
           <Route path="/pos" element={<PosPage />} />
           <Route path="/pos-cashiers" element={<PosCashiersPage />} />
+          <Route path="/accounting" element={<AccountingModule />}>
+            <Route index element={<AccDashboard />} />
+            <Route path="income" element={<AccIncome />} />
+            <Route path="expense" element={<AccExpense />} />
+            <Route path="online" element={<AccOnline />} />
+            <Route path="vouchers" element={<VouchersPage />} />
+            <Route path="recurring" element={<RecurringVouchersPage />} />
+            <Route path="journal" element={<AccJournal />} />
+            <Route path="chart" element={<ChartOfAccountsPage />} />
+            <Route path="reports" element={<ReportsHubPage />} />
+            <Route path="settings" element={<AccSettings />} />
+          </Route>
           <Route path="/pos-module" element={<PosModule />}>
             <Route index element={<PosDashboard />} />
             <Route path="orders" element={<PosOrders />} />

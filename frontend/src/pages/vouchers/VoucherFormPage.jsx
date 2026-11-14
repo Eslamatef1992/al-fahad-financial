@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
@@ -24,7 +24,9 @@ export default function VoucherFormPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
 
-  const [header, setHeader] = useState({ voucher_type: 'journal', date: new Date().toISOString().slice(0, 10), description: '', cost_center_id: '', branch_id: '' });
+  const [searchParams] = useSearchParams();
+  const initialType = searchParams.get('type');
+  const [header, setHeader] = useState({ voucher_type: ['receipt', 'payment', 'journal'].includes(initialType) ? initialType : 'journal', date: new Date().toISOString().slice(0, 10), description: '', cost_center_id: '', branch_id: '' });
   const [lines, setLines] = useState([emptyLine(), emptyLine()]);
 
   useEffect(() => {

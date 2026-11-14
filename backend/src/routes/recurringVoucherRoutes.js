@@ -1,0 +1,14 @@
+const router = require('express').Router();
+const ctrl = require('../controllers/recurringVoucherController');
+const { requireAuth, requireCompany } = require('../middleware/auth');
+const { requireMinRole } = require('../middleware/permissions');
+
+router.use(requireAuth, requireCompany);
+router.get('/', ctrl.list);
+router.get('/:id', ctrl.get);
+router.post('/', requireMinRole('accountant'), ctrl.create);
+router.put('/:id', requireMinRole('accountant'), ctrl.update);
+router.delete('/:id', requireMinRole('accountant'), ctrl.remove);
+router.post('/generate-due', requireMinRole('accountant'), ctrl.generateDue);
+
+module.exports = router;

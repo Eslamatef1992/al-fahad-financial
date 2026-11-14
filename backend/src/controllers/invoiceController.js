@@ -74,6 +74,25 @@ const paymentInclude = [
 	},
 ];
 
+// Flat list of invoice payments (back-office + POS) for the Accounting module's
+// Transactions pages. ?online=true keeps only electronic tenders (anything that
+// is not cash or on-account credit — Knet, cards, Tabby, bank transfer, ...).
+exports.listPayments = async (req, res) => {
+	const { from, to, online, type } = req.query;
+	const where = {};
+	if (from || to)
+		where.date = { ...(from && { [Op.gte]: from }), ...(to && { [Op.lte]: to }) };
+	if (online === "true") where.payment_method = { [Op.notIn]: ["cash", "credit"] };
+	const invWhere = { company_id: req.companyId };
+	if (type) invWhere.type = type;
+	const rows = await InvoicePayment.findAll({
+		where,
+		include: [{ model: Invoice, where: invWhere, attributes: ["id", "invoice_no", "type", "branch_id"], required: true }],
+		order: [["date", "DESC"], ["createdAt", "DESC"]],
+	});
+	res.json(rows);
+};
+
 exports.list = async (req, res) => {
 	const { type, status, from, to, party_id, branch_id } = req.query;
 	const where = { company_id: req.companyId };
