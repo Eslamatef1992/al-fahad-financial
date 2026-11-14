@@ -109,6 +109,8 @@ async function createInvoice(companyId, userId, payload) {
       line_order: idx,
       is_booked: !!l.is_booked,
       delivery_date: l.is_booked ? l.delivery_date : null,
+      manufacture_item_id: l.manufacture_item_id || null,
+      manufacture_unit_cost: l.manufacture_item_id ? Number(l.manufacture_unit_cost || 0) : null,
     }, { transaction: t })));
 
     return invoice;

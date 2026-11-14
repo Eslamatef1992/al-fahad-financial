@@ -23,5 +23,10 @@ module.exports = (sequelize, DataTypes) => {
     // purchase lines or on any line that isn't linked to an Item.
     is_booked: { type: DataTypes.BOOLEAN, defaultValue: false },
     delivery_date: { type: DataTypes.DATEONLY, allowNull: true },
+    // Made-to-order line (no stock): which catalog item it is and what the
+    // manufacturer charges per unit, snapshotted at sale time so later catalog
+    // price changes never rewrite history. Null for ordinary stock/freehand lines.
+    manufacture_item_id: { type: DataTypes.UUID, allowNull: true },
+    manufacture_unit_cost: { type: DataTypes.DECIMAL(18, 3), allowNull: true },
   }, { tableName: 'invoice_lines' });
 };

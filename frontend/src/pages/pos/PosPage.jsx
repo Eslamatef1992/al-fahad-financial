@@ -88,7 +88,7 @@ function RailButton({ icon: Icon, label, onClick, badge, color = "slate" }) {
 }
 
 export default function PosPage() {
-	const { t } = useTranslation();
+	const { t, i18n } = useTranslation();
 	const navigate = useNavigate();
 	const activeCompany = useCompanyStore((s) => s.activeCompany);
 	const financialDefaults = useFinancialDefaults();
@@ -99,7 +99,20 @@ export default function PosPage() {
 	const [clients, setClients] = useState([]);
 	const [manufacturers, setManufacturers] = useState([]);
 	const [manufactureOrderOpen, setManufactureOrderOpen] = useState(false);
-	const [isManufactureOrder, setIsManufactureOrder] = useState(false);
+	const [isManufactureOrder, setIsManufactureOrderRaw] = useState(false);
+	const [mfgCategories, setMfgCategories] = useState([]);
+	const [mfgItems, setMfgItems] = useState([]);
+	const [mfgCat, setMfgCat] = useState("");
+	const [mfgSearch, setMfgSearch] = useState("");
+	const setIsManufactureOrder = (v) => {
+		setIsManufactureOrderRaw(v);
+		if (!v) {
+			setCart((prev) => {
+				if (prev.some((l) => l.item.is_manufacture)) toast(t("pos.mfgLinesRemoved", { defaultValue: "Manufacture items removed from the cart." }));
+				return prev.filter((l) => !l.item.is_manufacture);
+			});
+		}
+	};
 	const [manufacturerId, setManufacturerId] = useState("");
 	// Manufacture-order photos/files: new ones picked from the computer (uploaded after the
 	// sale is saved) + ones already stored on a resumed held sale.
@@ -374,6 +387,30 @@ export default function PosPage() {
 		}
 	};
 
+	useEffect(() => {
+		if (!isManufactureOrder || mfgCategories.length) return;
+		Api_load();
+		function Api_load() {
+			Promise.all([api.get("/manufacture-catalog/categories"), api.get("/manufacture-catalog/items")])
+				.then(([c, i]) => { setMfgCategories(c.data); setMfgItems(i.data); })
+				.catch(() => {});
+		}
+	}, [isManufactureOrder]);
+	const mfgShown = mfgItems.filter((i) => (!mfgCat || i.category_id === mfgCat)
+		&& (!mfgSearch.trim() || `${i.code} ${i.name_en} ${i.name_ar} ${i.color || ""}`.toLowerCase().includes(mfgSearch.trim().toLowerCase())));
+	const addMfgItem = (m) => {
+		const id = `mfg:${m.id}`;
+		const desc = [m.name_en, m.color, m.size, (m.height || m.length) ? `${m.height ?? ""}x${m.length ?? ""} ${m.dimension_unit}` : ""].filter(Boolean).join(" / ");
+		setCart((prev) => {
+			if (prev.find((l) => l.item.id === id)) return prev.map((l) => (l.item.id === id ? { ...l, quantity: l.quantity + 1 } : l));
+			return [...prev, {
+				item: { id, code: m.code, name_en: m.name_en, income_account_id: null, selling_price: m.selling_price, available_quantity: 999999, is_manufacture: true, manufacture_item_id: m.id },
+				quantity: 1, unit_price: Number(m.selling_price || 0), description: desc,
+				discount_code: "", discount_preview: null, discount_error: "", is_booked: false, delivery_date: "",
+			}];
+		});
+	};
+
 	const addToCart = (item) => {
 		if (Number(item.available_quantity) <= 0)
 			return toast.error(t("pos.outOfStock"));
@@ -584,7 +621,13 @@ export default function PosPage() {
 	};
 
 	const buildLines = () =>
-		cart.map((l) => ({
+		cart.map((l) => l.item.is_manufacture ? ({
+			manufacture_item_id: l.item.manufacture_item_id,
+			description: l.description || l.item.name_en,
+			quantity: l.quantity,
+			unit_price: l.unit_price,
+			discount_code: l.discount_code?.trim() || undefined,
+		}) : ({
 			account_id: l.item.income_account_id,
 			item_id: l.item.id,
 			description: l.description || l.item.name_en,
@@ -632,7 +675,15 @@ export default function PosPage() {
 	const resumeHeld = (sale) => {
 		setCart(
 			sale.lines.map((l) => ({
-				item: {
+				item: l.manufacture_item_id ? {
+					id: `mfg:${l.manufacture_item_id}`,
+					name_en: l.description,
+					income_account_id: null,
+					selling_price: l.unit_price,
+					available_quantity: 999999,
+					is_manufacture: true,
+					manufacture_item_id: l.manufacture_item_id,
+				} : {
 					id: l.item_id,
 					name_en: l.description,
 					income_account_id: l.account_id,
@@ -1034,6 +1085,34 @@ export default function PosPage() {
 									)}
 								</div>
 
+								{isManufactureOrder && (
+									<div className="mt-3 rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/10 p-3">
+										<div className="flex items-center justify-between gap-2 mb-2">
+											<p className="flex items-center gap-1.5 text-xs font-bold text-amber-700 uppercase tracking-wide"><Factory size={13} />{t("pos.mfgItems", { defaultValue: "Manufacture items" })}</p>
+											<input className="input !py-1 text-xs !w-40" placeholder={t("common.search", { defaultValue: "Search..." })} value={mfgSearch} onChange={(e) => setMfgSearch(e.target.value)} />
+										</div>
+										<div className="flex flex-wrap gap-1.5 mb-2">
+											{[{ id: "", name_en: t("common.all", { defaultValue: "All" }), name_ar: t("common.all", { defaultValue: "All" }) }, ...mfgCategories].map((c) => (
+												<button type="button" key={c.id || "all"} onClick={() => setMfgCat(c.id)}
+													className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${mfgCat === c.id ? "bg-amber-500 text-white border-amber-500" : "bg-white dark:bg-navy-900 text-slate-600 border-slate-200 dark:border-navy-700"}`}>
+													{i18n.language?.startsWith("ar") ? c.name_ar || c.name_en : c.name_en}
+												</button>
+											))}
+										</div>
+										<div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto">
+											{mfgShown.map((m) => (
+												<button type="button" key={m.id} onClick={() => addMfgItem(m)}
+													className="text-start rounded-lg bg-white dark:bg-navy-900 border border-slate-100 dark:border-navy-800 px-2.5 py-2 hover:border-amber-400 transition-colors">
+													<p className="text-xs font-semibold text-navy-900 dark:text-white truncate">{i18n.language?.startsWith("ar") ? m.name_ar || m.name_en : m.name_en}</p>
+													<p className="text-[11px] text-slate-400 truncate">{[m.color, m.size, (m.height || m.length) ? `${m.height ?? "—"}×${m.length ?? "—"} ${m.dimension_unit}` : ""].filter(Boolean).join(" · ") || m.code}</p>
+													<p className="text-xs font-bold text-amber-600 mt-0.5">{money(m.selling_price)}</p>
+												</button>
+											))}
+											{!mfgShown.length && <p className="col-span-2 text-xs text-slate-400 py-2 text-center">{t("pos.noMfgItems", { defaultValue: "No manufacture items." })}</p>}
+										</div>
+									</div>
+								)}
+
 								{isManufactureOrder && attachFiles.length + savedAttachments.length > 0 && (
 										<p className="flex items-center gap-1.5 mt-2 text-xs font-medium text-indigo-600">
 											<Paperclip size={13} className="shrink-0" />
@@ -1136,7 +1215,7 @@ export default function PosPage() {
 <tr className="bg-slate-50/50 dark:bg-navy-900/30">
 	<td colSpan={6} className="px-3 pb-2.5 pt-0">
 		<div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-			<label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+			{!l.item.is_manufacture && <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
 				<input
 					type="checkbox"
 					className="rounded"
@@ -1145,7 +1224,7 @@ export default function PosPage() {
 				/>
 				<CalendarClock size={13} className="text-slate-400" />
 				{t("invoices.bookForLater", { defaultValue: "Book for later delivery" })}
-			</label>
+			</label>}
 			{l.is_booked && (
 				<input
 					required

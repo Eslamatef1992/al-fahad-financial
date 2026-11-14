@@ -122,11 +122,13 @@ exports.get = async (req, res) => {
     const revenue = Number(l.line_subtotal || 0);
     // item cost is per item; if the same item is on several lines, split by quantity share
     const sameItemQty = inv.lines.filter((x) => x.item_id === l.item_id).reduce((s, x) => s + Number(x.quantity), 0) || 1;
-    const cost = l.item_id ? (costByItem.get(l.item_id) || 0) * (Number(l.quantity) / sameItemQty) : 0;
+    const cost = l.manufacture_item_id
+      ? Number(l.quantity) * Number(l.manufacture_unit_cost || 0) // made-to-order line: manufacturer cost
+      : (l.item_id ? (costByItem.get(l.item_id) || 0) * (Number(l.quantity) / sameItemQty) : 0);
     return {
       id: l.id, item_id: l.item_id, description: l.description, quantity: Number(l.quantity), unit_price: Number(l.unit_price),
       discount_amount: Number(l.discount_amount || 0), revenue: r3(revenue), cost: r3(cost), profit: r3(revenue - cost),
-      is_booked: !!l.is_booked, delivery_date: l.delivery_date,
+      is_booked: !!l.is_booked, delivery_date: l.delivery_date, is_manufacture_item: !!l.manufacture_item_id,
     };
   });
 

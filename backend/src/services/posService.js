@@ -3,7 +3,7 @@
 // module just adds the till/shift accountability and the cashier-facing
 // checkout flow (hold, split tender across Cash/Knet/Credit, void) on top of
 // invoiceService, so nothing about the core accounting engine had to change.
-const { sequelize, Invoice, InvoiceLine, InvoicePayment, PosShift, Client, FinancialSetting, UserCompany } = require('../models');
+const { sequelize, ManufactureItem, Invoice, InvoiceLine, InvoicePayment, PosShift, Client, FinancialSetting, UserCompany } = require('../models');
 const { Op } = require('sequelize');
 const invoiceService = require('./invoiceService');
 
@@ -121,6 +121,31 @@ async function createSale(companyId, userId, posProfile, payload) {
   const shift = await getOpenShift(companyId, userId);
   if (!shift) throw badRequest('Open a shift before starting a sale');
 
+  // Made-to-order lines: only allowed on a Manufacture Order, the catalog item
+  // decides the manufacturer cost (the client never sends it), and — having no
+  // stock item — they post to the company's default Income Account for Items.
+  const resolvedLines = [];
+  let mfgCostTotal = 0;
+  for (const l of lines || []) {
+    if (!l.manufacture_item_id) { resolvedLines.push(l); continue; }
+    if (!is_manufacture_order) throw badRequest('Manufacture items can only be sold on a Manufacture Order');
+    if (l.item_id) throw badRequest('A line cannot be both a stock item and a manufacture item');
+    const mi = await ManufactureItem.findOne({ where: { id: l.manufacture_item_id, company_id: companyId } });
+    if (!mi || !mi.is_active) throw badRequest('Unknown or inactive manufacture item');
+    let accountId = l.account_id;
+    if (!accountId) {
+      const fs = await FinancialSetting.findOne({ where: { company_id: companyId } });
+      accountId = fs?.item_income_account_id;
+      if (!accountId) throw badRequest('No default Income Account configured — set one in Financial Configuration first');
+    }
+    const unitCost = Number(mi.manufacturer_cost_price || 0);
+    mfgCostTotal += unitCost * Number(l.quantity || 0);
+    resolvedLines.push({
+      ...l, account_id: accountId, manufacture_item_id: mi.id, manufacture_unit_cost: unitCost,
+      description: l.description || mi.name_en, is_booked: false, delivery_date: undefined,
+    });
+  }
+
   const invoice = await invoiceService.createInvoice(companyId, userId, {
     type: 'sales',
     client_id,
@@ -130,7 +155,7 @@ async function createSale(companyId, userId, posProfile, payload) {
     branch_id: branch_id || shift.branch_id || null,
     cost_center_id: cost_center_id || null,
     notes,
-    lines,
+    lines: resolvedLines,
     discount_code,
     channel: 'pos',
     pos_shift_id: shift.id,
@@ -145,6 +170,7 @@ async function createSale(companyId, userId, posProfile, payload) {
     .filter((a) => a && typeof a.url === 'string' && a.url.startsWith(`/uploads/${companyId}/pos-attachments/`) && !a.url.includes('..'))
     .map((a) => ({ url: a.url, name: String(a.name || '').slice(0, 120) }));
   if (keep.length) await invoice.update({ attachments: keep });
+  if (mfgCostTotal > 0) await invoice.update({ manufacture_cost: Math.round(mfgCostTotal * 1000) / 1000 });
 
   if (action === 'hold') return invoice;
 
