@@ -3,7 +3,7 @@
 // module just adds the till/shift accountability and the cashier-facing
 // checkout flow (hold, split tender across Cash/Knet/Credit, void) on top of
 // invoiceService, so nothing about the core accounting engine had to change.
-const { sequelize, ManufactureItem, Invoice, InvoiceLine, InvoicePayment, PosShift, Client, FinancialSetting, UserCompany } = require('../models');
+const { sequelize, ManufactureItem, Account, Invoice, InvoiceLine, InvoicePayment, PosShift, Client, FinancialSetting, UserCompany } = require('../models');
 const { Op } = require('sequelize');
 const invoiceService = require('./invoiceService');
 
@@ -115,6 +115,23 @@ async function creditOutstanding(companyId, clientId, excludeInvoiceId) {
 // A 'credit' payment simply leaves that portion of the invoice unpaid against
 // the client's normal AR account — no separate ledger mechanism needed, it's
 // exactly how any partially-paid invoice already behaves.
+// Returns the account itself if postable, else its first active leaf descendant.
+async function resolveLeafAccount(companyId, accountId) {
+  const queue = [accountId];
+  const seen = new Set();
+  while (queue.length) {
+    const id = queue.shift();
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const acc = await Account.findOne({ where: { id, company_id: companyId } });
+    if (!acc) continue;
+    if (!acc.is_group) return acc.id;
+    const kids = await Account.findAll({ where: { company_id: companyId, parent_id: id }, order: [['code', 'ASC']] });
+    kids.forEach((k) => { if (k.is_active !== false) queue.push(k.id); });
+  }
+  throw badRequest('The default Income Account is a group with no postable sub-account — pick a leaf account in Financial Configuration');
+}
+
 async function createSale(companyId, userId, posProfile, payload) {
   const { branch_id, client_id, lines, discount_code, notes, action, payments, cost_center_id, delivery_date, delivery_address, is_manufacture_order, manufacturer_id, reference_no, date, due_date, attachments } = payload;
 
@@ -138,6 +155,9 @@ async function createSale(companyId, userId, posProfile, payload) {
       accountId = fs?.item_income_account_id;
       if (!accountId) throw badRequest('No default Income Account configured — set one in Financial Configuration first');
     }
+    // The configured default may be a header (group) account, which can't take
+    // postings — descend to its first postable (leaf) child instead.
+    accountId = await resolveLeafAccount(companyId, accountId);
     const unitCost = Number(mi.manufacturer_cost_price || 0);
     mfgCostTotal += unitCost * Number(l.quantity || 0);
     resolvedLines.push({
