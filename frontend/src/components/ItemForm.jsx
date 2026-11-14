@@ -123,8 +123,8 @@ export default function ItemForm({
                 <div className="grid lg:grid-cols-[1fr_240px] gap-6">
                   <div className="space-y-4">
                     <div className="grid sm:grid-cols-2 gap-3">
-                      <Field label={t('common.code')}>
-                        <input disabled className="input opacity-60" value={editing ? editing.code : L('Auto-generated on save', 'يُنشأ تلقائياً عند الحفظ')} />
+                      <Field label={L('Item number', 'رقم الصنف')}>
+                        <input className="input" value={form.code || ''} onChange={set('code')} placeholder={L('Auto-generated if empty', 'يُنشأ تلقائياً إذا ترك فارغاً')} />
                       </Field>
                       <Field label={L('Barcode', 'الباركود')}>
                         <input className="input" value={form.barcode || ''} onChange={set('barcode')} placeholder={L('Scan or type barcode', 'امسح أو اكتب الباركود')} />

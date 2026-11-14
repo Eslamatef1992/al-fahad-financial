@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { printInvoiceById } from '@/utils/printInvoice';
 import { mfgDetailParts } from '@/utils/mfgDetails';
 import { Link, useOutletContext, useSearchParams } from 'react-router-dom';
 import { Factory, Wallet, Hammer, TrendingUp, Paperclip, FileText, ExternalLink, Printer } from 'lucide-react';
@@ -132,7 +133,7 @@ export default function ManufactureOrdersPage() {
           <>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <Link to={`/invoices/${o.id}`} className="btn-ghost !py-1.5"><ExternalLink size={14} />{L('Open invoice', 'فتح الفاتورة')}</Link>
-              <button type="button" onClick={() => printFile(`/invoices/${o.id}/pdf`, {})} className="btn-ghost !py-1.5"><Printer size={14} />{L('Print', 'طباعة')}</button>
+              <button type="button" onClick={() => printInvoiceById(o.id)} className="btn-ghost !py-1.5"><Printer size={14} />{L('Print', 'طباعة')}</button>
               {o.client && <Link to="/clients" className="text-xs text-slate-400 hover:underline">{L('Customer', 'العميل')}: {isAr ? o.client.name_ar || o.client.name_en : o.client.name_en}{o.client.phone ? ` · ${o.client.phone}` : ''}</Link>}
             </div>
 

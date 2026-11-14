@@ -29,7 +29,8 @@ const empty = {
 const emptyVariant = { sku: '', attributes: {}, opening_quantity: 0, opening_cost: 0 };
 
 export default function ItemsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language?.startsWith('ar');
   const activeCompany = useCompanyStore((s) => s.activeCompany);
   const { canCreateEdit, canDelete } = usePermissions();
   const financialDefaults = useFinancialDefaults();
@@ -122,7 +123,7 @@ export default function ItemsPage() {
   const openEdit = (row) => {
     setEditing(row);
     setForm({
-      name_en: row.name_en, name_ar: row.name_ar, category_id: row.category_id || '', unit: row.unit, unit_id: row.unit_id || '',
+      code: row.code || '', name_en: row.name_en, name_ar: row.name_ar, category_id: row.category_id || '', unit: row.unit, unit_id: row.unit_id || '',
       sku: row.sku || '', variant_attributes: row.variant_attributes || [],
       inventory_account_id: row.inventory_account_id, income_account_id: row.income_account_id, cogs_account_id: row.cogs_account_id,
       selling_price: row.selling_price, reorder_level: row.reorder_level, opening_quantity: 0, opening_cost: 0,
@@ -276,7 +277,7 @@ export default function ItemsPage() {
     { key: 'image_url', label: t('items.image'), render: (r) => r.image_url ? (
       <img src={fileUrl(r.image_url)} alt="" className="w-8 h-8 rounded-lg object-cover" />
     ) : <span className="text-slate-300">—</span> },
-    { key: 'code', label: t('common.code') },
+    { key: 'code', label: isAr ? 'رقم الصنف' : 'Item number' },
     { key: 'sku', label: t('items.sku'), render: (r) => r.sku || '—' },
     { key: 'barcode', label: 'Barcode', render: (r) => r.barcode || '—' },
     { key: 'name_en', label: t('common.nameEn') },

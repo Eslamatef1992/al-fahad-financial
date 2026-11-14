@@ -184,7 +184,12 @@ async function createItem(companyId, userId, payload) {
     if (category_id) await validateCategory(companyId, category_id, t);
     if (unit_id) await validateUnit(companyId, unit_id, t);
 
-    const code = await nextItemCode(companyId);
+    let code = String(payload.code || '').trim();
+    if (code) {
+      if (await Item.findOne({ where: { company_id: companyId, code }, transaction: t })) throw badRequest(`Item number ${code} already exists`);
+    } else {
+      code = await nextItemCode(companyId);
+    }
     const qty = Number(opening_quantity || 0);
     const cost = Number(opening_cost || 0);
 
@@ -256,6 +261,11 @@ async function updateItem(companyId, itemId, payload) {
       await validateUnit(companyId, unit_id, t);
     }
 
+    const newCode = String(payload.code ?? '').trim();
+    if (newCode && newCode !== item.code) {
+      if (await Item.findOne({ where: { company_id: companyId, code: newCode }, transaction: t })) throw badRequest(`Item number ${newCode} already exists`);
+      await item.update({ code: newCode }, { transaction: t });
+    }
     await item.update({
       name_en: name_en ?? item.name_en,
       name_ar: name_ar ?? item.name_ar,

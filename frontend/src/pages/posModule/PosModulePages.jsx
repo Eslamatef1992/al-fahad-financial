@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { printInvoiceById } from '@/utils/printInvoice';
 import { Link, useOutletContext } from 'react-router-dom';
 import {
   ReceiptText, Wallet, Percent, Banknote, Clock, XCircle, Undo2, Timer, Printer, Eye, CreditCard, Tag, Boxes, Users, Building2,
@@ -50,7 +51,7 @@ function OrdersTable({ rows, loading, extraCols = [] }) {
             <Link to={`/invoices/${r.id}`} title={L('View', 'عرض')} className="p-2 rounded-lg hover:bg-sky-50 text-sky-500"><Eye size={15} /></Link>
           )}
           {r.status !== 'draft' && (
-            <button onClick={() => printFile(`/invoices/${r.id}/pdf`, {})} title={L('Print', 'طباعة')} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"><Printer size={15} /></button>
+            <button onClick={() => printInvoiceById(r.id)} title={L('Print', 'طباعة')} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"><Printer size={15} /></button>
           )}
         </>
       )}

@@ -41,9 +41,6 @@ export default function InvoiceDetailPage() {
   // Sales invoices: download the exact print layout (InvoicePrintTemplate, A5)
   // as a PDF by rasterizing it off-screen. Other types use the server PDF.
   const downloadPdf = async () => {
-    if (invoice.type !== 'sales') {
-      return downloadFile(`/invoices/${id}/pdf`, {}, `${invoice.invoice_no}.pdf`);
-    }
     setCapturing(true);
     try {
       await new Promise((r) => setTimeout(r, 50));
@@ -119,7 +116,7 @@ export default function InvoiceDetailPage() {
           <InvoicePrintTemplate invoice={invoice} company={activeCompany} />
         </div>
       )}
-      {invoice.type === 'sales' && (
+      {(
         <div className="hidden print:block">
           <InvoicePrintTemplate invoice={invoice} company={activeCompany} />
         </div>
@@ -131,7 +128,7 @@ export default function InvoiceDetailPage() {
         subtitle={`${invoice.type === 'sales' ? t('invoices.salesInvoice') : t('invoices.purchaseBill')} · ${invoice.date}`}
         actions={
           <div className="flex items-center gap-2">
-            <button onClick={() => (invoice.type === 'sales' ? window.print() : printFile(`/invoices/${id}/pdf`, {}))} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
+            <button onClick={() => window.print()} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
             <button onClick={downloadPdf} disabled={capturing} className="btn-ghost"><Download size={16} /> PDF</button>
             {invoice.status === 'draft' && canCreateEdit && (
               <button onClick={() => navigate(`/invoices/${invoice.type}/edit/${id}`)} className="btn-ghost"><Pencil size={16} /> {t('common.edit')}</button>
