@@ -132,6 +132,9 @@ export default function InvoicePrintTemplate({ invoice, company }) {
         .invoice-print .left-col { display: flex; flex-direction: column; gap: 1.5mm; }
         .invoice-print .box .field { font-size: 8.5px; margin: 1.8mm 0; }
         .invoice-print .receipt-note { font-size: 8.5px; font-weight: 700; line-height: 1.5; margin-bottom: 1mm; }
+        .invoice-print .addr-field { align-items: flex-start; }
+        .invoice-print .addr-field > span:first-child { padding-top: 0.5mm; }
+        .invoice-print .filled.addr { height: auto; min-height: 9px; overflow: visible; white-space: normal; line-height: 1.5; text-align: start; unicode-bidi: plaintext; word-break: break-word; }
         .invoice-print .blank-line { border-bottom: 1px dotted var(--ink-dark); height: 5.5mm; }
         .invoice-print .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; }
         .invoice-print .remarks { margin-top: 2.5mm; }
@@ -346,10 +349,10 @@ export default function InvoicePrintTemplate({ invoice, company }) {
 					</div>
 
 					<div className="box ar">
-						<div className="field">
+						<div className="field addr-field">
 							<span>: العنوان</span>
-							<span className="filled">
-								{client?.address || invoice.delivery_address || ""}
+							<span className="filled addr">
+								{invoice.delivery_address || client?.address || ""}
 							</span>
 						</div>
 						<div className="blank-line"></div>
