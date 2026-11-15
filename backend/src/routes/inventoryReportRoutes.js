@@ -4,6 +4,10 @@ const { requireAuth, requireCompany } = require('../middleware/auth');
 
 router.use(requireAuth, requireCompany);
 
+const an = require('../controllers/inventoryAnalyticsController');
+router.get('/dashboard', an.dashboard);
+router.get('/analytics/:type', an.report);
+
 router.get('/valuation', ctrl.valuation);
 router.get('/valuation/pdf', ctrl.valuationPdf);
 router.get('/valuation/excel', ctrl.valuationExcel);

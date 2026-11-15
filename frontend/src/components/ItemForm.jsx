@@ -126,6 +126,9 @@ export default function ItemForm({
                       <Field label={L('Item number', 'رقم الصنف')}>
                         <input className="input" value={form.code || ''} onChange={set('code')} placeholder={L('Auto-generated if empty', 'يُنشأ تلقائياً إذا ترك فارغاً')} />
                       </Field>
+                      <Field label={L('Expiry date', 'تاريخ الانتهاء')}>
+                        <input type="date" className="input" value={form.expiry_date || ''} onChange={set('expiry_date')} />
+                      </Field>
                       <Field label={L('Barcode', 'الباركود')}>
                         <input className="input" value={form.barcode || ''} onChange={set('barcode')} placeholder={L('Scan or type barcode', 'امسح أو اكتب الباركود')} />
                       </Field>

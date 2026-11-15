@@ -50,6 +50,8 @@ import AccountingModule from '@/pages/accounting/AccountingModule';
 import { AccDashboard, AccIncome, AccExpense, AccOnline, AccJournal, AccSettings } from '@/pages/accounting/AccountingPages';
 import RecurringVouchersPage from '@/pages/accounting/RecurringVouchersPage';
 import ManufactureOrdersPage from '@/pages/manufactureOrders/ManufactureOrdersPage';
+import InventoryDashboardPage from '@/pages/inventory/InventoryDashboardPage';
+import StockReportsPage from '@/pages/inventory/StockReportsPage';
 import ManufactureItemsPage from '@/pages/manufactureItems/ManufactureItemsPage';
 import QuickAccessPage from '@/pages/QuickAccess';
 import PosModule from '@/pages/posModule/PosModule';
@@ -105,6 +107,8 @@ export default function App() {
           <Route path="/invoices/:type/edit/:id" element={<InvoiceFormPage />} />
           <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
           <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
+          <Route path="/inventory" element={<InventoryDashboardPage />} />
+          <Route path="/inventory/reports" element={<StockReportsPage />} />
           <Route path="/items" element={<ItemsPage />} />
           <Route path="/units" element={<UnitsPage />} />
           <Route path="/manufacture-items" element={<ManufactureItemsPage />} />

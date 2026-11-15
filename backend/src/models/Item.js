@@ -39,6 +39,7 @@ module.exports = (sequelize, DataTypes) => {
     // ---- Extended item card (matches the classic ERP "Items" screen) ----
     // All nullable / defaulted so existing rows and API callers are unaffected.
     barcode: { type: DataTypes.STRING(60), allowNull: true },
+    expiry_date: { type: DataTypes.DATEONLY, allowNull: true },        // تاريخ الانتهاء (drives the Expiry report)
     // stock (مخزني) | service (خدمي) | assembled (مجمع) | finished (منتج نهائي)
     item_type: { type: DataTypes.STRING(20), defaultValue: 'stock' },
     is_rental: { type: DataTypes.BOOLEAN, defaultValue: false },       // صنف إيجار

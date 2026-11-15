@@ -6,7 +6,7 @@ import {
   Landmark, Wallet, PieChart, Building2, UserCog, ShieldCheck, FileText, FileMinus,
   RefreshCw, Boxes, ClipboardList, ArrowRightLeft, Percent, Ruler, Settings2, CalendarClock,
   ShoppingCart, UserCheck, AlertTriangle, Factory, CreditCard, ChevronDown, LayoutGrid,
-  Sun, Moon, LogOut, KeyRound, X, Zap, Briefcase, MonitorSmartphone, Hammer,
+  Sun, Moon, LogOut, KeyRound, X, Zap, Briefcase, MonitorSmartphone, Hammer, FileBarChart,
 } from 'lucide-react';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -47,6 +47,7 @@ export function buildGroups({ isSuperAdmin, isCompanyAdmin }) {
     {
       key: 'inventory', label: 'groupInventory',
       items: [
+        { to: '/inventory', icon: LayoutDashboard, en: 'Inventory Dashboard', ar: 'لوحة المخزون', end: true },
         { to: '/items', icon: Boxes, key: 'items' },
         { to: '/units', icon: Ruler, key: 'units' },
         { to: '/manufacture-items', icon: Hammer, key: 'manufactureItems' },
@@ -56,6 +57,7 @@ export function buildGroups({ isSuperAdmin, isCompanyAdmin }) {
         { to: '/suppliers', icon: Truck, key: 'suppliers' },
         { to: '/manufacturers', icon: Factory, key: 'manufacturers' },
         ...(isCompanyAdmin ? [{ to: '/damages', icon: AlertTriangle, key: 'damages' }] : []),
+        { to: '/inventory/reports', icon: FileBarChart, en: 'Stock Reports', ar: 'تقارير المخزون' },
       ],
     },
     {
