@@ -36,7 +36,7 @@ export function buildGroups({ isSuperAdmin, isCompanyAdmin }) {
       key: 'sales', label: 'groupSales',
       items: [
         { to: '/invoices/sales', icon: FileText, key: 'salesInvoices' },
-        { to: '/sales-returns', icon: Undo2, en: 'Sales Returns', ar: 'مرتجعات المبيعات' },
+        { to: '/sales-returns', icon: Undo2, en: 'Refunds & Returns', ar: 'المستردات والمرتجعات' },
         { to: '/client-movement', icon: GitMerge, en: 'Client Movement', ar: 'حركة العميل' },
         { to: '/warranty', icon: ShieldCheck, en: 'Warranty & Exchange', ar: 'الضمان والتبديل' },
         { to: '/recurring-invoices', icon: RefreshCw, key: 'recurringInvoices' },

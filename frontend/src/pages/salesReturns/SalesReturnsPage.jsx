@@ -43,7 +43,7 @@ export default function SalesReturnsPage() {
   return (
     <div>
       <PageHeader
-        title={L('Sales Returns (Credit Notes)', 'مرتجعات المبيعات (إشعارات دائنة)')}
+        title={L('Refunds & Returns (Credit Notes)', 'المستردات والمرتجعات (إشعارات دائنة)')}
         subtitle={L('Open an invoice and press “Return items” to create one', 'افتح الفاتورة واضغط «إرجاع أصناف» لإنشاء مرتجع')}
       />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">

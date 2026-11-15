@@ -21,7 +21,7 @@ export const ACC_MENU = [
   { to: 'vouchers', icon: Ticket, en: 'Vouchers', ar: 'السندات' },
   { to: 'recurring', icon: RefreshCw, en: 'Recurring Vouchers', ar: 'السندات المتكررة' },
   { to: 'journal', icon: BookOpenCheck, en: 'Journal Entries', ar: 'قيود اليومية', filters: true },
-  { to: 'returns', icon: Undo2, en: 'Sales Returns', ar: 'مرتجعات المبيعات' },
+  { to: 'returns', icon: Undo2, en: 'Refunds & Returns', ar: 'المستردات والمرتجعات' },
   { to: 'manufacture', icon: Factory, en: 'Manufactured Orders', ar: 'طلبات التصنيع', filters: true },
   { to: 'chart', icon: ListTree, en: 'Chart of Account', ar: 'دليل الحسابات' },
   { to: 'reports', icon: BarChart3, en: 'Reports', ar: 'التقارير' },

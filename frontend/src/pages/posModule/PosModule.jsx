@@ -17,7 +17,7 @@ export const POS_MENU = [
   { to: 'orders', icon: ReceiptText, en: 'Orders', ar: 'الطلبات' },
   { to: 'pending', icon: Clock, en: 'Pending orders', ar: 'الطلبات المعلقة' },
   { to: 'canceled', icon: XCircle, en: 'Canceled orders', ar: 'الطلبات الملغاة' },
-  { to: 'returns', icon: Undo2, en: 'Sales Returns', ar: 'مرتجعات المبيعات' },
+  { to: 'returns', icon: Undo2, en: 'Refunds & Returns', ar: 'المستردات والمرتجعات' },
   { to: 'client-movement', icon: GitMerge, en: 'Client movement', ar: 'حركة العميل' },
   { to: 'warranty', icon: ShieldCheck, en: 'Warranty & exchange', ar: 'الضمان والتبديل' },
   { to: 'gifts', icon: Gift, en: 'Gifts', ar: 'الهدايا' },
