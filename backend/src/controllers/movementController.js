@@ -69,6 +69,23 @@ async function invoiceMovement(companyId, invoiceId) {
   };
 }
 
+// Find a client by phone number / name, or an invoice by number (which leads to its client).
+exports.search = async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (q.length < 2) return res.json({ clients: [], invoices: [] });
+  const digits = q.replace(/[^\d]/g, '');
+  const like = { [Op.iLike]: `%${q}%` };
+  const clients = await Client.findAll({
+    where: { company_id: req.companyId, [Op.or]: [{ name_en: like }, { name_ar: like }, { code: like }, { phone: like }, ...(digits.length >= 3 ? [{ phone: { [Op.iLike]: `%${digits}%` } }] : [])] },
+    attributes: ['id', 'code', 'name_en', 'name_ar', 'phone'], limit: 10,
+  });
+  const invoices = await Invoice.findAll({
+    where: { company_id: req.companyId, type: 'sales', status: { [Op.ne]: 'draft' }, invoice_no: like },
+    include: [{ model: Client, as: 'client', attributes: ['id', 'name_en', 'name_ar', 'phone'] }], attributes: ['id', 'invoice_no', 'date', 'total', 'client_id'], order: [['date', 'DESC']], limit: 10,
+  });
+  res.json({ clients, invoices });
+};
+
 exports.invoice = async (req, res) => {
   const out = await invoiceMovement(req.companyId, req.params.id);
   if (!out) return res.status(404).json({ message: 'Invoice not found' });
