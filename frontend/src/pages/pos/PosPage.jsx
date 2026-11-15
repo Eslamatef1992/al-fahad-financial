@@ -1141,7 +1141,7 @@ export default function PosPage() {
 							const a = cart.find((l) => l.item.id === activeItemId);
 							return a ? (
 								<div className="mb-2">
-									<ItemStockStrip itemId={a.item.id} name={a.item.name_en} branchId={access?.shift?.branch_id || null} qtyInCart={Number(a.quantity)} sellingPrice={a.item.selling_price} />
+									<ItemStockStrip itemId={a.item.id} name={a.item.name_en} branchId={access?.shift?.branch_id || null} hideCost qtyInCart={Number(a.quantity)} sellingPrice={a.item.selling_price} />
 								</div>
 							) : null;
 						})()}
