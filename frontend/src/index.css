@@ -52,3 +52,21 @@ html[dir='ltr'] body { font-family: 'Inter', 'Tajawal', sans-serif; }
   .invoice-print, .invoice-print * { visibility: visible; }
   .invoice-print { position: absolute; inset: 0; }
 }
+
+/* Dense layout (Sales Invoice + POS): ERP-style compact screen so everything fits without scrolling. */
+.dense .card, .dense .card-lg { border-radius: 0.75rem; }
+.dense .p-3 { padding: 0.35rem 0.5rem !important; }
+.dense .p-4, .dense .p-5, .dense .sm\:p-5 { padding: 0.5rem 0.65rem !important; }
+.dense .px-4 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+.dense .py-3 { padding-top: 0.3rem !important; padding-bottom: 0.3rem !important; }
+.dense .mb-4, .dense .mb-3, .dense .mt-4 { margin-bottom: 0.4rem !important; margin-top: 0.4rem !important; }
+.dense .mt-2 { margin-top: 0.25rem !important; }
+.dense .gap-4, .dense .gap-3 { gap: 0.4rem !important; }
+.dense .space-y-5 > * + *, .dense .space-y-3 > * + *, .dense .space-y-4 > * + * { margin-top: 0.4rem !important; }
+.dense .input { padding: 0.2rem 0.5rem !important; font-size: 12px !important; min-height: 28px; border-radius: 0.5rem; }
+.dense textarea.input { min-height: 28px; }
+.dense .label { font-size: 10px !important; margin-bottom: 1px !important; }
+.dense .btn-ghost, .dense .btn-primary { padding: 0.25rem 0.6rem !important; font-size: 12px !important; }
+.dense table td, .dense table th { padding-top: 0.2rem !important; padding-bottom: 0.2rem !important; font-size: 12px; }
+.dense h3 { font-size: 13px; }
+.dense .text-4xl, .dense .text-3xl { font-size: 1.4rem !important; }

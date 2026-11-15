@@ -1,3 +1,4 @@
+import ItemStockStrip from '@/components/ItemStockStrip';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -45,6 +46,7 @@ export default function InvoiceFormPage() {
   const [clients, setClients] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [availableItems, setAvailableItems] = useState([]);
+  const [activeLine, setActiveLine] = useState(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
 
@@ -205,6 +207,7 @@ export default function InvoiceFormPage() {
   const pickItem = (idx, itemId) => {
     const item = availableItems.find((i) => i.id === itemId);
     if (!item) { updateLine(idx, { item_id: '' }); return; }
+    setActiveLine(idx);
     updateLine(idx, {
       item_id: itemId,
       item_query: '',
@@ -376,14 +379,14 @@ export default function InvoiceFormPage() {
   if (loading) return <p className="text-slate-400">{t('common.loading')}</p>;
 
   return (
-    <div>
+    <div className="dense">
       <button onClick={() => navigate(`/invoices/${type}`)} className="btn-ghost !px-2 mb-3"><ArrowLeft size={16} /> {t('common.back')}</button>
       <PageHeader title={isEdit
         ? (type === 'sales' ? t('invoices.editSalesInvoiceTitle') : t('invoices.editPurchaseBillTitle'))
         : (type === 'sales' ? t('invoices.newSalesInvoiceTitle') : t('invoices.newPurchaseBillTitle'))} />
 
       <form onSubmit={submit} className="space-y-5">
-        <div className="card p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="card p-5 grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {type === 'sales' && !isEdit ? (
             <div>
               <label className="label !flex items-center gap-1"><Users size={13} />{t('common.client')}</label>
@@ -450,9 +453,9 @@ export default function InvoiceFormPage() {
                 <label className="label !flex items-center gap-1"><CalendarClock size={13} />{t('invoices.deliveryDate')}</label>
                 <input type="date" className="input" value={header.delivery_date} onChange={(e) => setHeader({ ...header, delivery_date: e.target.value })} />
               </div>
-              <div className="sm:col-span-2">
+              <div className="col-span-2">
                 <label className="label">{t('invoices.deliveryAddress')}</label>
-                <textarea className="input" rows={2} value={header.delivery_address} onChange={(e) => setHeader({ ...header, delivery_address: e.target.value })} placeholder={t('invoices.deliveryAddressHint')} />
+                <textarea className="input" rows={1} value={header.delivery_address} onChange={(e) => setHeader({ ...header, delivery_address: e.target.value })} placeholder={t('invoices.deliveryAddressHint')} />
               </div>
             </>
           )}
@@ -472,7 +475,7 @@ export default function InvoiceFormPage() {
               {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
             </select>
           </div>
-          <div className="sm:col-span-2">
+          <div className="col-span-2">
             <label className="label !flex items-center gap-1.5"><Tag size={13} /> {t('invoices.discountCode')}</label>
             {!hasLineDiscounts && (
               <>
@@ -499,7 +502,7 @@ export default function InvoiceFormPage() {
             )}
             {hasLineDiscounts && <p className="text-xs text-slate-400">{t('invoices.lineDiscountHint')}</p>}
           </div>
-          <div className="sm:col-span-2"><label className="label">{t('common.notes')}</label><textarea className="input" rows={2} value={header.notes} onChange={(e) => setHeader({ ...header, notes: e.target.value })} /></div>
+          <div className="col-span-2"><label className="label">{t('common.notes')}</label><textarea className="input" rows={1} value={header.notes} onChange={(e) => setHeader({ ...header, notes: e.target.value })} /></div>
         </div>
 
         <div className="card p-5">
@@ -510,7 +513,7 @@ export default function InvoiceFormPage() {
 
           <div className="space-y-3">
             {lines.map((line, idx) => (
-              <motion.div key={idx} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-3 rounded-xl bg-slate-50 dark:bg-navy-800/40">
+              <motion.div key={idx} initial={{ opacity: 0 }} animate={{ opacity: 1 }} onFocusCapture={() => setActiveLine(idx)} className={`p-3 rounded-xl ${activeLine === idx ? 'bg-indigo-50/70 dark:bg-navy-800' : 'bg-slate-50 dark:bg-navy-800/40'}`}>
                 {isNewSales ? (
                   <div className="grid grid-cols-12 gap-2 items-start">
                     <div className="col-span-1 text-sm py-2 text-center text-slate-400 font-semibold">{idx + 1}</div>
@@ -556,6 +559,7 @@ export default function InvoiceFormPage() {
                     <input onKeyDown={handleLineKeyDown} type="number" step="0.001" placeholder={t('common.unitPrice')} className="input col-span-2 !py-2" value={line.unit_price} onChange={(e) => updateLine(idx, { unit_price: e.target.value })} />
                     <div className="col-span-1 text-sm py-2 text-end font-semibold">{computed[idx].total.toFixed(2)}</div>
                     <button type="button" onClick={() => removeLine(idx)} className="col-span-1 p-2 rounded-lg hover:bg-red-50 text-red-500 justify-self-center"><Trash2 size={15} /></button>
+                    {line.item_id && (() => { const it = availableItems.find((x) => x.id === line.item_id); const av = Number(it?.available_quantity ?? 0); return it ? <p className="col-span-12 -mt-1 ps-9 text-[11px] text-slate-400">{t('items.available', { defaultValue: 'Available' })}: <b className={av - Number(line.quantity || 0) < 0 ? 'text-rose-600' : 'text-emerald-600'}>{av}</b> · {t('items.booked', { defaultValue: 'Booked' })}: <b className="text-amber-600">{Number(it.booked_quantity || 0)}</b></p> : null; })()}
                   </div>
                 ) : (
                 <div className="grid grid-cols-13 gap-2 items-start">
@@ -632,6 +636,11 @@ export default function InvoiceFormPage() {
             ))}
           </div>
 
+          {isNewSales && activeLine !== null && lines[activeLine]?.item_id && (() => {
+            const it = availableItems.find((x) => x.id === lines[activeLine].item_id);
+            const same = lines.filter((l) => l.item_id === lines[activeLine].item_id).reduce((s, l) => s + Number(l.quantity || 0), 0);
+            return <div className="mt-2"><ItemStockStrip itemId={lines[activeLine].item_id} name={it?.name_en} branchId={header.branch_id || null} qtyInCart={same} sellingPrice={it?.selling_price} /></div>;
+          })()}
           <div className="flex items-center justify-end gap-6 mt-4 pt-4 border-t border-slate-100 dark:border-navy-800 text-sm">
             <div><span className="text-slate-400">{t('common.subtotal')}: </span><span className="font-semibold">{(subtotal + totalDiscount).toFixed(3)}</span></div>
             {totalDiscount > 0.0009 && (

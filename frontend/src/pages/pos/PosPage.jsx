@@ -1,3 +1,4 @@
+import ItemStockStrip from "@/components/ItemStockStrip";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import ReturnModal from "@/components/ReturnModal";
 import { printInvoiceById } from "@/utils/printInvoice";
@@ -78,6 +79,7 @@ export default function PosPage() {
 	const [clients, setClients] = useState([]);
 	const [manufacturers, setManufacturers] = useState([]);
 	const [salesPeople, setSalesPeople] = useState([]);
+	const [activeItemId, setActiveItemId] = useState(null);
 	const [salespersonId, setSalespersonId] = useState(() => localStorage.getItem("pos.salesperson") || "");
 	useEffect(() => { api.get("/sales-people").then((r) => setSalesPeople(r.data)).catch(() => {}); }, []);
 	useEffect(() => { localStorage.setItem("pos.salesperson", salespersonId || ""); }, [salespersonId]);
@@ -398,6 +400,7 @@ export default function PosPage() {
 	const addToCart = (item) => {
 		if (Number(item.available_quantity) <= 0)
 			return toast.error(t("pos.outOfStock"));
+		if (!item.is_manufacture) setActiveItemId(item.id);
 		setCart((prev) => {
 			const existing = prev.find((l) => l.item.id === item.id);
 			if (existing) {
@@ -850,7 +853,7 @@ export default function PosPage() {
 	}
 
 	return (
-		<div>
+		<div className="dense">
 			<PageHeader
 				title={t("nav.pos")}
 				subtitle={t("pos.shiftInfo", {
@@ -866,8 +869,8 @@ export default function PosPage() {
 				<div className="space-y-3 min-w-0">
 					{/* Header strip: client, quick code entry, coupon, total, hold/pay */}
 					<div className="card p-4 sm:p-5">
-						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-							<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-sky-50/40 dark:bg-sky-950/10">
+						<div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4">
+							<div className="col-span-2 rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-sky-50/40 dark:bg-sky-950/10">
 								<div className="flex items-center justify-between mb-2">
 									<label className="flex items-center gap-1.5 text-xs font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wide">
 										<Users size={13} />
@@ -991,7 +994,7 @@ export default function PosPage() {
 								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40 sm:col-span-2">
 									<label className="label !text-[11px] !mb-1.5">{t("invoices.deliveryAddress", { defaultValue: "Delivery Address" })}</label>
 									<textarea
-										rows={2}
+										rows={1}
 										className="input text-sm py-2"
 										value={deliveryAddress}
 										onChange={(e) => setDeliveryAddress(e.target.value)}
@@ -1134,7 +1137,15 @@ export default function PosPage() {
 							</div>
 						</div>
 
-						<div className="flex-1 overflow-y-auto max-h-[45vh] mb-3 border border-slate-100 dark:border-navy-800 rounded-xl">
+						{(() => {
+							const a = cart.find((l) => l.item.id === activeItemId);
+							return a ? (
+								<div className="mb-2">
+									<ItemStockStrip itemId={a.item.id} name={a.item.name_en} branchId={access?.shift?.branch_id || null} qtyInCart={Number(a.quantity)} sellingPrice={a.item.selling_price} />
+								</div>
+							) : null;
+						})()}
+						<div className="flex-1 overflow-y-auto max-h-[38vh] mb-2 border border-slate-100 dark:border-navy-800 rounded-xl">
 							<table className="w-full text-sm">
 								<thead>
 									<tr className="bg-slate-50 dark:bg-navy-900 text-[11px] uppercase tracking-wide text-slate-500 sticky top-0">
@@ -1160,7 +1171,8 @@ export default function PosPage() {
 									{cart.map((l) => (
 <Fragment key={l.item.id}>
 <tr
-											className="border-t border-slate-100 dark:border-navy-800 hover:bg-slate-50/70 dark:hover:bg-navy-900/50 transition-colors">
+											onClick={() => !l.item.is_manufacture && setActiveItemId(l.item.id)}
+											className={`border-t border-slate-100 dark:border-navy-800 transition-colors ${activeItemId === l.item.id ? "bg-indigo-50/60 dark:bg-navy-800" : "hover:bg-slate-50/70 dark:hover:bg-navy-900/50"}`}>
 											<td className="py-2 px-3 text-slate-400 whitespace-nowrap">
 												{l.item.code}
 											</td>
@@ -1170,6 +1182,14 @@ export default function PosPage() {
 														value={l.description ?? l.item.name_en}
 														onChange={(e) => updateCartLine(l.item.id, { description: e.target.value })}
 													/>
+													{!l.item.is_manufacture && (
+														<p className="text-[10px] text-slate-400 mt-0.5">
+															{t("items.available", { defaultValue: "Available" })}:{" "}
+															<b className={Number(l.item.available_quantity) - Number(l.quantity) < 0 ? "text-rose-600" : "text-emerald-600"}>{Number(l.item.available_quantity)}</b>
+															{" · "}{t("items.afterSale", { defaultValue: "After sale" })}:{" "}
+															<b>{Number(l.item.available_quantity) - Number(l.quantity)}</b>
+														</p>
+													)}
 											</td>
 											<td className="py-2 px-3">
 												<div className="flex items-center gap-1 justify-center">
