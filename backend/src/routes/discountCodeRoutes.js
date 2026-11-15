@@ -5,6 +5,7 @@ const { requireMinRole } = require('../middleware/permissions');
 
 router.use(requireAuth, requireCompany);
 router.get('/', ctrl.list);
+router.get('/tracking', requireMinRole('accountant'), ctrl.tracking);
 router.post('/preview', ctrl.preview);
 router.post('/', requireMinRole('accountant'), ctrl.create);
 router.put('/:id', requireMinRole('accountant'), ctrl.update);

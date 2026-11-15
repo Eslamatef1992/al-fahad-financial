@@ -12,9 +12,15 @@ exports.list = async (req, res) => res.json(await salesReturnService.listReturns
 exports.get = async (req, res) => res.json(await salesReturnService.getReturn(req.companyId, req.params.id));
 exports.returnable = async (req, res) => res.json(await salesReturnService.returnable(req.companyId, req.params.invoiceId));
 
+exports.confirmStock = async (req, res) => {
+  if (req.user.role !== 'super_admin') return res.status(403).json({ message: 'Only the super admin can confirm returned stock' });
+  await salesReturnService.confirmStock(req.companyId, req.user.id, req.params.id, req.body?.dispositions);
+  res.json(await salesReturnService.getReturn(req.companyId, req.params.id));
+};
+
 exports.create = async (req, res) => {
   await assertCanRefund(req);
   const shift = await posService.getOpenShift(req.companyId, req.user.id);
-  const ret = await salesReturnService.createReturn(req.companyId, req.user.id, { ...req.body, pos_shift_id: shift?.id || null });
+  const ret = await salesReturnService.createReturn(req.companyId, req.user.id, { ...req.body, pos_shift_id: shift?.id || null, auto_confirm: req.user.role === 'super_admin' });
   res.status(201).json(await salesReturnService.getReturn(req.companyId, ret.id));
 };

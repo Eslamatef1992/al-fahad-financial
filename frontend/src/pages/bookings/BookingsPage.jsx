@@ -26,7 +26,12 @@ export default function BookingsPage() {
   useEffect(() => { if (activeCompany) load(); }, [activeCompany, statusFilter]);
 
   const fulfill = async (row) => {
-    await api.post(`/bookings/${row.id}/fulfill`);
+    // Partial delivery: ask how many units are handed over now; the rest stays booked.
+    const ans = window.prompt(`Quantity to deliver now (booked: ${Number(row.quantity)})`, String(Number(row.quantity)));
+    if (ans === null) return;
+    const q = Number(ans);
+    if (!(q > 0) || q > Number(row.quantity)) return toast.error('Invalid quantity');
+    await api.post(`/bookings/${row.id}/fulfill`, { quantity: q });
     toast.success(t('bookings.fulfilled'));
     load();
   };

@@ -126,6 +126,9 @@ export default function ItemForm({
                       <Field label={L('Item number', 'رقم الصنف')}>
                         <input className="input" value={form.code || ''} onChange={set('code')} placeholder={L('Auto-generated if empty', 'يُنشأ تلقائياً إذا ترك فارغاً')} />
                       </Field>
+                      <Field label={L('Warranty (months)', 'الضمان (أشهر)')}>
+                        <input type="number" min="0" step="1" className="input" value={form.warranty_months ?? 0} onChange={set('warranty_months')} />
+                      </Field>
                       <Field label={L('Expiry date', 'تاريخ الانتهاء')}>
                         <input type="date" className="input" value={form.expiry_date || ''} onChange={set('expiry_date')} />
                       </Field>

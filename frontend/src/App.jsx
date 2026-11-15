@@ -1,4 +1,8 @@
 import { useEffect } from 'react';
+import ClientMovementPage from '@/pages/movement/ClientMovementPage';
+import WarrantyPage from '@/pages/warranty/WarrantyPage';
+import GiftsPage from '@/pages/gifts/GiftsPage';
+import SalesPeoplePage from '@/pages/salesPeople/SalesPeoplePage';
 import SalesReturnsPage from '@/pages/salesReturns/SalesReturnsPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useUiStore } from '@/store/uiStore';
@@ -108,6 +112,8 @@ export default function App() {
           <Route path="/invoices/:type/edit/:id" element={<InvoiceFormPage />} />
           <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
           <Route path="/sales-returns" element={<SalesReturnsPage />} />
+          <Route path="/warranty" element={<WarrantyPage />} />
+          <Route path="/client-movement" element={<ClientMovementPage />} />
           <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
           <Route path="/inventory" element={<InventoryDashboardPage />} />
           <Route path="/inventory/reports" element={<StockReportsPage />} />
@@ -126,6 +132,7 @@ export default function App() {
             <Route path="recurring" element={<RecurringVouchersPage />} />
             <Route path="journal" element={<AccJournal />} />
             <Route path="manufacture" element={<ManufactureOrdersPage />} />
+            <Route path="returns" element={<SalesReturnsPage />} />
             <Route path="chart" element={<ChartOfAccountsPage />} />
             <Route path="reports" element={<ReportsHubPage />} />
             <Route path="settings" element={<AccSettings />} />
@@ -135,6 +142,11 @@ export default function App() {
             <Route path="orders" element={<PosOrders />} />
             <Route path="pending" element={<PosPending />} />
             <Route path="manufacture" element={<ManufactureOrdersPage />} />
+            <Route path="returns" element={<SalesReturnsPage />} />
+            <Route path="sales-people" element={<SalesPeoplePage />} />
+            <Route path="gifts" element={<GiftsPage />} />
+            <Route path="warranty" element={<WarrantyPage />} />
+            <Route path="client-movement" element={<ClientMovementPage />} />
             <Route path="canceled" element={<PosCanceled />} />
             <Route path="consolidated" element={<PosConsolidated />} />
             <Route path="refunded" element={<PosRefunded />} />

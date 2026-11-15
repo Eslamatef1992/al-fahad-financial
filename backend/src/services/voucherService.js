@@ -2,9 +2,10 @@ const { sequelize, Voucher, VoucherLine, LedgerEntry, Account } = require('../mo
 
 const TYPE_PREFIX = { receipt: 'RV', payment: 'PV', journal: 'JV' };
 
-async function nextVoucherNo(companyId, voucherType) {
+async function nextVoucherNo(companyId, voucherType, t) {
   const prefix = TYPE_PREFIX[voucherType] || 'JV';
-  const count = await Voucher.count({ where: { company_id: companyId, voucher_type: voucherType } });
+  // Counted inside the caller's transaction so several vouchers created in one transaction get distinct numbers.
+  const count = await Voucher.count({ where: { company_id: companyId, voucher_type: voucherType }, transaction: t });
   return `${prefix}-${String(count + 1).padStart(6, '0')}`;
 }
 
@@ -34,7 +35,7 @@ async function createVoucher(companyId, userId, payload, externalT) {
   }
 
   const run = async (t) => {
-    const voucher_no = await nextVoucherNo(companyId, voucher_type);
+    const voucher_no = await nextVoucherNo(companyId, voucher_type, t);
     const voucher = await Voucher.create({
       company_id: companyId,
       cost_center_id: cost_center_id || null,

@@ -77,6 +77,7 @@ export default function ReturnModal({ invoiceId, onClose, onDone }) {
                 {Number(done.refunded_amount) > 0 && <> · {L('paid back', 'مردود نقداً')}: {n3(done.refunded_amount)}</>}
                 {Number(done.credited_amount) > 0 && <> · {L('client credit', 'رصيد للعميل')}: {n3(done.credited_amount)}</>}
               </p>
+              {done.stock_status === 'pending' && <p className="text-xs text-amber-600">{L('Returned goods will join available stock once the super admin confirms them.', 'ستنضم البضاعة المرتجعة إلى المخزون المتاح بعد تأكيد المدير العام.')}</p>}
               <div className="flex justify-center gap-2">
                 <button onClick={() => printCreditNote(done.id)} className="btn-ghost"><Printer size={16} />{L('Print credit note', 'طباعة إشعار دائن')}</button>
                 <button onClick={onClose} className="btn-primary">{L('Close', 'إغلاق')}</button>
@@ -104,11 +105,11 @@ export default function ReturnModal({ invoiceId, onClose, onDone }) {
                     </thead>
                     <tbody>
                       {info.lines.map((l) => {
-                        const blocked = l.is_booked || l.remaining_quantity <= 0;
+                        const blocked = l.remaining_quantity <= 0;
                         const v = sel[l.id] || {};
                         return (
                           <tr key={l.id} className={`border-t border-slate-100 dark:border-navy-800 ${blocked ? 'opacity-50' : ''}`}>
-                            <td className="px-3 py-2">{l.description || l.name_en}{l.is_booked && <span className="ms-2 text-[10px] text-amber-600">({L('booked — cancel booking instead', 'محجوز — الغِ الحجز بدلاً من ذلك')})</span>}</td>
+                            <td className="px-3 py-2">{l.description || l.name_en}{l.booked_pending > 0 && <span className="ms-2 text-[10px] text-amber-600">({l.booked_pending} {L('still booked — released first', 'ما زال محجوزاً — يُحرَّر أولاً')})</span>}</td>
                             <td className="px-3 py-2 text-end tabular-nums">{l.quantity}</td>
                             <td className="px-3 py-2 text-end tabular-nums">{l.returned_quantity}</td>
                             <td className="px-3 py-2 text-end">

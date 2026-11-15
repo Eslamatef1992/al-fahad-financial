@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import InvoiceMovementPanel from '@/pages/movement/InvoiceMovement';
 import { printInvoiceById } from '@/utils/printInvoice';
 import { Link, useOutletContext } from 'react-router-dom';
-import {
-  ReceiptText, Wallet, Percent, Banknote, Clock, XCircle, Undo2, Timer, Printer, Eye, CreditCard, Tag, Boxes, Users, Building2,
-} from 'lucide-react';
+import { ReceiptText, Wallet, Percent, Banknote, Clock, XCircle, Undo2, Timer, Printer, Eye, CreditCard, Tag, Boxes, Users, Building2, GitMerge } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import api, { printFile } from '@/api/client';
 import StatCard from '@/components/StatCard';
@@ -31,6 +30,7 @@ function StatusPill({ r, L }) {
 // Shared order-list builder used by Orders / Pending / Canceled / Refunded.
 function OrdersTable({ rows, loading, extraCols = [] }) {
   const { L, isAr, branchName, cashierName } = useOutletContext();
+  const [moveId, setMoveId] = useState(null);
   const columns = [
     { key: 'invoice_no', label: L('Invoice #', 'رقم الفاتورة') },
     { key: 'date', label: L('Date', 'التاريخ') },
@@ -42,7 +42,8 @@ function OrdersTable({ rows, loading, extraCols = [] }) {
     { key: 'status', label: L('Status', 'الحالة'), accessor: (r) => r.status, render: (r) => <StatusPill r={r} L={L} /> },
     ...extraCols,
   ];
-  return (
+  return (<>
+    <InvoiceMovementPanel invoiceId={moveId} onClose={() => setMoveId(null)} />
     <DataTable
       columns={columns} data={rows} loading={loading} pageSize={25}
       extraActions={(r) => (
@@ -51,12 +52,15 @@ function OrdersTable({ rows, loading, extraCols = [] }) {
             <Link to={`/invoices/${r.id}`} title={L('View', 'عرض')} className="p-2 rounded-lg hover:bg-sky-50 text-sky-500"><Eye size={15} /></Link>
           )}
           {r.status !== 'draft' && (
+            <button onClick={() => setMoveId(r.id)} title={L('Movement', 'الحركة')} className="p-2 rounded-lg hover:bg-violet-50 text-violet-500"><GitMerge size={15} /></button>
+          )}
+          {r.status !== 'draft' && (
             <button onClick={() => printInvoiceById(r.id)} title={L('Print', 'طباعة')} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"><Printer size={15} /></button>
           )}
         </>
       )}
     />
-  );
+  </>);
 }
 
 export function PosDashboard() {

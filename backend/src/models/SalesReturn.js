@@ -19,9 +19,17 @@ module.exports = (sequelize, DataTypes) => {
     total: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     // How the returned amount was settled:
     applied_to_invoice: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 }, // reduced the unpaid balance
+    applied_to_other: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },   // credit used to pay another invoice (exchange)
+    settled_invoice_id: { type: DataTypes.UUID, allowNull: true },
     refunded_amount: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },    // paid back out (cash/KNET)
     credited_amount: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },    // left as client credit
     refund_method: { type: DataTypes.STRING(20), allowNull: true },          // cash | knet | other | credit
+    // Returned goods re-enter sellable stock only after a super admin confirms them:
+    // none (nothing physical came back) | pending | confirmed
+    stock_status: { type: DataTypes.STRING(10), defaultValue: 'none' },
+    stock_confirmed_by: { type: DataTypes.UUID, allowNull: true },
+    stock_confirmed_at: { type: DataTypes.DATE, allowNull: true },
+    stock_voucher_id: { type: DataTypes.UUID, allowNull: true },
     voucher_id: { type: DataTypes.UUID, allowNull: true },
     refund_voucher_id: { type: DataTypes.UUID, allowNull: true },
     created_by: { type: DataTypes.UUID, allowNull: true },

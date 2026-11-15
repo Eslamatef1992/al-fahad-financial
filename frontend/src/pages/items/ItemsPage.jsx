@@ -12,7 +12,7 @@ import usePermissions from '@/hooks/usePermissions';
 import useFinancialDefaults from '@/hooks/useFinancialDefaults';
 
 const EXT_DEFAULTS = {
-  barcode: '', expiry_date: '', item_type: 'stock', is_rental: false, is_quick_search: false, dead_stock_months: 0,
+  barcode: '', expiry_date: '', warranty_months: 0, item_type: 'stock', is_rental: false, is_quick_search: false, dead_stock_months: 0,
   item_class: '', origin_country: '', color: '', brand: '', size: '', weight: '', model: '', model_part: '', part_number: '', season: '',
   category2_id: '', category3_id: '', category4_id: '', manufacturer_id: '', supplier_id: '', original_item_id: '', alternative_item_id: '',
   wholesale_price: 0, min_price: 0, notes: '', sort_order: 0, extra_data: [],

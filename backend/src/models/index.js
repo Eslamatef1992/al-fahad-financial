@@ -26,6 +26,10 @@ const RecurringInvoiceLine = require('./RecurringInvoiceLine')(sequelize, DataTy
 const RecurringVoucher = require('./RecurringVoucher')(sequelize, DataTypes);
 const ManufactureCategory = require('./ManufactureCategory')(sequelize, DataTypes);
 const ManufactureItem = require('./ManufactureItem')(sequelize, DataTypes);
+const ManufactureItemPrice = require('./ManufactureItemPrice')(sequelize, DataTypes);
+const WarrantyClaim = require('./WarrantyClaim')(sequelize, DataTypes);
+const SalesTarget = require('./SalesTarget')(sequelize, DataTypes);
+const SalesPerson = require('./SalesPerson')(sequelize, DataTypes);
 const SalesReturn = require('./SalesReturn')(sequelize, DataTypes);
 const SalesReturnLine = require('./SalesReturnLine')(sequelize, DataTypes);
 const EmployeeLeave = require('./EmployeeLeave')(sequelize, DataTypes);
@@ -59,7 +63,7 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, RecurringVoucher, ManufactureCategory, ManufactureItem, SalesReturn, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit, FinancialSetting, ItemBooking, PosShift, ItemDamage, Manufacturer, PaymentMethod];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, RecurringVoucher, ManufactureCategory, ManufactureItem, ManufactureItemPrice, SalesPerson, SalesTarget, WarrantyClaim, SalesReturn, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit, FinancialSetting, ItemBooking, PosShift, ItemDamage, Manufacturer, PaymentMethod];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
@@ -146,6 +150,9 @@ InvoiceLine.belongsTo(ItemVariant, { foreignKey: 'variant_id', as: 'variant' });
 Invoice.belongsTo(DiscountCode, { foreignKey: 'discount_code_id', as: 'discountCode' });
 InvoiceLine.belongsTo(DiscountCode, { foreignKey: 'discount_code_id', as: 'discountCode' });
 
+ManufactureItem.hasMany(ManufactureItemPrice, { foreignKey: 'item_id', as: 'prices', onDelete: 'CASCADE' });
+ManufactureItemPrice.belongsTo(Manufacturer, { foreignKey: 'manufacturer_id', as: 'manufacturer' });
+Invoice.belongsTo(SalesPerson, { foreignKey: 'salesperson_id', as: 'salesperson' });
 SalesReturn.hasMany(SalesReturnLine, { foreignKey: 'return_id', as: 'lines', onDelete: 'CASCADE' });
 SalesReturnLine.belongsTo(SalesReturn, { foreignKey: 'return_id', as: 'salesReturn' });
 SalesReturnLine.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
@@ -272,6 +279,10 @@ module.exports = {
   ManufactureItem,
   SalesReturn,
   SalesReturnLine,
+  ManufactureItemPrice,
+  SalesPerson,
+  SalesTarget,
+  WarrantyClaim,
   Account,
   CostCenter,
   Client,

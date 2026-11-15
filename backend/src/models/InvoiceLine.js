@@ -27,6 +27,12 @@ module.exports = (sequelize, DataTypes) => {
     // manufacturer charges per unit, snapshotted at sale time so later catalog
     // price changes never rewrite history. Null for ordinary stock/freehand lines.
     manufacture_item_id: { type: DataTypes.UUID, allowNull: true },
+    // Gift line: given free (price 0) but still issued from stock; gift_value keeps the normal retail value for reporting.
+    warranty_months: { type: DataTypes.INTEGER, allowNull: true },  // snapshot of the item's warranty at the time of sale
+    warranty_expires: { type: DataTypes.DATEONLY, allowNull: true },
+    is_gift: { type: DataTypes.BOOLEAN, defaultValue: false },
+    gift_value: { type: DataTypes.DECIMAL(18, 3), allowNull: true },
+    manufacturer_id: { type: DataTypes.UUID, allowNull: true }, // manufacturer chosen for a made-to-order line
     mfg_details: { type: DataTypes.JSON, allowNull: true }, // { size, height, color, notes } for manufacture orders
     manufacture_unit_cost: { type: DataTypes.DECIMAL(18, 3), allowNull: true },
   }, { tableName: 'invoice_lines' });

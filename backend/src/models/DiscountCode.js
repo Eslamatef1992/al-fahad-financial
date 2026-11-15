@@ -22,6 +22,10 @@ module.exports = (sequelize, DataTypes) => {
     expiry_date: { type: DataTypes.DATEONLY, allowNull: true },
     max_redemptions: { type: DataTypes.INTEGER, allowNull: true }, // null = unlimited
     min_invoice_amount: { type: DataTypes.DECIMAL(18, 3), allowNull: true }, // null = no minimum
+    // One-time coupon: may be redeemed on exactly one invoice, ever.
+    single_use: { type: DataTypes.BOOLEAN, defaultValue: false },
+    // Per-item coupon: when non-empty the code only discounts lines for these items (always line-scoped).
+    item_ids: { type: DataTypes.JSON, defaultValue: [] },
     is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
   }, {
     tableName: 'discount_codes',

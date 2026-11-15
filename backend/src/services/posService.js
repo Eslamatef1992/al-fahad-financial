@@ -3,7 +3,7 @@
 // module just adds the till/shift accountability and the cashier-facing
 // checkout flow (hold, split tender across Cash/Knet/Credit, void) on top of
 // invoiceService, so nothing about the core accounting engine had to change.
-const { sequelize, SalesReturn, ManufactureItem, Account, Invoice, InvoiceLine, InvoicePayment, PosShift, Client, FinancialSetting, UserCompany } = require('../models');
+const { sequelize, SalesReturn, SalesPerson, ManufactureItem, ManufactureItemPrice, Account, Invoice, InvoiceLine, InvoicePayment, PosShift, Client, FinancialSetting, UserCompany } = require('../models');
 const { Op } = require('sequelize');
 const invoiceService = require('./invoiceService');
 
@@ -135,7 +135,7 @@ async function resolveLeafAccount(companyId, accountId) {
 }
 
 async function createSale(companyId, userId, posProfile, payload) {
-  const { branch_id, client_id, lines, discount_code, notes, action, payments, cost_center_id, delivery_date, delivery_address, is_manufacture_order, manufacturer_id, reference_no, date, due_date, attachments } = payload;
+  const { branch_id, client_id, lines, discount_code, notes, action, payments, cost_center_id, delivery_date, delivery_address, is_manufacture_order, manufacturer_id, reference_no, date, due_date, attachments, salesperson_id } = payload;
 
   const shift = await getOpenShift(companyId, userId);
   if (!shift) throw badRequest('Open a shift before starting a sale');
@@ -160,10 +160,17 @@ async function createSale(companyId, userId, posProfile, payload) {
     // The configured default may be a header (group) account, which can't take
     // postings — descend to its first postable (leaf) child instead.
     accountId = await resolveLeafAccount(companyId, accountId);
-    const unitCost = Number(mi.manufacturer_cost_price || 0);
+    // Per-line manufacturer: its own quoted cost wins over the item's default cost.
+    let unitCost = Number(mi.manufacturer_cost_price || 0);
+    let lineMfr = mi.manufacturer_id || null;
+    if (l.manufacturer_id) {
+      const quote = await ManufactureItemPrice.findOne({ where: { item_id: mi.id, manufacturer_id: l.manufacturer_id } });
+      if (!quote) throw badRequest('That manufacturer has no price for this item');
+      unitCost = Number(quote.cost_price || 0); lineMfr = quote.manufacturer_id;
+    }
     mfgCostTotal += unitCost * Number(l.quantity || 0);
     resolvedLines.push({
-      ...l, account_id: accountId, manufacture_item_id: mi.id, manufacture_unit_cost: unitCost,
+      ...l, account_id: accountId, manufacture_item_id: mi.id, manufacture_unit_cost: unitCost, manufacturer_id: lineMfr,
       description: l.description || mi.name_en, is_booked: false, delivery_date: undefined,
     });
   }
@@ -184,7 +191,8 @@ async function createSale(companyId, userId, posProfile, payload) {
     delivery_date: delivery_date || null,
     delivery_address: delivery_address || null,
     is_manufacture_order: !!is_manufacture_order,
-    manufacturer_id: manufacturer_id || null,
+    manufacturer_id: manufacturer_id || resolvedLines.find((x) => x.manufacturer_id)?.manufacturer_id || null,
+    salesperson_id: salesperson_id || null,
   });
 
   // Re-attach files carried over from a resumed held sale (same company folder only).

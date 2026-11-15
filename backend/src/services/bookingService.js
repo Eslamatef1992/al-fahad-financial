@@ -11,7 +11,7 @@ const voucherService = require('./voucherService');
 function badRequest(message) { const e = new Error(message); e.status = 400; return e; }
 function notFound(message) { const e = new Error(message || 'Booking not found'); e.status = 404; return e; }
 
-async function fulfillBooking(companyId, bookingId, userId, { date } = {}) {
+async function fulfillBooking(companyId, bookingId, userId, { date, quantity } = {}) {
   return sequelize.transaction(async (t) => {
     const booking = await ItemBooking.findOne({
       where: { id: bookingId, company_id: companyId },
@@ -21,12 +21,25 @@ async function fulfillBooking(companyId, bookingId, userId, { date } = {}) {
     if (!booking) throw notFound();
     if (booking.status !== 'pending') throw badRequest('Only a pending booking can be fulfilled');
 
+    // Partial delivery: hand over only `quantity` units now; the rest stays booked.
+    let target = booking;
+    const qty = quantity ? Number(quantity) : Number(booking.quantity);
+    if (!(qty > 0) || qty > Number(booking.quantity) + 0.0005) throw badRequest(`Quantity must be between 0 and ${Number(booking.quantity)}`);
+    if (qty < Number(booking.quantity) - 0.0005) {
+      target = await ItemBooking.create({
+        company_id: booking.company_id, item_id: booking.item_id, variant_id: booking.variant_id, branch_id: booking.branch_id,
+        invoice_id: booking.invoice_id, invoice_line_id: booking.invoice_line_id, client_id: booking.client_id,
+        delivery_date: booking.delivery_date, notes: booking.notes, created_by: booking.created_by, quantity: qty, status: 'pending',
+      }, { transaction: t });
+      await booking.update({ quantity: Math.round((Number(booking.quantity) - qty) * 1000) / 1000 }, { transaction: t });
+    }
+
     const issueDate = date || new Date().toISOString().slice(0, 10);
     const { item, cogsAmount } = await itemService.issueStock(companyId, booking.item_id, {
-      quantity: Number(booking.quantity),
+      quantity: Number(target.quantity),
       date: issueDate,
       referenceType: 'booking',
-      referenceId: booking.id,
+      referenceId: target.id,
       userId,
       notes: 'Booked item delivered',
       branchId: booking.branch_id,
@@ -46,8 +59,8 @@ async function fulfillBooking(companyId, bookingId, userId, { date } = {}) {
       await voucherService.postVoucher(companyId, voucher.id, t);
     }
 
-    await booking.update({ status: 'fulfilled', fulfilled_at: new Date() }, { transaction: t });
-    return booking;
+    await target.update({ status: 'fulfilled', fulfilled_at: new Date() }, { transaction: t });
+    return target;
   });
 }
 

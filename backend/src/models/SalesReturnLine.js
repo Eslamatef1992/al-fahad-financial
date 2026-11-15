@@ -11,6 +11,8 @@ module.exports = (sequelize, DataTypes) => {
     line_subtotal: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     line_tax: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     line_total: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
+    release_qty: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 }, // part of the quantity that was only a booking (released, never delivered)
+    stock_status: { type: DataTypes.STRING(10), defaultValue: 'none' },  // none | pending | confirmed
     disposition: { type: DataTypes.STRING(12), defaultValue: 'restock' }, // restock | damaged
     unit_cost: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },       // original sale cost of the goods
   }, { tableName: 'sales_return_lines' });

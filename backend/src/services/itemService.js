@@ -123,7 +123,7 @@ async function resolveTarget(companyId, itemId, { branchId, variantId }, t) {
 const EXT_TEXT = ['barcode', 'expiry_date', 'item_class', 'origin_country', 'color', 'brand', 'size', 'model', 'model_part', 'part_number', 'season', 'notes'];
 const EXT_UUID = ['category2_id', 'category3_id', 'category4_id', 'manufacturer_id', 'supplier_id', 'original_item_id', 'alternative_item_id'];
 const EXT_NUM = ['wholesale_price', 'min_price'];
-const EXT_INT = ['dead_stock_months', 'sort_order'];
+const EXT_INT = ['dead_stock_months', 'sort_order', 'warranty_months'];
 const EXT_BOOL = ['is_rental', 'is_quick_search'];
 const ITEM_TYPES = ['stock', 'service', 'assembled', 'finished'];
 

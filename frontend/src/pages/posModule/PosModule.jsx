@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard, ReceiptText, Clock, XCircle, GitMerge, Undo2, Repeat, Building2, PackageX,
-  ArrowLeftRight, Timer, Users, BarChart3, Settings, CalendarDays, MonitorSmartphone, Factory,
+  ArrowLeftRight, Timer, Users, BarChart3, Settings, CalendarDays, MonitorSmartphone, Factory, Gift, ShieldCheck,
 } from 'lucide-react';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
@@ -17,6 +17,11 @@ export const POS_MENU = [
   { to: 'orders', icon: ReceiptText, en: 'Orders', ar: 'الطلبات' },
   { to: 'pending', icon: Clock, en: 'Pending orders', ar: 'الطلبات المعلقة' },
   { to: 'canceled', icon: XCircle, en: 'Canceled orders', ar: 'الطلبات الملغاة' },
+  { to: 'returns', icon: Undo2, en: 'Sales Returns', ar: 'مرتجعات المبيعات' },
+  { to: 'client-movement', icon: GitMerge, en: 'Client movement', ar: 'حركة العميل' },
+  { to: 'warranty', icon: ShieldCheck, en: 'Warranty & exchange', ar: 'الضمان والتبديل' },
+  { to: 'gifts', icon: Gift, en: 'Gifts', ar: 'الهدايا' },
+  { to: 'sales-people', icon: Users, en: 'Sales people & targets', ar: 'مندوبو المبيعات والأهداف' },
   { to: 'manufacture', icon: Factory, en: 'Manufactured orders', ar: 'طلبات التصنيع' },
   { to: 'consolidated', icon: GitMerge, en: 'Consolidated Invoices', ar: 'الفواتير المجمعة' },
   { to: 'refunded', icon: Undo2, en: 'Refunded orders', ar: 'الطلبات المستردة' },

@@ -12,7 +12,7 @@
 const { Op } = require('sequelize');
 const {
   sequelize, Invoice, InvoiceLine, InventoryTransaction, Item, Client, FinancialSetting, ItemDamage,
-  SalesReturn, SalesReturnLine,
+  SalesReturn, SalesReturnLine, ItemBooking,
 } = require('../models');
 const voucherService = require('./voucherService');
 const itemService = require('./itemService');
@@ -47,6 +47,9 @@ async function returnable(companyId, invoiceId) {
   if (!invoice) throw notFound('Invoice not found');
   const lines = await InvoiceLine.findAll({ where: { invoice_id: invoiceId }, include: [{ model: Item, as: 'item' }], order: [['line_order', 'ASC']] });
   const done = await returnedByLine(invoiceId);
+  const bookings = await ItemBooking.findAll({ where: { invoice_id: invoiceId, status: 'pending' } });
+  const pendingBooked = new Map();
+  bookings.forEach((b) => pendingBooked.set(b.invoice_line_id, (pendingBooked.get(b.invoice_line_id) || 0) + Number(b.quantity)));
   return {
     invoice: {
       id: invoice.id, invoice_no: invoice.invoice_no, status: invoice.status, total: Number(invoice.total), paid_total: Number(invoice.paid_total),
@@ -60,6 +63,7 @@ async function returnable(companyId, invoiceId) {
         id: l.id, description: l.description, item_id: l.item_id, code: l.item?.code || null, name_en: l.item?.name_en || null, name_ar: l.item?.name_ar || null,
         quantity: qty, returned_quantity: d.qty, remaining_quantity: Math.max(0, qty - d.qty), unit_price: Number(l.unit_price),
         line_total: Number(l.line_total), is_booked: !!l.is_booked, is_manufacture_item: !!l.manufacture_item_id, has_stock: !!l.item_id,
+        booked_pending: pendingBooked.get(l.id) || 0,
       };
     }),
   };
@@ -88,7 +92,6 @@ async function createReturn(companyId, userId, payload) {
     for (const w of wanted) {
       const il = invLines.find((x) => x.id === w.invoice_line_id);
       if (!il) throw badRequest('A selected line does not belong to this invoice');
-      if (il.is_booked) throw badRequest(`"${il.description}" is a booked line — cancel the booking instead of returning it`);
       const prev = done.get(il.id) || { qty: 0, subtotal: 0, tax: 0 };
       const qty = Number(w.quantity);
       const remaining = Number(il.quantity) - prev.qty;
@@ -98,14 +101,24 @@ async function createReturn(companyId, userId, payload) {
       const tax = isFinal ? r3(Number(il.line_tax) - prev.tax) : r3((Number(il.line_tax) * qty) / Number(il.quantity));
       const disposition = w.disposition === 'damaged' ? 'damaged' : 'restock';
 
-      let unitCost = 0;
-      if (il.item_id) {
+      // A booked line may be part-delivered: units still only reserved are released first,
+      // only the delivered remainder physically comes back.
+      let releaseQty = 0; let unitCost = 0;
+      if (il.item_id && il.is_booked) {
+        const bks = await ItemBooking.findAll({ where: { invoice_line_id: il.id }, transaction: t });
+        const pending = bks.filter((b) => b.status === 'pending').reduce((s2, b) => s2 + Number(b.quantity), 0);
+        releaseQty = Math.min(qty, pending);
+        for (const b of bks.filter((x) => x.status === 'fulfilled')) {
+          const mv = await InventoryTransaction.findOne({ where: { reference_type: 'booking', reference_id: b.id, item_id: il.item_id, type: 'sale' }, transaction: t });
+          if (mv) { unitCost = Number(mv.unit_cost); break; }
+        }
+      } else if (il.item_id) {
         const mv = await InventoryTransaction.findOne({
           where: { reference_type: 'invoice', reference_id: invoice.id, item_id: il.item_id, variant_id: il.variant_id || null, type: 'sale' }, transaction: t,
         });
         unitCost = mv ? Number(mv.unit_cost) : 0;
       }
-      prepared.push({ il, qty, subtotal, tax, total: r3(subtotal + tax), disposition, unitCost });
+      prepared.push({ il, qty, subtotal, tax, total: r3(subtotal + tax), disposition, unitCost, releaseQty });
     }
 
     const subtotalSum = r3(prepared.reduce((s, p) => s + p.subtotal, 0));
@@ -129,36 +142,34 @@ async function createReturn(companyId, userId, payload) {
     vLines.push({ account_id: client.account_id, debit: 0, credit: R, description: desc, client_id: invoice.client_id });
 
     let mfgReduce = 0;
+    let hasPhysical = false;
+    const createdLines = [];
     for (const p of prepared) {
       const il = p.il;
-      await SalesReturnLine.create({
+      const physicalQty = il.item_id ? r3(p.qty - p.releaseQty) : 0;
+      if (physicalQty > 0) hasPhysical = true;
+      createdLines.push(await SalesReturnLine.create({
         return_id: ret.id, invoice_line_id: il.id, item_id: il.item_id, variant_id: il.variant_id || null, description: il.description,
         quantity: p.qty, unit_price: il.unit_price, line_subtotal: p.subtotal, line_tax: p.tax, line_total: p.total,
+        release_qty: p.releaseQty, stock_status: physicalQty > 0 ? 'pending' : 'none',
         disposition: il.item_id ? p.disposition : 'restock', unit_cost: p.unitCost,
-      }, { transaction: t });
-
+      }, { transaction: t }));
       if (il.manufacture_item_id) mfgReduce += p.qty * Number(il.manufacture_unit_cost || 0);
-      if (!il.item_id) continue;
-      const item = await Item.findByPk(il.item_id, { transaction: t });
 
-      if (p.disposition === 'damaged') {
-        await ItemDamage.create({
-          company_id: companyId, item_id: il.item_id, variant_id: il.variant_id || null, branch_id: invoice.branch_id, quantity: p.qty,
-          unit_cost: p.unitCost, damage_type: 'customer_return', status: 'cleared', notes: `Returned damaged — ${ret.return_no}`,
-          reported_by: userId, cleared_by: userId, cleared_at: new Date(),
-        }, { transaction: t });
-        continue; // goods are lost: no stock back, COGS stays as the write-off
-      }
-      await itemService.receiveStock(companyId, il.item_id, {
-        quantity: p.qty, unitCost: p.unitCost, date, referenceType: 'sales_return', referenceId: ret.id, userId,
-        notes: `Return ${ret.return_no} of ${invoice.invoice_no}`, type: 'adjustment', branchId: invoice.branch_id, variantId: il.variant_id,
-      }, t);
-      const cost = r3(p.qty * p.unitCost);
-      if (cost > 0.0009) {
-        vLines.push({ account_id: item.inventory_account_id, debit: cost, credit: 0, description: `Restock - ${item.name_en} (${ret.return_no})` });
-        vLines.push({ account_id: item.cogs_account_id, debit: 0, credit: cost, description: `Restock - ${item.name_en} (${ret.return_no})` });
+      // Release the reserved (never delivered) part of a booked line right away.
+      if (p.releaseQty > 0) {
+        let left = p.releaseQty;
+        const pend = await ItemBooking.findAll({ where: { invoice_line_id: il.id, status: 'pending' }, order: [['created_at', 'ASC']], transaction: t });
+        for (const b of pend) {
+          if (left <= 0) break;
+          const take = Math.min(left, Number(b.quantity));
+          if (take >= Number(b.quantity) - 0.0005) await b.update({ status: 'cancelled', notes: `Released by ${ret.return_no}` }, { transaction: t });
+          else await b.update({ quantity: r3(Number(b.quantity) - take) }, { transaction: t });
+          left -= take;
+        }
       }
     }
+    await ret.update({ stock_status: hasPhysical ? 'pending' : 'none' }, { transaction: t });
 
     const voucher = await voucherService.createVoucher(companyId, userId, {
       voucher_type: 'journal', date, description: `Sales Return ${ret.return_no} — ${invoice.invoice_no}`,
@@ -169,7 +180,20 @@ async function createReturn(companyId, userId, payload) {
     // ---- settle the money ----
     const outstanding = Math.max(0, Number(invoice.total) - Number(invoice.paid_total));
     const offset = r3(Math.min(R, outstanding));
-    const remainder = r3(R - offset);
+    let remainder = r3(R - offset);
+    // Exchange: the credit first pays for the replacement item's invoice.
+    let appliedOther = 0;
+    if (payload.settle_against_invoice_id && remainder > 0.0005) {
+      const other = await Invoice.findOne({ where: { id: payload.settle_against_invoice_id, company_id: companyId }, transaction: t, lock: t.LOCK.UPDATE });
+      if (other && other.type === 'sales' && other.client_id === invoice.client_id && ['posted', 'partially_paid'].includes(other.status)) {
+        appliedOther = r3(Math.min(remainder, Math.max(0, Number(other.total) - Number(other.paid_total))));
+        if (appliedOther > 0) {
+          const np = r3(Number(other.paid_total) + appliedOther);
+          await other.update({ paid_total: np, status: np >= Number(other.total) - 0.001 ? 'paid' : 'partially_paid' }, { transaction: t });
+          remainder = r3(remainder - appliedOther);
+        }
+      }
+    }
     let refunded = 0; let credited = 0; let refundVoucherId = null;
     if (remainder > 0.0005) {
       if (method === 'credit') {
@@ -200,7 +224,62 @@ async function createReturn(companyId, userId, payload) {
       manufacture_cost: Math.max(0, r3(Number(invoice.manufacture_cost || 0) - mfgReduce)),
     }, { transaction: t });
 
-    await ret.update({ voucher_id: voucher.id, refund_voucher_id: refundVoucherId, applied_to_invoice: offset, refunded_amount: refunded, credited_amount: credited }, { transaction: t });
+    await ret.update({ voucher_id: voucher.id, refund_voucher_id: refundVoucherId, applied_to_invoice: offset, applied_to_other: appliedOther, settled_invoice_id: appliedOther > 0 ? payload.settle_against_invoice_id : null, refunded_amount: refunded, credited_amount: credited }, { transaction: t });
+    // A super admin processing the return confirms the goods in the same step.
+    if (hasPhysical && payload.auto_confirm) await applyStock(companyId, userId, ret, invoice, null, t);
+    return ret;
+  });
+}
+
+// Puts the physically returned goods of a return into stock (or the damaged log) and
+// posts the Dr Inventory / Cr COGS entry for the restocked ones. `overrides` lets the
+// confirming super admin change a line's disposition: { [returnLineId]: 'restock'|'damaged' }.
+async function applyStock(companyId, userId, ret, invoice, overrides, t) {
+  const lines = await SalesReturnLine.findAll({ where: { return_id: ret.id, stock_status: 'pending' }, transaction: t });
+  const vLines = [];
+  for (const rl of lines) {
+    const disposition = overrides?.[rl.id] === 'damaged' ? 'damaged' : (overrides?.[rl.id] === 'restock' ? 'restock' : rl.disposition);
+    const physicalQty = r3(Number(rl.quantity) - Number(rl.release_qty || 0));
+    const item = await Item.findByPk(rl.item_id, { transaction: t });
+    if (disposition === 'damaged') {
+      await ItemDamage.create({
+        company_id: companyId, item_id: rl.item_id, variant_id: rl.variant_id || null, branch_id: invoice.branch_id, quantity: physicalQty,
+        unit_cost: rl.unit_cost, damage_type: 'customer_return', status: 'cleared', notes: `Returned damaged — ${ret.return_no}`,
+        reported_by: userId, cleared_by: userId, cleared_at: new Date(),
+      }, { transaction: t });
+    } else {
+      await itemService.receiveStock(companyId, rl.item_id, {
+        quantity: physicalQty, unitCost: Number(rl.unit_cost), date: new Date().toISOString().slice(0, 10), referenceType: 'sales_return', referenceId: ret.id, userId,
+        notes: `Return ${ret.return_no} of ${invoice.invoice_no}`, type: 'adjustment', branchId: invoice.branch_id, variantId: rl.variant_id,
+      }, t);
+      const cost = r3(physicalQty * Number(rl.unit_cost));
+      if (cost > 0.0009) {
+        vLines.push({ account_id: item.inventory_account_id, debit: cost, credit: 0, description: `Restock - ${item.name_en} (${ret.return_no})` });
+        vLines.push({ account_id: item.cogs_account_id, debit: 0, credit: cost, description: `Restock - ${item.name_en} (${ret.return_no})` });
+      }
+    }
+    await rl.update({ disposition, stock_status: 'confirmed' }, { transaction: t });
+  }
+  let voucherId = null;
+  if (vLines.length) {
+    const v = await voucherService.createVoucher(companyId, userId, {
+      voucher_type: 'journal', date: new Date().toISOString().slice(0, 10), description: `Return stock ${ret.return_no} — ${invoice.invoice_no}`,
+      branch_id: invoice.branch_id, lines: vLines,
+    }, t);
+    await voucherService.postVoucher(companyId, v.id, t);
+    voucherId = v.id;
+  }
+  await ret.update({ stock_status: 'confirmed', stock_confirmed_by: userId, stock_confirmed_at: new Date(), stock_voucher_id: voucherId }, { transaction: t });
+}
+
+// Super admin confirms the goods really came back: they join available stock.
+async function confirmStock(companyId, userId, returnId, overrides) {
+  return sequelize.transaction(async (t) => {
+    const ret = await SalesReturn.findOne({ where: { id: returnId, company_id: companyId }, transaction: t, lock: t.LOCK.UPDATE });
+    if (!ret) throw notFound('Return not found');
+    if (ret.stock_status !== 'pending') throw badRequest('This return has no goods waiting for confirmation');
+    const invoice = await Invoice.findByPk(ret.invoice_id, { transaction: t });
+    await applyStock(companyId, userId, ret, invoice, overrides, t);
     return ret;
   });
 }
@@ -225,4 +304,4 @@ async function listReturns(companyId, { from, to, branch_id, invoice_id } = {}) 
   });
 }
 
-module.exports = { createReturn, returnable, getReturn, listReturns };
+module.exports = { confirmStock, createReturn, returnable, getReturn, listReturns };

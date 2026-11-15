@@ -62,10 +62,20 @@ async function usageCount(companyId, discountCodeId, excludeInvoiceId, t) {
   return idSet.size;
 }
 
+const effectiveMax = (code) => (code.single_use ? 1 : code.max_redemptions);
+
 async function checkUsageAvailable(companyId, code, excludeInvoiceId, t) {
-  if (code.max_redemptions == null) return;
+  const max = effectiveMax(code);
+  if (max == null) return;
   const used = await usageCount(companyId, code.id, excludeInvoiceId, t);
-  if (used >= code.max_redemptions) throw badRequest(`"${code.code}" has reached its usage limit (${code.max_redemptions})`);
+  if (used >= max) throw badRequest(code.single_use ? `"${code.code}" is a one-time coupon and was already used` : `"${code.code}" has reached its usage limit (${max})`);
+}
+
+// A per-item coupon only discounts lines for its listed items.
+function checkItem(code, itemId) {
+  const ids = Array.isArray(code.item_ids) ? code.item_ids : [];
+  if (!ids.length) return;
+  if (!itemId || !ids.includes(itemId)) throw badRequest(`"${code.code}" is valid only for specific items — this item is not one of them`);
 }
 
 function computeAmount(code, baseAmount) {
@@ -112,6 +122,7 @@ async function resolveDiscounts(companyId, { lines, discount_code, excludeInvoic
   if (discount_code) {
     const code = await findUsableCode(companyId, discount_code, t);
     checkScope(code, 'invoice');
+    if (Array.isArray(code.item_ids) && code.item_ids.length) throw badRequest(`"${code.code}" is a per-item coupon — apply it on the individual item line`);
     const rawTotal = rawAmounts.reduce((a, b) => a + b, 0);
     checkMinAmount(code, rawTotal);
     await checkUsageAvailable(companyId, code, excludeInvoiceId, t);
@@ -126,6 +137,7 @@ async function resolveDiscounts(companyId, { lines, discount_code, excludeInvoic
       if (!codeStr) continue;
       const code = await findUsableCode(companyId, codeStr, t);
       checkScope(code, 'line');
+      checkItem(code, lines[i].item_id);
       checkMinAmount(code, rawAmounts[i]);
       if (!usedCodeIds.has(code.id)) {
         await checkUsageAvailable(companyId, code, excludeInvoiceId, t);
@@ -144,9 +156,10 @@ async function resolveDiscounts(companyId, { lines, discount_code, excludeInvoic
 // Same validation as resolveDiscounts, but only for a single quick lookup —
 // used by the "preview" endpoint so the frontend can show the computed
 // amount before the invoice is actually saved.
-async function previewDiscount(companyId, codeStr, baseAmount, expectedScope) {
+async function previewDiscount(companyId, codeStr, baseAmount, expectedScope, itemId) {
   const code = await findUsableCode(companyId, codeStr, null);
   if (expectedScope) checkScope(code, expectedScope);
+  if (expectedScope === 'line') checkItem(code, itemId);
   checkMinAmount(code, baseAmount);
   await checkUsageAvailable(companyId, code, null, null);
   return {
@@ -155,6 +168,7 @@ async function previewDiscount(companyId, codeStr, baseAmount, expectedScope) {
     value: Number(code.value),
     scope: code.scope,
     discount_amount: computeAmount(code, baseAmount),
+    single_use: !!code.single_use,
   };
 }
 

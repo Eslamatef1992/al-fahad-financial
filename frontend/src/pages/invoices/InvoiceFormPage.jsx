@@ -253,7 +253,7 @@ export default function InvoiceFormPage() {
     const code = lines[idx].discount_code.trim();
     if (!code) return;
     try {
-      const { data } = await api.post('/discount-codes/preview', { code, base_amount: rawLineAmount(lines[idx]), scope: 'line' });
+      const { data } = await api.post('/discount-codes/preview', { code, base_amount: rawLineAmount(lines[idx]), scope: 'line', item_id: lines[idx].item_id || undefined });
       updateLine(idx, { discount_preview: data, discount_error: '' });
     } catch (err) {
       updateLine(idx, { discount_preview: null, discount_error: err.response?.data?.message || t('common.error') });

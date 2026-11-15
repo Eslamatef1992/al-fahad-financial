@@ -6,7 +6,7 @@ import {
   Landmark, Wallet, PieChart, Building2, UserCog, ShieldCheck, FileText, FileMinus,
   RefreshCw, Boxes, ClipboardList, ArrowRightLeft, Percent, Ruler, Settings2, CalendarClock,
   ShoppingCart, UserCheck, AlertTriangle, Factory, CreditCard, ChevronDown, LayoutGrid,
-  Sun, Moon, LogOut, KeyRound, X, Zap, Briefcase, MonitorSmartphone, Hammer, FileBarChart, Undo2,
+  Sun, Moon, LogOut, KeyRound, X, Zap, Briefcase, MonitorSmartphone, Hammer, FileBarChart, Undo2, GitMerge,
 } from 'lucide-react';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -37,6 +37,8 @@ export function buildGroups({ isSuperAdmin, isCompanyAdmin }) {
       items: [
         { to: '/invoices/sales', icon: FileText, key: 'salesInvoices' },
         { to: '/sales-returns', icon: Undo2, en: 'Sales Returns', ar: 'مرتجعات المبيعات' },
+        { to: '/client-movement', icon: GitMerge, en: 'Client Movement', ar: 'حركة العميل' },
+        { to: '/warranty', icon: ShieldCheck, en: 'Warranty & Exchange', ar: 'الضمان والتبديل' },
         { to: '/recurring-invoices', icon: RefreshCw, key: 'recurringInvoices' },
         { to: '/clients', icon: Users, key: 'clients' },
         { to: '/bookings', icon: CalendarClock, key: 'bookings' },

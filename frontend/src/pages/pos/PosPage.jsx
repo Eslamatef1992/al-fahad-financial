@@ -77,6 +77,10 @@ export default function PosPage() {
 	const [branches, setBranches] = useState([]);
 	const [clients, setClients] = useState([]);
 	const [manufacturers, setManufacturers] = useState([]);
+	const [salesPeople, setSalesPeople] = useState([]);
+	const [salespersonId, setSalespersonId] = useState(() => localStorage.getItem("pos.salesperson") || "");
+	useEffect(() => { api.get("/sales-people").then((r) => setSalesPeople(r.data)).catch(() => {}); }, []);
+	useEffect(() => { localStorage.setItem("pos.salesperson", salespersonId || ""); }, [salespersonId]);
 	const [manufactureOrderOpen, setManufactureOrderOpen] = useState(false);
 	const [isManufactureOrder, setIsManufactureOrderRaw] = useState(false);
 	const [mfgCategories, setMfgCategories] = useState([]);
@@ -383,8 +387,9 @@ export default function PosPage() {
 		setCart((prev) => {
 			if (prev.find((l) => l.item.id === id)) return prev.map((l) => (l.item.id === id ? { ...l, quantity: l.quantity + 1 } : l));
 			return [...prev, {
-				item: { id, code: m.code, name_en: m.name_en, income_account_id: null, selling_price: m.selling_price, available_quantity: 999999, is_manufacture: true, manufacture_item_id: m.id },
-				quantity: 1, unit_price: Number(m.selling_price || 0), description: desc,
+				item: { id, code: m.code, name_en: m.name_en, income_account_id: null, selling_price: m.selling_price, available_quantity: 999999, is_manufacture: true, manufacture_item_id: m.id, prices: m.prices || [] },
+				quantity: 1, unit_price: Number((m.prices?.[0]?.selling_price) ?? m.selling_price ?? 0), description: desc,
+				manufacturer_id: m.prices?.[0]?.manufacturer_id || m.manufacturer_id || "",
 				discount_code: "", discount_preview: null, discount_error: "", is_booked: false, delivery_date: "",
 			}];
 		});
@@ -447,6 +452,7 @@ export default function PosPage() {
 				code,
 				base_amount: Number(l.quantity) * Number(l.unit_price),
 				scope: "line",
+				item_id: l.item.is_manufacture ? undefined : l.item.id,
 			});
 			updateCartLine(l.item.id, { discount_preview: data, discount_error: "" });
 		} catch (err) {
@@ -602,6 +608,7 @@ export default function PosPage() {
 	const buildLines = () =>
 		cart.map((l) => l.item.is_manufacture ? ({
 			manufacture_item_id: l.item.manufacture_item_id,
+			manufacturer_id: l.manufacturer_id || undefined,
 			mfg_details: isManufactureOrder ? l.mfg_details : undefined,
 			description: l.description || l.item.name_en,
 			quantity: l.quantity,
@@ -610,6 +617,8 @@ export default function PosPage() {
 		}) : ({
 			account_id: l.item.income_account_id,
 			item_id: l.item.id,
+			is_gift: l.is_gift ? true : undefined,
+			gift_value: l.is_gift ? Number(l.gift_orig_price || l.item.selling_price || 0) : undefined,
 			mfg_details: isManufactureOrder ? l.mfg_details : undefined,
 			description: l.description || l.item.name_en,
 			quantity: l.quantity,
@@ -623,6 +632,7 @@ export default function PosPage() {
 		date: invoiceDate || undefined,
 		due_date: dueDate || undefined,
 		branch_id: invoiceBranch || undefined,
+		salesperson_id: salespersonId || undefined,
 		notes: invoiceNotes || undefined,
 	});
 	const bookedLineMissingDate = () => cart.some((l) => l.is_booked && !l.delivery_date);
@@ -690,6 +700,7 @@ export default function PosPage() {
 		setInvoiceDate(sale.date || new Date().toISOString().slice(0, 10));
 		setDueDate(sale.due_date || "");
 		setInvoiceBranch(sale.branch_id || "");
+		if (sale.salesperson_id) setSalespersonId(sale.salesperson_id);
 				setInvoiceNotes(sale.notes || "");
 		setIsManufactureOrder(!!sale.is_manufacture_order);
 		setManufacturerId(sale.manufacturer_id || "");
@@ -958,6 +969,13 @@ export default function PosPage() {
 									<input type="date" className="input text-sm py-2" value={dueDate} min={invoiceDate} onChange={(e) => setDueDate(e.target.value)} />
 								</div>
 								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+									<label className="label !text-[11px] !mb-1.5">{t("pos.salesPerson", { defaultValue: "Sales person" })}</label>
+									<select className="input text-sm py-2" value={salespersonId} onChange={(e) => setSalespersonId(e.target.value)}>
+										<option value="">—</option>
+										{salesPeople.map((sp) => <option key={sp.id} value={sp.id}>{i18n.language?.startsWith("ar") ? sp.name_ar || sp.name_en : sp.name_en}</option>)}
+									</select>
+								</div>
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
 									<label className="label !text-[11px] !mb-1.5">{t("common.branch", { defaultValue: "Branch" })}</label>
 									<select className="input text-sm py-2" value={invoiceBranch} onChange={(e) => setInvoiceBranch(e.target.value)}>
 										<option value="">
@@ -1198,6 +1216,15 @@ export default function PosPage() {
 <tr className="bg-slate-50/50 dark:bg-navy-900/30">
 	<td colSpan={6} className="px-3 pb-2.5 pt-0">
 		<div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+			{!l.item.is_manufacture && (
+				<label className="flex items-center gap-1.5 text-xs font-semibold text-pink-600 cursor-pointer">
+					<input type="checkbox" className="rounded" checked={!!l.is_gift}
+						onChange={(e) => updateCartLine(l.item.id, e.target.checked
+							? { is_gift: true, gift_orig_price: Number(l.unit_price), unit_price: 0, discount_code: "", discount_preview: null, discount_error: "" }
+							: { is_gift: false, unit_price: Number(l.gift_orig_price ?? l.item.selling_price ?? 0) })} />
+					🎁 {t("pos.gift", { defaultValue: "Gift (free)" })}
+				</label>
+			)}
 			{!l.item.is_manufacture && <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
 				<input
 					type="checkbox"
@@ -1247,6 +1274,21 @@ export default function PosPage() {
 {isManufactureOrder && (
 <tr className="bg-slate-50/50 dark:bg-navy-900/30">
 	<td colSpan={6} className="px-3 pb-2.5 pt-0">
+		{l.item.is_manufacture && l.item.prices?.length > 0 && (
+			<div className="flex items-center gap-2 mb-1.5">
+				<Factory size={13} className="text-amber-600" />
+				<select className="input !py-1 text-xs !w-auto" value={l.manufacturer_id || ""}
+					onChange={(e) => {
+						const q = l.item.prices.find((x) => x.manufacturer_id === e.target.value);
+						updateCartLine(l.item.id, { manufacturer_id: e.target.value, ...(q ? { unit_price: Number(q.selling_price) } : {}) });
+					}}>
+					{l.item.prices.map((q) => {
+						const mm = manufacturers.find((x) => x.id === q.manufacturer_id);
+						return <option key={q.manufacturer_id} value={q.manufacturer_id}>{mm ? (i18n.language?.startsWith("ar") ? mm.name_ar || mm.name_en : mm.name_en) : "—"} — {money(q.selling_price)}</option>;
+					})}
+				</select>
+			</div>
+		)}
 		<button type="button" onClick={() => updateCartLine(l.item.id, { mfg_open: !l.mfg_open })}
 			className="flex items-center gap-1 text-xs font-semibold text-amber-600 hover:text-amber-700">
 			{l.mfg_open ? <Minus size={13} /> : <Plus size={13} />}

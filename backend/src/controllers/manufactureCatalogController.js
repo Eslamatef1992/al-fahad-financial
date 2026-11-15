@@ -1,4 +1,4 @@
-const { ManufactureCategory, ManufactureItem, Manufacturer } = require('../models');
+const { ManufactureCategory, ManufactureItem, ManufactureItemPrice, Manufacturer } = require('../models');
 
 function bad(res, message) { return res.status(400).json({ message }); }
 const num = (v) => (v === '' || v === null || v === undefined ? null : Number(v));
@@ -38,11 +38,40 @@ exports.updateCategory = async (req, res) => {
 };
 
 // ---- Items ----
+// An item carries one or more manufacturer quotes (cost + selling price each).
+// The first quote also fills the legacy single-price columns so older readers keep working.
+async function applyPrices(req, prices, out) {
+  if (prices === undefined) return { rows: null };
+  const rows = [];
+  const seen = new Set();
+  for (const p of Array.isArray(prices) ? prices : []) {
+    if (!p.manufacturer_id) continue;
+    if (seen.has(p.manufacturer_id)) return { error: 'The same manufacturer is listed twice' };
+    seen.add(p.manufacturer_id);
+    const m = await Manufacturer.findOne({ where: { id: p.manufacturer_id, company_id: req.companyId } });
+    if (!m) return { error: 'Unknown manufacturer' };
+    const cost = Number(p.cost_price || 0); const sell = Number(p.selling_price || 0);
+    if (!(cost >= 0) || !(sell >= 0)) return { error: 'Prices must be non-negative numbers' };
+    rows.push({ manufacturer_id: m.id, cost_price: cost, selling_price: sell });
+  }
+  if (!rows.length) return { error: 'Add at least one manufacturer with its cost and selling price' };
+  out.manufacturer_id = rows[0].manufacturer_id;
+  out.manufacturer_cost_price = rows[0].cost_price;
+  out.selling_price = rows[0].selling_price;
+  return { rows };
+}
+async function savePrices(req, item, rows) {
+  if (!rows) return;
+  await ManufactureItemPrice.destroy({ where: { item_id: item.id } });
+  await ManufactureItemPrice.bulkCreate(rows.map((r) => ({ ...r, item_id: item.id, company_id: req.companyId })));
+}
+const withPrices = (id) => ManufactureItem.findByPk(id, { include: [{ model: ManufactureItemPrice, as: 'prices' }] });
+
 exports.listItems = async (req, res) => {
   const where = { company_id: req.companyId };
   if (req.query.status !== 'all') where.is_active = true;
   if (req.query.category_id) where.category_id = req.query.category_id;
-  res.json(await ManufactureItem.findAll({ where, order: [['code', 'ASC']] }));
+  res.json(await ManufactureItem.findAll({ where, order: [['code', 'ASC']], include: [{ model: ManufactureItemPrice, as: 'prices' }] }));
 };
 
 async function validate(req, body, existing) {
@@ -78,14 +107,20 @@ async function validate(req, body, existing) {
 exports.createItem = async (req, res) => {
   const { out, error } = await validate(req, req.body, null);
   if (error) return bad(res, error);
+  const priced = await applyPrices(req, req.body.prices, out);
+  if (priced.error) return bad(res, priced.error);
   const row = await ManufactureItem.create({ ...out, company_id: req.companyId, code: await nextCode(req.companyId) });
-  res.status(201).json(row);
+  await savePrices(req, row, priced.rows);
+  res.status(201).json(await withPrices(row.id));
 };
 exports.updateItem = async (req, res) => {
   const row = await ManufactureItem.findOne({ where: { id: req.params.id, company_id: req.companyId } });
   if (!row) return res.status(404).json({ message: 'Item not found' });
   const { out, error } = await validate(req, req.body, row);
   if (error) return bad(res, error);
+  const priced = await applyPrices(req, req.body.prices, out);
+  if (priced.error) return bad(res, priced.error);
   await row.update(out);
-  res.json(row);
+  await savePrices(req, row, priced.rows);
+  res.json(await withPrices(row.id));
 };

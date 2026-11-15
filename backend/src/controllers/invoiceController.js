@@ -14,6 +14,7 @@ const {
 	Item,
 	ItemVariant,
 	DiscountCode,
+	SalesPerson,
 	PaymentMethod,
 	User,
 } = require("../models");
@@ -53,6 +54,7 @@ const partyInclude = [
 	{ model: CostCenter, as: "costCenter" },
 	{ model: Branch, as: "branch" },
 	{ model: DiscountCode, as: "discountCode" },
+	{ model: SalesPerson, as: "salesperson", attributes: ["id", "name_en", "name_ar"] },
 	...creatorInclude,
 ];
 const paymentInclude = [

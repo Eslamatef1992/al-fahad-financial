@@ -11,7 +11,7 @@ import SlideOver from '@/components/SlideOver';
 
 const emptyItem = (categoryId = '') => ({
   category_id: categoryId, name_en: '', name_ar: '', color: '', size: '', height: '', length: '', dimension_unit: 'cm',
-  selling_price: '', manufacturer_cost_price: '', manufacturer_id: '', is_active: true,
+  prices: [{ manufacturer_id: '', cost_price: '', selling_price: '' }], is_active: true,
 });
 const n3 = (v) => Number(v || 0).toFixed(3);
 
@@ -69,7 +69,9 @@ export default function ManufactureItemsPage() {
     setForm({
       category_id: r.category_id, name_en: r.name_en, name_ar: r.name_ar, color: r.color || '', size: r.size || '',
       height: r.height ?? '', length: r.length ?? '', dimension_unit: r.dimension_unit || 'cm',
-      selling_price: r.selling_price, manufacturer_cost_price: r.manufacturer_cost_price, manufacturer_id: r.manufacturer_id || '', is_active: r.is_active,
+      prices: (r.prices?.length ? r.prices : [{ manufacturer_id: r.manufacturer_id || '', cost_price: r.manufacturer_cost_price, selling_price: r.selling_price }])
+        .map((p) => ({ manufacturer_id: p.manufacturer_id || '', cost_price: p.cost_price, selling_price: p.selling_price })),
+      is_active: r.is_active,
     });
     setItemOpen(true);
   };
@@ -84,7 +86,10 @@ export default function ManufactureItemsPage() {
   const toggleActive = async (r) => { await api.put(`/manufacture-catalog/items/${r.id}`, { is_active: !r.is_active }); load(); };
 
   const setF = (k) => (e) => setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
-  const margin = Number(form.selling_price || 0) - Number(form.manufacturer_cost_price || 0);
+  const setPrice = (i, patch) => setForm({ ...form, prices: form.prices.map((p, x) => (x === i ? { ...p, ...patch } : p)) });
+  const addPrice = () => setForm({ ...form, prices: [...form.prices, { manufacturer_id: '', cost_price: '', selling_price: '' }] });
+  const delPrice = (i) => setForm({ ...form, prices: form.prices.filter((_, x) => x !== i) });
+  const mfrName = (id) => { const m = manufacturers.find((x) => x.id === id); return m ? (isAr ? m.name_ar || m.name_en : m.name_en) : '—'; };
 
   const columns = [
     { key: 'code', label: L('Code', 'الكود') },
@@ -93,8 +98,16 @@ export default function ManufactureItemsPage() {
     { key: 'color', label: L('Color', 'اللون'), render: (r) => r.color || '—' },
     { key: 'size', label: L('Size', 'المقاس'), render: (r) => r.size || '—' },
     { key: 'dims', label: L('Height × Length', 'الارتفاع × الطول'), render: (r) => (r.height || r.length ? `${r.height ?? '—'} × ${r.length ?? '—'} ${r.dimension_unit}` : '—') },
-    { key: 'selling_price', label: L('Selling price', 'سعر البيع'), render: (r) => <span className="font-semibold">{n3(r.selling_price)}</span> },
-    ...(isSuperAdmin ? [{ key: 'manufacturer_cost_price', label: L('Manufacturer cost', 'تكلفة المصنّع'), render: (r) => n3(r.manufacturer_cost_price) }] : []),
+    { key: 'prices', label: L('Manufacturers · price', 'المصنّعون · السعر'), render: (r) => (
+      <div className="space-y-0.5">
+        {(r.prices?.length ? r.prices : [{ manufacturer_id: r.manufacturer_id, cost_price: r.manufacturer_cost_price, selling_price: r.selling_price }]).map((p) => (
+          <div key={p.manufacturer_id || 'd'} className="text-xs whitespace-nowrap">
+            <span className="text-slate-500">{mfrName(p.manufacturer_id)}</span> · <b>{n3(p.selling_price)}</b>
+            {isSuperAdmin && <span className="text-slate-400"> ({L('cost', 'تكلفة')} {n3(p.cost_price)})</span>}
+          </div>
+        ))}
+      </div>
+    ) },
     { key: 'is_active', label: L('Status', 'الحالة'), render: (r) => (
       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${r.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>{r.is_active ? L('Active', 'نشط') : L('Inactive', 'غير نشط')}</span>
     ) },
@@ -163,14 +176,34 @@ export default function ManufactureItemsPage() {
           <div><label className="label">{L('Length', 'الطول')}</label><input type="number" step="0.001" min="0" className="input" value={form.length} onChange={setF('length')} /></div>
           <div><label className="label">{L('Dimension unit', 'وحدة القياس')}</label>
             <select className="input" value={form.dimension_unit} onChange={setF('dimension_unit')}>{['cm', 'm', 'mm', 'in'].map((u) => <option key={u} value={u}>{u}</option>)}</select></div>
-          <div><label className="label">{L('Default manufacturer', 'المصنّع الافتراضي')}</label>
-            <select className="input" value={form.manufacturer_id} onChange={setF('manufacturer_id')}><option value="">—</option>{manufacturers.filter((m) => m.is_active).map((m) => <option key={m.id} value={m.id}>{isAr ? m.name_ar || m.name_en : m.name_en}</option>)}</select></div>
-          <div><label className="label">{L('Selling price', 'سعر البيع')} *</label><input required type="number" step="0.001" min="0" className="input" value={form.selling_price} onChange={setF('selling_price')} /></div>
-          <div><label className="label">{L('Manufacturer cost price', 'سعر تكلفة المصنّع')} *</label><input required type="number" step="0.001" min="0" className="input" value={form.manufacturer_cost_price} onChange={setF('manufacturer_cost_price')} /></div>
         </div>
-        <div className="rounded-2xl bg-slate-50 dark:bg-navy-800/50 px-4 py-3 text-sm flex items-center gap-2">
-          <Hammer size={15} className="text-slate-400" />{L('Margin per unit', 'الهامش للوحدة')}: <span className={`font-bold ${margin < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{margin.toFixed(3)}</span>
-          <span className="text-xs text-slate-400 ms-2">{L('The POS operator can change the selling price on each order.', 'يمكن لمشغل نقطة البيع تعديل سعر البيع في كل طلب.')}</span>
+        <div className="rounded-2xl border border-slate-100 dark:border-navy-800 p-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold flex items-center gap-2"><Hammer size={15} className="text-slate-400" />{L('Manufacturers, cost & selling price', 'المصنّعون والتكلفة وسعر البيع')}</p>
+            <button type="button" onClick={addPrice} className="btn-ghost !py-1 text-xs"><Plus size={14} />{L('Add manufacturer', 'إضافة مصنّع')}</button>
+          </div>
+          <div className="space-y-2">
+            {form.prices.map((p, i) => {
+              const margin = Number(p.selling_price || 0) - Number(p.cost_price || 0);
+              return (
+                <div key={i} className="grid grid-cols-[1.4fr_1fr_1fr_auto] gap-2 items-end">
+                  <div>{i === 0 && <label className="label !text-[11px]">{L('Manufacturer', 'المصنّع')} *</label>}
+                    <select required className="input" value={p.manufacturer_id} onChange={(e) => setPrice(i, { manufacturer_id: e.target.value })}>
+                      <option value="">—</option>{manufacturers.filter((m) => m.is_active || m.id === p.manufacturer_id).map((m) => <option key={m.id} value={m.id}>{isAr ? m.name_ar || m.name_en : m.name_en}</option>)}
+                    </select></div>
+                  <div>{i === 0 && <label className="label !text-[11px]">{L('Cost price', 'سعر التكلفة')} *</label>}
+                    <input required type="number" step="0.001" min="0" className="input" value={p.cost_price} onChange={(e) => setPrice(i, { cost_price: e.target.value })} /></div>
+                  <div>{i === 0 && <label className="label !text-[11px]">{L('Selling price', 'سعر البيع')} *</label>}
+                    <input required type="number" step="0.001" min="0" className="input" value={p.selling_price} onChange={(e) => setPrice(i, { selling_price: e.target.value })} /></div>
+                  <div className="pb-2 text-xs w-24 text-end">
+                    <span className={margin < 0 ? 'text-rose-600 font-bold' : 'text-emerald-600 font-bold'}>{margin.toFixed(3)}</span>
+                    {form.prices.length > 1 && <button type="button" onClick={() => delPrice(i)} className="ms-2 text-slate-400 hover:text-rose-500">✕</button>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-2">{L('The POS operator picks the manufacturer on each order and can still change the selling price.', 'يختار مشغل نقطة البيع المصنّع في كل طلب ويمكنه تعديل سعر البيع.')}</p>
         </div>
         {editing && <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" className="rounded" checked={form.is_active} onChange={setF('is_active')} />{L('Active', 'نشط')}</label>}
       </SlideOver>

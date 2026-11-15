@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import InvoiceMovementPanel from '@/pages/movement/InvoiceMovement';
+import { WarrantyClaimPanel } from '@/pages/warranty/WarrantyPage';
 import ReturnModal from '@/components/ReturnModal';
 import { printCreditNote } from '@/utils/printCreditNote';
 import { mfgDetailParts } from '@/utils/mfgDetails';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Wallet, Undo2, Pencil, Trash2, Paperclip, FileText, Factory } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Wallet, Undo2, ShieldCheck, GitMerge, Pencil, Trash2, Paperclip, FileText, Factory } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { downloadFile, printFile, fileUrl } from '@/api/client';
 import PageHeader from '@/components/PageHeader';
@@ -35,6 +37,8 @@ export default function InvoiceDetailPage() {
   const [capturing, setCapturing] = useState(false);
   const captureRef = useRef(null);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [warrantyOpen, setWarrantyOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const [returns, setReturns] = useState([]);
   const [mfg, setMfg] = useState(null); // manufacture-order cost/profit summary, when this invoice is one
   useEffect(() => {
@@ -135,6 +139,7 @@ export default function InvoiceDetailPage() {
         subtitle={`${invoice.type === 'sales' ? t('invoices.salesInvoice') : t('invoices.purchaseBill')} · ${invoice.date}`}
         actions={
           <div className="flex items-center gap-2">
+            <button onClick={() => setMoveOpen(true)} className="btn-ghost"><GitMerge size={16} /> Movement</button>
             <button onClick={() => window.print()} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
             <button onClick={downloadPdf} disabled={capturing} className="btn-ghost"><Download size={16} /> PDF</button>
             {invoice.status === 'draft' && canCreateEdit && (
@@ -152,6 +157,9 @@ export default function InvoiceDetailPage() {
             {invoice.type === 'sales' && ['posted', 'partially_paid', 'paid'].includes(invoice.status) && canCreateEdit && (
               <button onClick={() => setReturnOpen(true)} className="btn-ghost"><Undo2 size={16} /> Return items</button>
             )}
+            {invoice.type === 'sales' && ['posted', 'partially_paid', 'paid'].includes(invoice.status) && canCreateEdit && (
+              <button onClick={() => setWarrantyOpen(true)} className="btn-ghost"><ShieldCheck size={16} /> Warranty / exchange</button>
+            )}
             {invoice.status === 'posted' && canDelete && (
               <button onClick={() => setConfirmAction('cancel')} className="btn-danger"><XCircle size={16} /> {t('common.cancel')}</button>
             )}
@@ -167,7 +175,7 @@ export default function InvoiceDetailPage() {
         {invoice.branch && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.branch')}</p><p className="text-sm mt-1 font-medium">{invoice.branch.code} - {invoice.branch.name_en}</p></div>}
         {invoice.delivery_date && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.deliveryDate')}</p><p className="text-sm mt-1 font-medium">{invoice.delivery_date}</p></div>}
         {invoice.delivery_address && <div className="col-span-2"><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.deliveryAddress')}</p><p className="text-sm mt-1 font-medium whitespace-pre-wrap">{invoice.delivery_address}</p></div>}
-        {invoice.creator?.name && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.salesperson')}</p><p className="text-sm mt-1 font-medium">{invoice.creator.name}</p></div>}
+        {(invoice.salesperson?.name_en || invoice.creator?.name) && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.salesperson')}</p><p className="text-sm mt-1 font-medium">{invoice.salesperson?.name_en || invoice.creator.name}</p></div>}
         {Number(invoice.discount_amount) > 0.0009 && (
           <div>
             <p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.discount')}</p>
@@ -269,6 +277,8 @@ export default function InvoiceDetailPage() {
           </ul>
         </div>
       )}
+      <InvoiceMovementPanel invoiceId={moveOpen ? id : null} onClose={() => setMoveOpen(false)} />
+      <WarrantyClaimPanel open={warrantyOpen} onClose={() => setWarrantyOpen(false)} presetInvoiceNo={invoice.invoice_no} onDone={() => load()} />
       <ReturnModal invoiceId={returnOpen ? id : null} onClose={() => setReturnOpen(false)} onDone={() => load()} />
       <SlideOver open={payOpen} onClose={() => setPayOpen(false)} title={t('invoices.recordPayment')} onSubmit={submitPayment} submitting={paying}>
         <div><label className="label">{t('invoices.amountRemaining', { balance: balance.toFixed(3) })}</label><input required type="number" step="0.001" max={balance} className="input" value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} /></div>

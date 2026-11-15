@@ -57,13 +57,20 @@ function cleanMfgDetails(d) {
 }
 
 async function createInvoice(companyId, userId, payload) {
-  const { type, client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines, discount_code, channel, pos_shift_id, delivery_date, delivery_address, is_manufacture_order, manufacturer_id } = payload;
+  const { type, client_id, supplier_id, date, due_date, cost_center_id, branch_id, tax_account_id, currency, notes, reference_no, lines, discount_code, channel, pos_shift_id, delivery_date, delivery_address, is_manufacture_order, manufacturer_id, salesperson_id } = payload;
 
   if (!['sales', 'purchase'].includes(type)) throw badRequest('Invoice type must be "sales" or "purchase"');
   if (type === 'sales' && !client_id) throw badRequest('client_id is required for sales invoices');
   if (type === 'purchase' && !supplier_id) throw badRequest('supplier_id is required for purchase invoices');
   if (!Array.isArray(lines) || lines.length === 0) throw badRequest('At least one line item is required');
   for (const l of lines) {
+    if (l.is_gift) {
+      if (type !== 'sales') throw badRequest('Gift lines are only for sales invoices');
+      if (!l.item_id) throw badRequest('A gift must be a stock item');
+      if (l.manufacture_item_id) throw badRequest('A made-to-order item cannot be a gift');
+      l.gift_value = Math.round(Number(l.gift_value ?? l.unit_price ?? 0) * Number(l.quantity ?? 1) * 1000) / 1000;
+      l.unit_price = 0; delete l.discount_code; // gifts are free — no price, no coupon
+    }
     if (l.is_booked && !l.item_id) throw badRequest('Only a line linked to an inventory item can be booked for later delivery');
     if (l.is_booked && !l.delivery_date) throw badRequest('A booked line requires a delivery date');
   }
@@ -95,6 +102,7 @@ async function createInvoice(companyId, userId, payload) {
       total,
       status: 'draft',
       created_by: userId,
+      salesperson_id: salesperson_id || null,
       channel: channel === 'pos' ? 'pos' : 'backoffice',
       pos_shift_id: channel === 'pos' ? (pos_shift_id || null) : null,
       delivery_date: delivery_date || null,
@@ -103,6 +111,14 @@ async function createInvoice(companyId, userId, payload) {
       manufacturer_id: is_manufacture_order ? (manufacturer_id || null) : null,
     }, { transaction: t });
 
+    // Warranty snapshot: each sold stock item remembers how long it is covered, from the invoice date.
+    const warrantyOf = new Map((await Item.findAll({ where: { id: computedLines.map((x) => x.item_id).filter(Boolean) }, attributes: ['id', 'warranty_months'], transaction: t })).map((x) => [x.id, Number(x.warranty_months || 0)]));
+    const expiryFor = (itemId) => {
+      const mo = warrantyOf.get(itemId) || 0;
+      if (type !== 'sales' || !mo) return null;
+      const d = new Date(`${date}T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + mo);
+      return d.toISOString().slice(0, 10);
+    };
     await Promise.all(computedLines.map((l, idx) => InvoiceLine.create({
       invoice_id: invoice.id,
       account_id: l.account_id,
@@ -122,6 +138,11 @@ async function createInvoice(companyId, userId, payload) {
       delivery_date: l.is_booked ? l.delivery_date : null,
       manufacture_item_id: l.manufacture_item_id || null,
       mfg_details: cleanMfgDetails(l.mfg_details),
+      warranty_months: l.item_id && type === 'sales' ? (warrantyOf.get(l.item_id) || 0) : null,
+      warranty_expires: l.item_id ? expiryFor(l.item_id) : null,
+      is_gift: !!l.is_gift,
+      gift_value: l.is_gift ? l.gift_value : null,
+      manufacturer_id: l.manufacturer_id || null,
       manufacture_unit_cost: l.manufacture_item_id ? Number(l.manufacture_unit_cost || 0) : null,
     }, { transaction: t })));
 
@@ -265,18 +286,23 @@ async function postInvoice(companyId, invoiceId, userId) {
       }
     }
 
-    const voucher = await voucherService.createVoucher(companyId, userId, {
-      voucher_type: 'journal',
-      date: invoice.date,
-      description: `${invoice.type === 'sales' ? 'Sales Invoice' : 'Purchase Bill'} ${invoice.invoice_no}`,
-      cost_center_id: invoice.cost_center_id,
-      branch_id: invoice.branch_id,
-      currency: invoice.currency,
-      lines,
-    }, t);
-    await voucherService.postVoucher(companyId, voucher.id, t);
+    // Free (gift) lines create zero-amount rows — they carry no value, so leave them out.
+    const postingLines = lines.filter((x) => Number(x.debit || 0) > 0.0004 || Number(x.credit || 0) > 0.0004);
+    let voucher = null; // a zero-value invoice (e.g. a pure gift of zero-cost stock) has nothing to post
+    if (postingLines.length >= 2) {
+      voucher = await voucherService.createVoucher(companyId, userId, {
+        voucher_type: 'journal',
+        date: invoice.date,
+        description: `${invoice.type === 'sales' ? 'Sales Invoice' : 'Purchase Bill'} ${invoice.invoice_no}`,
+        cost_center_id: invoice.cost_center_id,
+        branch_id: invoice.branch_id,
+        currency: invoice.currency,
+        lines: postingLines,
+      }, t);
+      await voucherService.postVoucher(companyId, voucher.id, t);
+    }
 
-    await invoice.update({ status: 'posted', posted_at: new Date(), posting_voucher_id: voucher.id }, { transaction: t });
+    await invoice.update({ status: Number(invoice.total) <= 0.0004 ? 'paid' : 'posted', posted_at: new Date(), posting_voucher_id: voucher?.id || null }, { transaction: t });
     return invoice;
   });
 }
