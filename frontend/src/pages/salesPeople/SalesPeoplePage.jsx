@@ -8,7 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import SlideOver from '@/components/SlideOver';
 
 const n3 = (v) => Number(v || 0).toFixed(3);
-const emptyPerson = { id: null, name_en: '', name_ar: '', phone: '', is_active: true };
+const emptyPerson = { id: null, name_en: '', name_ar: '', phone: '', branch_id: '', is_active: true };
 
 // Sales people (who can be picked on a POS invoice) + monthly targets with live
 // achievement and commission. Super admin / company admin only.
@@ -54,7 +54,7 @@ export default function SalesPeoplePage() {
       toast.success(L('Saved', 'تم الحفظ')); setPOpen(false); load();
     } finally { setSaving(false); }
   };
-  const newTarget = () => setTForm({ id: null, salesperson_id: people.find((p) => p.is_active)?.id || '', month, target_amount: '', branch_id: '', category_id: '', item_id: '', commission_pct: '', commission_mode: 'on_achievement' });
+  const newTarget = () => setTForm({ id: null, salesperson_id: people.find((p) => p.is_active)?.id || '', month, target_amount: '', branch_id: people.find((p) => p.is_active)?.branch_id || '', category_id: '', item_id: '', commission_pct: '', commission_mode: 'on_achievement' });
   const saveTarget = async (e) => {
     e.preventDefault(); setSaving(true);
     try {
@@ -86,8 +86,8 @@ export default function SalesPeoplePage() {
           <ul className="divide-y divide-slate-100 dark:divide-navy-800">
             {perf.map((r) => (
               <li key={r.salesperson.id} className={`flex items-center justify-between py-2.5 text-sm ${r.salesperson.is_active ? '' : 'opacity-50'}`}>
-                <span><b>{nameOf(r.salesperson)}</b><br /><span className="text-xs text-slate-400">{L('Net sales', 'صافي المبيعات')}: {n3(r.net)}{r.returned > 0 && ` (${L('returns', 'مرتجع')} ${n3(r.returned)})`}</span></span>
-                <button onClick={() => { setPForm({ ...r.salesperson, name_ar: r.salesperson.name_ar || '', phone: r.salesperson.phone || '' }); setPOpen(true); }} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 text-slate-400"><Pencil size={14} /></button>
+                <span><b>{nameOf(r.salesperson)}</b><br /><span className="text-xs text-slate-400">{branches.find((b) => b.id === r.salesperson.branch_id)?.name_en || L('All branches', 'كل الفروع')} · {L('Net sales', 'صافي المبيعات')}: {n3(r.net)}{r.returned > 0 && ` (${L('returns', 'مرتجع')} ${n3(r.returned)})`}</span></span>
+                <button onClick={() => { setPForm({ ...r.salesperson, name_ar: r.salesperson.name_ar || '', phone: r.salesperson.phone || '', branch_id: r.salesperson.branch_id || '' }); setPOpen(true); }} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 text-slate-400"><Pencil size={14} /></button>
               </li>
             ))}
             {!perf.length && <li className="py-6 text-center text-sm text-slate-400">{L('No sales people yet.', 'لا يوجد مندوبون بعد.')}</li>}
@@ -132,6 +132,11 @@ export default function SalesPeoplePage() {
         <div><label className="label">{L('Name (English)', 'الاسم (إنجليزي)')} *</label><input required className="input" value={pForm.name_en} onChange={(e) => setPForm({ ...pForm, name_en: e.target.value })} /></div>
         <div><label className="label">{L('Name (Arabic)', 'الاسم (عربي)')}</label><input dir="rtl" className="input" value={pForm.name_ar} onChange={(e) => setPForm({ ...pForm, name_ar: e.target.value })} /></div>
         <div><label className="label">{L('Phone', 'الهاتف')}</label><input className="input" value={pForm.phone} onChange={(e) => setPForm({ ...pForm, phone: e.target.value })} /></div>
+        <div><label className="label">{L('Branch', 'الفرع')}</label>
+          <select className="input" value={pForm.branch_id || ''} onChange={(e) => setPForm({ ...pForm, branch_id: e.target.value })}>
+            <option value="">{L('All branches', 'كل الفروع')}</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {isAr ? b.name_ar || b.name_en : b.name_en}</option>)}
+          </select>
+          <p className="text-[11px] text-slate-400 mt-1">{L('Appears in the POS dropdown for this branch; targets default to this branch.', 'يظهر في قائمة نقطة البيع لهذا الفرع، وتُحتسب الأهداف على هذا الفرع افتراضياً.')}</p></div>
         {pForm.id && <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" className="rounded" checked={pForm.is_active} onChange={(e) => setPForm({ ...pForm, is_active: e.target.checked })} />{L('Active', 'نشط')}</label>}
       </SlideOver>
 

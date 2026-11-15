@@ -972,7 +972,7 @@ export default function PosPage() {
 									<label className="label !text-[11px] !mb-1.5">{t("pos.salesPerson", { defaultValue: "Sales person" })}</label>
 									<select className="input text-sm py-2" value={salespersonId} onChange={(e) => setSalespersonId(e.target.value)}>
 										<option value="">—</option>
-										{salesPeople.map((sp) => <option key={sp.id} value={sp.id}>{i18n.language?.startsWith("ar") ? sp.name_ar || sp.name_en : sp.name_en}</option>)}
+										{salesPeople.filter((sp) => { const br = invoiceBranch || access?.shift?.branch_id; return !sp.branch_id || !br || sp.branch_id === br || sp.id === salespersonId; }).map((sp) => <option key={sp.id} value={sp.id}>{i18n.language?.startsWith("ar") ? sp.name_ar || sp.name_en : sp.name_en}</option>)}
 									</select>
 								</div>
 								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
