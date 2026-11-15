@@ -1,3 +1,4 @@
+import { mfgDetailParts } from "@/utils/mfgDetails";
 import { fileUrl } from "@/api/client";
 
 // Renders the printable A5 cash/credit invoice layout (see the feature spec's
