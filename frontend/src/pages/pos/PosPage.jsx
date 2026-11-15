@@ -83,7 +83,6 @@ export default function PosPage() {
 	const [salespersonId, setSalespersonId] = useState(() => localStorage.getItem("pos.salesperson") || "");
 	useEffect(() => { api.get("/sales-people").then((r) => setSalesPeople(r.data)).catch(() => {}); }, []);
 	useEffect(() => { localStorage.setItem("pos.salesperson", salespersonId || ""); }, [salespersonId]);
-	useEffect(() => { const br = invoiceBranch || access?.shift?.branch_id; if (!salespersonId || !br || !salesPeople.length) return; const sp = salesPeople.find((x) => x.id === salespersonId); if (sp && sp.branch_id !== br) setSalespersonId(""); }, [invoiceBranch, access?.shift?.branch_id, salesPeople]);
 	const [manufactureOrderOpen, setManufactureOrderOpen] = useState(false);
 	const [isManufactureOrder, setIsManufactureOrderRaw] = useState(false);
 	const [mfgCategories, setMfgCategories] = useState([]);
@@ -120,6 +119,7 @@ export default function PosPage() {
 	const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
 	const [dueDate, setDueDate] = useState("");
 	const [invoiceBranch, setInvoiceBranch] = useState("");
+	useEffect(() => { const br = invoiceBranch || access?.shift?.branch_id; if (!salespersonId || !br || !salesPeople.length) return; const sp = salesPeople.find((x) => x.id === salespersonId); if (sp && sp.branch_id !== br) setSalespersonId(""); }, [invoiceBranch, access?.shift?.branch_id, salesPeople]);
 	const [invoiceNotes, setInvoiceNotes] = useState("");
 	const [newClientOpen, setNewClientOpen] = useState(false);
 	const [newClient, setNewClient] = useState({ name_en: "", phone: "" });
