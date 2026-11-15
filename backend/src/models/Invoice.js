@@ -64,6 +64,7 @@ module.exports = (sequelize, DataTypes) => {
     // Manufacture-order tracking (only meaningful when is_manufacture_order = true):
     // what the manufacturer charges us (management cost, not posted to the GL),
     // and where the order stands. Profit = net sales - stock cost - manufacture_cost.
+    returned_total: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 }, // total value returned via Sales Returns (credit notes)
     manufacture_cost: { type: DataTypes.DECIMAL(18, 3), defaultValue: 0 },
     manufacture_status: { type: DataTypes.STRING(20), defaultValue: 'ordered' }, // ordered | in_production | ready | delivered
     manufacture_notes: { type: DataTypes.TEXT, allowNull: true },

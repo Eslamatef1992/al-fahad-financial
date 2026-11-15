@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import ReturnModal from '@/components/ReturnModal';
+import { printCreditNote } from '@/utils/printCreditNote';
 import { mfgDetailParts } from '@/utils/mfgDetails';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Wallet, Pencil, Trash2, Paperclip, FileText, Factory } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Download, Printer, Wallet, Undo2, Pencil, Trash2, Paperclip, FileText, Factory } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { downloadFile, printFile, fileUrl } from '@/api/client';
 import PageHeader from '@/components/PageHeader';
@@ -32,6 +34,8 @@ export default function InvoiceDetailPage() {
   const [paying, setPaying] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const captureRef = useRef(null);
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [returns, setReturns] = useState([]);
   const [mfg, setMfg] = useState(null); // manufacture-order cost/profit summary, when this invoice is one
   useEffect(() => {
     if (!invoice?.is_manufacture_order || !invoice?.id) { setMfg(null); return; }
@@ -64,7 +68,10 @@ export default function InvoiceDetailPage() {
   };
   const [paymentMethods, setPaymentMethods] = useState([]);
 
-  const load = () => api.get(`/invoices/${id}`).then((r) => setInvoice(r.data));
+  const load = () => {
+    api.get(`/sales-returns`, { params: { invoice_id: id } }).then((r) => setReturns(r.data)).catch(() => setReturns([]));
+    return api.get(`/invoices/${id}`).then((r) => setInvoice(r.data));
+  };
   useEffect(() => {
     load();
     api.get('/cash-accounts').then((r) => setCashAccounts(r.data));
@@ -141,6 +148,9 @@ export default function InvoiceDetailPage() {
             )}
             {['posted', 'partially_paid'].includes(invoice.status) && canCreateEdit && (
               <button onClick={() => setPayOpen(true)} className="btn-primary"><Wallet size={16} /> {t('invoices.recordPayment')}</button>
+            )}
+            {invoice.type === 'sales' && ['posted', 'partially_paid', 'paid'].includes(invoice.status) && canCreateEdit && (
+              <button onClick={() => setReturnOpen(true)} className="btn-ghost"><Undo2 size={16} /> Return items</button>
             )}
             {invoice.status === 'posted' && canDelete && (
               <button onClick={() => setConfirmAction('cancel')} className="btn-danger"><XCircle size={16} /> {t('common.cancel')}</button>
@@ -246,6 +256,20 @@ export default function InvoiceDetailPage() {
         ) : <p className="text-slate-400 text-sm">{t('invoices.noPaymentsYet')}</p>}
       </div>
 
+      {returns.length > 0 && (
+        <div className="card p-4 mt-5">
+          <p className="font-bold text-navy-900 dark:text-white mb-2 flex items-center gap-2"><Undo2 size={16} /> Returns on this invoice · {Number(invoice.returned_total || 0).toFixed(3)}</p>
+          <ul className="divide-y divide-slate-100 dark:divide-navy-800 text-sm">
+            {returns.map((r) => (
+              <li key={r.id} className="flex items-center justify-between py-2">
+                <span><b>{r.return_no}</b> · {r.date}{r.reason ? ` · ${r.reason}` : ''}</span>
+                <span className="flex items-center gap-3"><b>{Number(r.total).toFixed(3)}</b><button onClick={() => printCreditNote(r.id)} className="text-slate-400 hover:text-slate-600"><Printer size={15} /></button></span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <ReturnModal invoiceId={returnOpen ? id : null} onClose={() => setReturnOpen(false)} onDone={() => load()} />
       <SlideOver open={payOpen} onClose={() => setPayOpen(false)} title={t('invoices.recordPayment')} onSubmit={submitPayment} submitting={paying}>
         <div><label className="label">{t('invoices.amountRemaining', { balance: balance.toFixed(3) })}</label><input required type="number" step="0.001" max={balance} className="input" value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} /></div>
         <div><label className="label">{t('common.date')}</label><input required type="date" className="input" value={payForm.date} onChange={(e) => setPayForm({ ...payForm, date: e.target.value })} /></div>

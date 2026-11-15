@@ -1,0 +1,20 @@
+const salesReturnService = require('../services/salesReturnService');
+const posService = require('../services/posService');
+const { effectiveRole } = require('../middleware/permissions');
+
+// Accountants/admins, and POS staff holding the "refund" permission, may process returns.
+async function assertCanRefund(req) {
+  const profile = await posService.getPosProfile(req.companyId, req.user.id, req.user.role === 'super_admin', effectiveRole(req));
+  if (!profile.can('refund')) { const e = new Error('You are not permitted to process returns/refunds'); e.status = 403; throw e; }
+}
+
+exports.list = async (req, res) => res.json(await salesReturnService.listReturns(req.companyId, req.query));
+exports.get = async (req, res) => res.json(await salesReturnService.getReturn(req.companyId, req.params.id));
+exports.returnable = async (req, res) => res.json(await salesReturnService.returnable(req.companyId, req.params.invoiceId));
+
+exports.create = async (req, res) => {
+  await assertCanRefund(req);
+  const shift = await posService.getOpenShift(req.companyId, req.user.id);
+  const ret = await salesReturnService.createReturn(req.companyId, req.user.id, { ...req.body, pos_shift_id: shift?.id || null });
+  res.status(201).json(await salesReturnService.getReturn(req.companyId, ret.id));
+};

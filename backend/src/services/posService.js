@@ -3,7 +3,7 @@
 // module just adds the till/shift accountability and the cashier-facing
 // checkout flow (hold, split tender across Cash/Knet/Credit, void) on top of
 // invoiceService, so nothing about the core accounting engine had to change.
-const { sequelize, ManufactureItem, Account, Invoice, InvoiceLine, InvoicePayment, PosShift, Client, FinancialSetting, UserCompany } = require('../models');
+const { sequelize, SalesReturn, ManufactureItem, Account, Invoice, InvoiceLine, InvoicePayment, PosShift, Client, FinancialSetting, UserCompany } = require('../models');
 const { Op } = require('sequelize');
 const invoiceService = require('./invoiceService');
 
@@ -75,7 +75,9 @@ async function closeShift(companyId, userId, shiftId, { counted_cash, notes }) {
     : [];
   const cashTotal = cashPayments.reduce((s, p) => s + Number(p.amount), 0);
 
-  const expected = Number(shift.opening_float) + cashTotal;
+  // Cash handed back to customers during this shift (Sales Returns paid in cash).
+  const cashRefunds = await SalesReturn.sum('refunded_amount', { where: { pos_shift_id: shift.id, refund_method: 'cash' } });
+  const expected = Number(shift.opening_float) + cashTotal - Number(cashRefunds || 0);
   const counted = Number(counted_cash || 0);
   await shift.update({
     status: 'closed',

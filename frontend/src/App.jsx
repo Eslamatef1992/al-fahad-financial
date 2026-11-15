@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import SalesReturnsPage from '@/pages/salesReturns/SalesReturnsPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useUiStore } from '@/store/uiStore';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -106,6 +107,7 @@ export default function App() {
           <Route path="/invoices/:type/new" element={<InvoiceFormPage />} />
           <Route path="/invoices/:type/edit/:id" element={<InvoiceFormPage />} />
           <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+          <Route path="/sales-returns" element={<SalesReturnsPage />} />
           <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
           <Route path="/inventory" element={<InventoryDashboardPage />} />
           <Route path="/inventory/reports" element={<StockReportsPage />} />
