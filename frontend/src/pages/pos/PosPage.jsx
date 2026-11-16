@@ -1224,7 +1224,7 @@ export default function PosPage() {
 							onChange={() => updateCartLine(l.item.id, { is_booked: true })} />
 						<CalendarClock size={13} />
 						{t("pos.bookShort", { defaultValue: "Book" })}
-						{l.is_booked && <span className="opacity-90 font-semibold">· {deliveryDate || t("pos.setDeliveryDate", { defaultValue: "set the order delivery date" })}</span>}
+						{l.is_booked && deliveryDate && <span className="opacity-90 font-semibold">· {deliveryDate}</span>}
 					</label>
 					{!l.is_booked && Number(l.quantity) > Number(l.item.available_quantity) && (
 						<span className="text-xs font-bold text-rose-600 bg-rose-50 rounded-full px-3 py-1.5">
