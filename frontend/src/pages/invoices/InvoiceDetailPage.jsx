@@ -97,6 +97,20 @@ export default function InvoiceDetailPage() {
     setPayForm((f) => ({ ...f, payment_method_id: methodId, cash_account_id: method ? method.account_id : f.cash_account_id }));
   };
 
+  // Opening "Record payment" settles what the client owes (it was sold on credit), so everything is
+  // pre-selected: amount = remaining balance, first active payment method (cash preferred) and its account.
+  const openPayment = () => {
+    const usable = paymentMethods.filter((m) => m.is_active && (!m.branch_id || !invoice?.branch_id || m.branch_id === invoice.branch_id));
+    const method = usable.find((m) => /cash|نقد/i.test(`${m.name_en} ${m.name_ar || ''}`)) || usable[0];
+    setPayForm((f) => ({
+      ...f,
+      amount: f.amount || (balance > 0 ? balance.toFixed(3) : ''),
+      payment_method_id: method ? method.id : f.payment_method_id,
+      cash_account_id: method?.account_id || f.cash_account_id || cashAccounts[0]?.account_id || '',
+    }));
+    setPayOpen(true);
+  };
+
   const act = async () => {
     if (confirmAction === 'delete') {
       await api.delete(`/invoices/${id}`);
@@ -159,7 +173,7 @@ export default function InvoiceDetailPage() {
               <button onClick={() => setConfirmAction('post')} className="btn-primary"><CheckCircle2 size={16} /> {t('vouchers.postToLedger')}</button>
             )}
             {['posted', 'partially_paid'].includes(invoice.status) && canCreateEdit && (
-              <button onClick={() => setPayOpen(true)} className="btn-primary"><Wallet size={16} /> {t('invoices.recordPayment')}</button>
+              <button onClick={openPayment} className="btn-primary"><Wallet size={16} /> {t('invoices.recordPayment')}</button>
             )}
             {invoice.type === 'sales' && ['posted', 'partially_paid', 'paid'].includes(invoice.status) && canCreateEdit && (
               <button onClick={() => setReturnOpen(true)} className="btn-ghost"><Undo2 size={16} /> Return items</button>
