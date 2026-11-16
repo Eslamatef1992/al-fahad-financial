@@ -891,6 +891,19 @@ export default function PosPage() {
 					{/* Header strip: client, quick code entry, coupon, total, hold/pay */}
 					<div className="card p-4 sm:p-5">
 						<div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4">
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+									<label className="label !text-[11px] !mb-1.5">{t("common.branch", { defaultValue: "Branch" })}</label>
+									<select className="input text-sm py-2" value={invoiceBranch} onChange={(e) => setInvoiceBranch(e.target.value)}>
+										<option value="">
+											{access?.shift?.branch_id
+												? `${t("pos.shiftBranch", { defaultValue: "Shift branch" })} — ${(i18n.language?.startsWith("ar") ? branches.find((b) => b.id === access.shift.branch_id)?.name_ar : branches.find((b) => b.id === access.shift.branch_id)?.name_en) || ""}`
+												: t("common.none")}
+										</option>
+										{branches.map((b) => (
+											<option key={b.id} value={b.id}>{b.code} - {i18n.language?.startsWith("ar") ? b.name_ar || b.name_en : b.name_en}</option>
+										))}
+									</select>
+								</div>
 							<div className="col-span-2 rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-sky-50/40 dark:bg-sky-950/10">
 								<div className="flex items-center justify-between mb-2">
 									<label className="flex items-center gap-1.5 text-xs font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wide">
@@ -997,19 +1010,6 @@ export default function PosPage() {
 									<select className="input text-sm py-2" value={salespersonId} onChange={(e) => setSalespersonId(e.target.value)}>
 										<option value="">—</option>
 										{salesPeople.filter((sp) => { const br = invoiceBranch || access?.shift?.branch_id; return !br || sp.branch_id === br; }).map((sp) => <option key={sp.id} value={sp.id}>{i18n.language?.startsWith("ar") ? sp.name_ar || sp.name_en : sp.name_en}</option>)}
-									</select>
-								</div>
-								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
-									<label className="label !text-[11px] !mb-1.5">{t("common.branch", { defaultValue: "Branch" })}</label>
-									<select className="input text-sm py-2" value={invoiceBranch} onChange={(e) => setInvoiceBranch(e.target.value)}>
-										<option value="">
-											{access?.shift?.branch_id
-												? `${t("pos.shiftBranch", { defaultValue: "Shift branch" })} — ${branches.find((b) => b.id === access.shift.branch_id)?.name_en || ""}`
-												: t("common.none")}
-										</option>
-										{branches.map((b) => (
-											<option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>
-										))}
 									</select>
 								</div>
 								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40 sm:col-span-2">
