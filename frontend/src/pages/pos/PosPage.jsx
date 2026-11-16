@@ -241,15 +241,20 @@ export default function PosPage() {
 				q: codeEntry.trim(),
 				...(branchScope ? { branch_id: branchScope } : {}),
 			};
-			api
-				.get("/items", { params })
-				.then((r) =>
+			const { branch_id: _b, ...allParams } = params;
+			Promise.all([
+				api.get("/items", { params }),
+				branchScope ? api.get("/items", { params: allParams }) : Promise.resolve(null),
+			])
+				.then(([r, all]) => {
 					// Out-of-stock / brand-new items are listed too (greyed out) so the
 					// cashier can see they exist; only in-stock ones can be added.
+					const totals = new Map((all?.data || []).map((x) => [x.id, Number(x.available_quantity)]));
+					const rows = r.data.map((x) => ({ ...x, other_stores: Math.max(0, (totals.get(x.id) || 0) - Number(x.available_quantity)) }));
 					setCodeSuggestions(
-						[...r.data].sort((x, y) => Number(Number(y.available_quantity) > 0) - Number(Number(x.available_quantity) > 0)).slice(0, 12),
-					),
-				)
+						rows.sort((x, y) => Number(Number(y.available_quantity) > 0) - Number(Number(x.available_quantity) > 0)).slice(0, 12),
+					);
+				})
 				.catch(() => setCodeSuggestions([]));
 		}, 150);
 		return () => clearTimeout(handle);
@@ -1083,7 +1088,7 @@ export default function PosPage() {
 															{money(p.selling_price)}
 														</p>
 														<p className="text-[11px] text-slate-400">
-															{Number(p.available_quantity) > 0 ? <>{Number(p.available_quantity)}{" "}{t("pos.available")}</> : <span className="text-rose-500">{t("pos.outOfStock")}</span>}
+															{Number(p.available_quantity) > 0 ? <>{Number(p.available_quantity)}{" "}{t("pos.available")}</> : <span className="text-rose-500">{t("pos.outOfStock")}{p.other_stores > 0 && <> — {p.other_stores} {t("pos.inOtherStores", { defaultValue: "in other stores (transfer to this branch)" })}</>}</span>}
 														</p>
 													</div>
 												</button>
