@@ -497,23 +497,66 @@ exports.deliveryNote = async (req, res) => {
 	res.json({ id: inv.id, delivery_status: inv.delivery_status });
 };
 
+exports.deliveryLines = async (req, res) => {
+	const inv = await Invoice.findOne({ where: { id: req.params.id, company_id: req.companyId, type: "sales" }, include: [{ model: InvoiceLine, as: "lines", include: [{ model: Item, as: "item", attributes: ["id", "code", "name_en", "name_ar"] }] }] });
+	if (!inv) return res.status(404).json({ message: "Invoice not found" });
+	const { ItemBooking } = require("../models");
+	const pend = await ItemBooking.findAll({ where: { invoice_id: inv.id, status: "pending" }, raw: true });
+	const lines = (inv.lines || []).map((l) => {
+		const delivered = Number(l.delivered_qty || 0);
+		const ordered = Number(l.quantity);
+		return {
+			id: l.id, description: l.description || l.item?.name_en, code: l.item?.code || null,
+			ordered, delivered, remaining: Math.max(0, Math.round((ordered - delivered) * 1000) / 1000),
+			is_booked: !!l.is_booked, booked_pending: pend.filter((b) => b.invoice_line_id === l.id).reduce((a, b) => a + Number(b.quantity), 0),
+		};
+	});
+	res.json({ invoice_no: inv.invoice_no, delivery_status: inv.delivery_status, lines });
+};
+
 exports.deliveryDeliver = async (req, res) => {
 	const inv = await loadDeliverable(req, res);
 	if (!inv) return;
 	const { ItemBooking } = require("../models");
 	const bookingService = require("../services/bookingService");
 	const date = req.body?.date || new Date().toISOString().slice(0, 10);
-	const pending = await ItemBooking.findAll({ where: { invoice_id: inv.id, company_id: req.companyId, status: "pending" } });
-	for (const b of pending) await bookingService.fulfillBooking(req.companyId, b.id, req.user?.id, { date });
-	await inv.update({ delivery_status: "delivered", delivery_closed_at: new Date() });
-	res.json({ id: inv.id, delivery_status: "delivered", fulfilled: pending.length });
+	const lines = await InvoiceLine.findAll({ where: { invoice_id: inv.id } });
+	// body.lines = [{ line_id, quantity }]; omitted => deliver everything still outstanding.
+	const want = new Map((req.body?.lines || []).map((x) => [x.line_id, Number(x.quantity)]));
+	let any = false;
+	for (const l of lines) {
+		const remaining = Math.round((Number(l.quantity) - Number(l.delivered_qty || 0)) * 1000) / 1000;
+		let q = req.body?.lines ? (want.get(l.id) || 0) : remaining;
+		if (q <= 0) continue;
+		if (q > remaining + 0.0005) return res.status(400).json({ message: `Cannot deliver more than the remaining ${remaining} of "${l.description}"` });
+		any = true;
+		if (l.is_booked) {
+			const bks = await ItemBooking.findAll({ where: { invoice_line_id: l.id, company_id: req.companyId, status: "pending" }, order: [["createdAt", "ASC"]] });
+			let left = q;
+			for (const b of bks) {
+				if (left <= 0.0005) break;
+				const take = Math.min(left, Number(b.quantity));
+				await bookingService.fulfillBooking(req.companyId, b.id, req.user?.id, { date, quantity: take });
+				left = Math.round((left - take) * 1000) / 1000;
+			}
+		}
+		await l.update({ delivered_qty: Math.round((Number(l.delivered_qty || 0) + q) * 1000) / 1000 });
+	}
+	if (!any) return res.status(400).json({ message: "Enter a quantity to deliver" });
+	const fresh = await InvoiceLine.findAll({ where: { invoice_id: inv.id } });
+	const done = fresh.every((l) => Number(l.delivered_qty || 0) >= Number(l.quantity) - 0.0005);
+	await inv.update(done ? { delivery_status: "delivered", delivery_closed_at: new Date() } : { delivery_status: "partial" });
+	res.json({ id: inv.id, delivery_status: done ? "delivered" : "partial" });
 };
 
+// Cancels what has NOT been delivered yet: pending bookings go back to available.
 exports.deliveryCancel = async (req, res) => {
 	const inv = await loadDeliverable(req, res);
 	if (!inv) return;
 	const { ItemBooking } = require("../models");
 	const [released] = await ItemBooking.update({ status: "cancelled" }, { where: { invoice_id: inv.id, company_id: req.companyId, status: "pending" } });
-	await inv.update({ delivery_status: "cancelled", delivery_closed_at: new Date() });
-	res.json({ id: inv.id, delivery_status: "cancelled", released });
+	const lines = await InvoiceLine.findAll({ where: { invoice_id: inv.id } });
+	const anyDelivered = lines.some((l) => Number(l.delivered_qty || 0) > 0);
+	await inv.update({ delivery_status: anyDelivered ? "delivered" : "cancelled", delivery_closed_at: new Date() });
+	res.json({ id: inv.id, delivery_status: anyDelivered ? "delivered" : "cancelled", released });
 };

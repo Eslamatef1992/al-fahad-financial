@@ -12,7 +12,7 @@
 const { Op } = require('sequelize');
 const {
   sequelize, Invoice, InvoiceLine, InventoryTransaction, Item, Client, FinancialSetting, ItemDamage,
-  SalesReturn, SalesReturnLine, ItemBooking,
+  SalesReturn, SalesReturnLine, ItemBooking, PaymentMethod, InvoicePayment,
 } = require('../models');
 const voucherService = require('./voucherService');
 const itemService = require('./itemService');
@@ -70,7 +70,8 @@ async function returnable(companyId, invoiceId) {
 }
 
 async function createReturn(companyId, userId, payload) {
-  const { invoice_id, lines: inLines, reason, refund_method, refund_account_id, pos_shift_id } = payload;
+  const { invoice_id, lines: inLines, reason, refund_method, refund_account_id: refundAccountIn, payment_method_id, pos_shift_id } = payload;
+  let refund_account_id = refundAccountIn;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(payload.date || '') ? payload.date : new Date().toISOString().slice(0, 10);
   const wanted = (inLines || []).filter((l) => Number(l.quantity) > 0);
   if (!wanted.length) throw badRequest('Choose at least one line and a quantity to return');
@@ -200,11 +201,17 @@ async function createReturn(companyId, userId, payload) {
         credited = remainder; // stays as a credit balance on the client's A/R account
       } else {
         let accountId = refund_account_id;
+        // 1) the payment method the operator chose, 2) the method the client originally paid with.
+        if (!accountId && payment_method_id) accountId = (await PaymentMethod.findOne({ where: { id: payment_method_id, company_id: companyId }, transaction: t }))?.account_id;
+        if (!accountId) {
+          const orig = await InvoicePayment.findOne({ where: { invoice_id: invoice.id, payment_method_id: { [Op.ne]: null } }, order: [['createdAt', 'DESC']], transaction: t });
+          if (orig) accountId = (await PaymentMethod.findByPk(orig.payment_method_id, { transaction: t }))?.account_id;
+        }
         if (!accountId) {
           const fs = await FinancialSetting.findOne({ where: { company_id: companyId }, transaction: t });
           accountId = method === 'knet' ? fs?.pos_knet_account_id : fs?.pos_cash_account_id;
         }
-        if (!accountId) throw badRequest(`No ${method === 'knet' ? 'KNET' : 'cash'} account configured to pay the refund from — set it in Financial Configuration or pick an account`);
+        if (!accountId) throw badRequest(`No ${method === 'knet' ? 'KNET' : 'cash'} account configured to pay the refund from — set it in Financial Configuration or choose a payment method`);
         const pv = await voucherService.createVoucher(companyId, userId, {
           voucher_type: 'payment', date, description: `Refund ${ret.return_no} — ${invoice.invoice_no}`, branch_id: invoice.branch_id,
           lines: [

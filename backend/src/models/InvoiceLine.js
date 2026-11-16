@@ -22,6 +22,8 @@ module.exports = (sequelize, DataTypes) => {
     // action once the item actually leaves the warehouse. No effect on
     // purchase lines or on any line that isn't linked to an Item.
     is_booked: { type: DataTypes.BOOLEAN, defaultValue: false },
+    // How much of this line has been handed to the client via delivery notes.
+    delivered_qty: { type: DataTypes.DECIMAL(12, 3), defaultValue: 0 },
     delivery_date: { type: DataTypes.DATEONLY, allowNull: true },
     // Made-to-order line (no stock): which catalog item it is and what the
     // manufacturer charges per unit, snapshotted at sale time so later catalog

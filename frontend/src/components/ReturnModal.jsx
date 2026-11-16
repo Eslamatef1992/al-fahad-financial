@@ -17,14 +17,19 @@ export default function ReturnModal({ invoiceId, onClose, onDone }) {
   const [info, setInfo] = useState(null);
   const [sel, setSel] = useState({}); // lineId -> { quantity, disposition }
   const [reason, setReason] = useState('');
-  const [method, setMethod] = useState('cash');
+  const [method, setMethod] = useState('');
+  const [pms, setPms] = useState([]);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(null);
 
   useEffect(() => {
     if (!invoiceId) return;
     setInfo(null); setSel({}); setDone(null); setReason('');
-    api.get(`/sales-returns/for-invoice/${invoiceId}`).then((r) => setInfo(r.data)).catch(() => onClose());
+    api.get(`/sales-returns/for-invoice/${invoiceId}`).then((r) => {
+      setInfo(r.data);
+      const br = r.data.invoice?.branch_id || null;
+      api.get('/payment-methods', { params: br ? { branch_id: br } : {} }).then((x) => { const a = x.data.filter((m) => m.is_active); setPms(a); setMethod((cur) => cur || (a[0]?.id || 'credit')); }).catch(() => setMethod('credit'));
+    }).catch(() => onClose());
   }, [invoiceId]);
 
   const setLine = (id, patch) => setSel((s) => ({ ...s, [id]: { quantity: 0, disposition: 'restock', ...s[id], ...patch } }));
@@ -49,7 +54,9 @@ export default function ReturnModal({ invoiceId, onClose, onDone }) {
     if (!lines.length) return toast.error(L('Choose at least one item to return', 'اختر صنفاً واحداً على الأقل للإرجاع'));
     setSaving(true);
     try {
-      const { data } = await api.post('/sales-returns', { invoice_id: invoiceId, lines, reason: reason || undefined, refund_method: method });
+      const pm = pms.find((m) => m.id === method);
+      const kind = method === 'credit' ? 'credit' : /knet|card|visa|tabby/i.test(pm?.name_en || '') ? 'knet' : /cash/i.test(pm?.name_en || '') ? 'cash' : 'other';
+      const { data } = await api.post('/sales-returns', { invoice_id: invoiceId, lines, reason: reason || undefined, refund_method: kind, payment_method_id: pm?.id });
       setDone(data);
       toast.success(`${data.return_no}`);
       onDone?.(data);
@@ -138,8 +145,7 @@ export default function ReturnModal({ invoiceId, onClose, onDone }) {
                   <div>
                     <label className="label">{L('Refund method', 'طريقة الاسترداد')}</label>
                     <select className="input" value={method} onChange={(e) => setMethod(e.target.value)}>
-                      <option value="cash">{L('Cash back', 'نقداً')}</option>
-                      <option value="knet">{L('KNET / card', 'كي نت / بطاقة')}</option>
+                      {pms.map((m) => <option key={m.id} value={m.id}>{isAr ? m.name_ar || m.name_en : m.name_en}</option>)}
                       <option value="credit">{L('Keep as client credit', 'رصيد للعميل')}</option>
                     </select>
                   </div>

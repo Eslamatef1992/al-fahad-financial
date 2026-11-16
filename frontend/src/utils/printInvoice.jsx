@@ -7,8 +7,17 @@ import InvoicePrintTemplate from '@/components/InvoicePrintTemplate';
 // Prints any invoice with the one company invoice template (Cali Comfort A5),
 // from anywhere in the app — fetches the invoice, renders the template into a
 // temporary host, opens the print dialog, then cleans up.
-export async function printInvoiceById(invoiceId, { deliveryNote = false } = {}) {
-  const { data: invoice } = await api.get(`/invoices/${invoiceId}`);
+export async function printInvoiceById(invoiceId, { deliveryNote = false, quantities = null } = {}) {
+  let { data: invoice } = await api.get(`/invoices/${invoiceId}`);
+  // Delivery note for part of the order: keep only the lines/quantities being handed over now,
+  // with totals pro-rated, so the note matches exactly what the client receives.
+  if (quantities) {
+    const lines = (invoice.lines || []).filter((l) => Number(quantities[l.id]) > 0).map((l) => {
+      const q = Number(quantities[l.id]); const f = Number(l.quantity) ? q / Number(l.quantity) : 1;
+      return { ...l, quantity: q, line_total: Number(l.line_total) * f };
+    });
+    invoice = { ...invoice, lines, total: lines.reduce((s, l) => s + Number(l.line_total), 0) };
+  }
   const company = useCompanyStore.getState().activeCompany;
   const host = document.createElement('div');
   host.id = 'inv-print-host';
