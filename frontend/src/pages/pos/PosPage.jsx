@@ -1195,65 +1195,13 @@ export default function PosPage() {
 												{l.item.code}
 											</td>
 											<td className="py-2 px-3 min-w-0">
+<div className="flex items-center gap-2 flex-wrap">
 												<input
-														className="input !py-1.5 text-sm"
+														className="input !py-1.5 text-sm flex-1 min-w-[180px]"
 														value={l.description ?? l.item.name_en}
 														onChange={(e) => updateCartLine(l.item.id, { description: e.target.value })}
 													/>
-													{!l.item.is_manufacture && (
-														<p className="text-[10px] text-slate-400 mt-0.5">
-															{t("items.available", { defaultValue: "Available" })}:{" "}
-															<b className={Number(l.item.available_quantity) - Number(l.quantity) < 0 ? "text-rose-600" : "text-emerald-600"}>{Number(l.item.available_quantity)}</b>
-															{" · "}{t("items.afterSale", { defaultValue: "After sale" })}:{" "}
-															<b>{Number(l.item.available_quantity) - Number(l.quantity)}</b>
-														</p>
-													)}
-											</td>
-											<td className="py-2 px-3">
-												<div className="flex items-center gap-1 justify-center">
-													<button
-														onClick={() => changeQty(l.item.id, -1)}
-														className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 dark:hover:bg-navy-700 transition-colors">
-														<Minus size={11} />
-													</button>
-													<span className="w-7 text-center font-semibold">
-														{l.quantity}
-													</span>
-													<button
-														onClick={() => changeQty(l.item.id, 1)}
-														className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 dark:hover:bg-navy-700 transition-colors">
-														<Plus size={11} />
-													</button>
-												</div>
-											</td>
-											<td className="py-2 px-3 text-end whitespace-nowrap">
-													<input
-														type="number"
-														step="0.001"
-														className="input !py-1.5 text-sm text-end !w-28"
-														value={l.unit_price}
-														onChange={(e) =>
-															updateCartLine(l.item.id, {
-																unit_price: e.target.value,
-																discount_preview: null,
-															})
-														}
-													/>
-												</td>
-											<td className="py-2 px-3 text-end font-bold text-navy-900 dark:text-white whitespace-nowrap">
-												{money(l.quantity * l.unit_price - Number(l.discount_preview?.discount_amount || 0))}
-											</td>
-											<td className="py-2 px-2">
-												<button
-													onClick={() => removeLine(l.item.id)}
-													className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-950 text-red-500 hover:bg-red-100 dark:hover:bg-red-900 transition-colors">
-													<Trash2 size={13} />
-												</button>
-											</td>
-										</tr>
-<tr className={`transition-colors ${activeItemId === l.item.id ? "bg-indigo-50/60 dark:bg-navy-800" : "bg-slate-50/40 dark:bg-navy-900/30"}`}>
-	<td colSpan={6} className="px-3 pb-1.5 pt-0">
-		<div className="flex flex-wrap items-center gap-1.5 ms-1 ps-3 border-s-2 border-indigo-200 dark:border-navy-700">
+<div className="flex flex-wrap items-center gap-1.5 shrink-0">
 			{!l.item.is_manufacture && (
 				<label className={`inline-flex items-center gap-1 !text-[11px] leading-none font-bold px-2.5 py-1 rounded-full border cursor-pointer select-none transition-colors ${l.is_gift ? "bg-pink-500 border-pink-500 text-white" : "bg-white dark:bg-navy-900 border-pink-200 text-pink-600 hover:bg-pink-50"}`}>
 					<input type="checkbox" className="hidden" checked={!!l.is_gift}
@@ -1308,9 +1256,59 @@ export default function PosPage() {
 					{l.discount_error && <span className="text-xs text-red-500">{l.discount_error}</span>}
 				</div>
 			)}
-		</div>
-	</td>
-</tr>
+</div>
+</div>
+													{!l.item.is_manufacture && (
+														<p className="text-[10px] text-slate-400 mt-0.5">
+															{t("items.available", { defaultValue: "Available" })}:{" "}
+															<b className={Number(l.item.available_quantity) - Number(l.quantity) < 0 ? "text-rose-600" : "text-emerald-600"}>{Number(l.item.available_quantity)}</b>
+															{" · "}{t("items.afterSale", { defaultValue: "After sale" })}:{" "}
+															<b>{Number(l.item.available_quantity) - Number(l.quantity)}</b>
+														</p>
+													)}
+											</td>
+											<td className="py-2 px-3">
+												<div className="flex items-center gap-1 justify-center">
+													<button
+														onClick={() => changeQty(l.item.id, -1)}
+														className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 dark:hover:bg-navy-700 transition-colors">
+														<Minus size={11} />
+													</button>
+													<span className="w-7 text-center font-semibold">
+														{l.quantity}
+													</span>
+													<button
+														onClick={() => changeQty(l.item.id, 1)}
+														className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 dark:bg-navy-800 hover:bg-slate-200 dark:hover:bg-navy-700 transition-colors">
+														<Plus size={11} />
+													</button>
+												</div>
+											</td>
+											<td className="py-2 px-3 text-end whitespace-nowrap">
+													<input
+														type="number"
+														step="0.001"
+														className="input !py-1.5 text-sm text-end !w-28"
+														value={l.unit_price}
+														onChange={(e) =>
+															updateCartLine(l.item.id, {
+																unit_price: e.target.value,
+																discount_preview: null,
+															})
+														}
+													/>
+												</td>
+											<td className="py-2 px-3 text-end font-bold text-navy-900 dark:text-white whitespace-nowrap">
+												{money(l.quantity * l.unit_price - Number(l.discount_preview?.discount_amount || 0))}
+											</td>
+											<td className="py-2 px-2">
+												<button
+													onClick={() => removeLine(l.item.id)}
+													className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-950 text-red-500 hover:bg-red-100 dark:hover:bg-red-900 transition-colors">
+													<Trash2 size={13} />
+												</button>
+											</td>
+										</tr>
 {isManufactureOrder && (
 <tr className="bg-slate-50/50 dark:bg-navy-900/30">
 	<td colSpan={6} className="px-3 pb-2.5 pt-0">
@@ -1348,6 +1346,7 @@ export default function PosPage() {
 	</td>
 </tr>
 )}
+<tr aria-hidden="true" className="h-1.5"><td colSpan={6} className="p-0" /></tr>
 </Fragment>
 ))}
 								</tbody>
