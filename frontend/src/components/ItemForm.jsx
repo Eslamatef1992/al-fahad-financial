@@ -33,7 +33,7 @@ function Field({ label, children, className = '' }) {
 const fmtDate = (d) => (d ? new Date(d).toLocaleString() : '—');
 
 export default function ItemForm({
-  open, onClose, editing, form, setForm, onSubmit, saving,
+  open, onClose, editing, form, setForm, onSubmit, saving, viewOnly = false, onEnableEdit, onCodeBlur,
   units, categories, suppliers, manufacturers, items,
   assetAccounts, expenseAccounts,
   selectUnit, newUnitName, setNewUnitName, addUnit, addingUnit,
@@ -117,14 +117,21 @@ export default function ItemForm({
               ))}
             </div>
 
+            {viewOnly && (
+              <div className="px-6 py-2.5 bg-amber-50 text-amber-800 text-sm flex items-center justify-between gap-3 border-b border-amber-100">
+                <span>{L('This item number already exists — its details are shown below (read-only).', 'رقم الصنف موجود مسبقاً — تُعرض بياناته أدناه (للعرض فقط).')}</span>
+                <button type="button" onClick={onEnableEdit} className="px-3 py-1 rounded-lg bg-white border border-amber-200 font-semibold text-xs hover:bg-amber-100">{L('Edit this item', 'تعديل هذا الصنف')}</button>
+              </div>
+            )}
             {/* Body */}
+            <fieldset disabled={viewOnly} className="contents">
             <div className="flex-1 overflow-y-auto p-6">
               {tab === 'basic' && (
                 <div className="grid lg:grid-cols-[1fr_240px] gap-6">
                   <div className="space-y-4">
                     <div className="grid sm:grid-cols-2 gap-3">
                       <Field label={L('Item number', 'رقم الصنف')}>
-                        <input className="input" value={form.code || ''} onChange={set('code')} placeholder={L('Auto-generated if empty', 'يُنشأ تلقائياً إذا ترك فارغاً')} />
+                        <input className="input" value={form.code || ''} onChange={set('code')} onBlur={() => onCodeBlur?.()} onKeyDown={(e) => { if (e.key === 'Enter' && !editing) { e.preventDefault(); onCodeBlur?.(); } }} placeholder={L('Auto-generated if empty', 'يُنشأ تلقائياً إذا ترك فارغاً')} />
                       </Field>
                       <Field label={L('Warranty (months)', 'الضمان (أشهر)')}>
                         <input type="number" min="0" step="1" className="input" value={form.warranty_months ?? 0} onChange={set('warranty_months')} />
@@ -454,6 +461,7 @@ export default function ItemForm({
                 </div>
               )}
             </div>
+            </fieldset>
 
             {/* Footer */}
             <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 dark:border-navy-800 bg-slate-50/60 dark:bg-navy-900">
@@ -467,12 +475,12 @@ export default function ItemForm({
               </div>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={onClose} className="btn-ghost">{t('common.cancel')}</button>
-                {!editing && (
+                {!editing && !viewOnly && (
                   <button type="button" disabled={saving} onClick={(e) => { if (e.currentTarget.form?.reportValidity()) onSubmit(e, true); }} className="btn-ghost !bg-white border border-slate-200">
                     {L('Save & new', 'حفظ وجديد')}
                   </button>
                 )}
-                <button type="submit" disabled={saving} className="btn-primary">{saving ? t('common.loading') : t('common.save')}</button>
+                {!viewOnly && <button type="submit" disabled={saving} className="btn-primary">{saving ? t('common.loading') : t('common.save')}</button>}
               </div>
             </div>
           </motion.form>

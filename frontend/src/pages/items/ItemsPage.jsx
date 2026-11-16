@@ -110,7 +110,9 @@ export default function ItemsPage() {
     return params;
   };
 
+  const [viewOnly, setViewOnly] = useState(false);
   const openNew = () => {
+    setViewOnly(false);
     setEditing(null);
     setForm({
       ...empty,
@@ -120,7 +122,8 @@ export default function ItemsPage() {
     });
     setAttrInput(''); setNewCategoryName(''); setNewUnitName(''); setOpen(true);
   };
-  const openEdit = (row) => {
+  const openEdit = (row, readOnly = false) => {
+    setViewOnly(readOnly === true);
     setEditing(row);
     setForm({
       code: row.code || '', name_en: row.name_en, name_ar: row.name_ar, category_id: row.category_id || '', unit: row.unit, unit_id: row.unit_id || '',
@@ -133,6 +136,23 @@ export default function ItemsPage() {
     setNewCategoryName('');
     setNewUnitName('');
     setOpen(true);
+  };
+
+  // Typing an item number that already exists: don't allow a duplicate — show that item's
+  // full record (all tabs, read-only) instead.
+  const lookupCode = async () => {
+    const code = String(form.code || '').trim();
+    if (editing || !code) return;
+    const hit = async () => {
+      let row = items.find((i) => String(i.code || '').toLowerCase() === code.toLowerCase());
+      if (!row) {
+        const { data } = await api.get('/items', { params: { status: 'all', q: code } });
+        row = data.find((i) => String(i.code || '').toLowerCase() === code.toLowerCase());
+      }
+      return row;
+    };
+    const row = await hit().catch(() => null);
+    if (row) { toast(t('items.exists', { defaultValue: 'This item number already exists — showing its details.' }), { icon: 'ℹ️' }); openEdit(row, true); }
   };
 
   const addCategory = async () => {
@@ -394,6 +414,7 @@ export default function ItemsPage() {
 
       <ItemForm
         open={open} onClose={() => setOpen(false)} editing={editing} form={form} setForm={setForm}
+        viewOnly={viewOnly} onEnableEdit={() => setViewOnly(false)} onCodeBlur={lookupCode}
         onSubmit={submit} saving={saving}
         units={units} categories={categories} suppliers={suppliers} manufacturers={manufacturers} items={items}
         assetAccounts={assetAccounts} expenseAccounts={expenseAccounts}
