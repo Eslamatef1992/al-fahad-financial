@@ -72,14 +72,14 @@ html[dir='ltr'] body { font-family: 'Inter', 'Tajawal', sans-serif; }
 .dense .text-4xl, .dense .text-3xl { font-size: 1.4rem !important; }
 
 /* POS screen: bolder text and one size larger than the dense base. */
-.pos-bold { font-weight: 600; }
-.pos-bold .input { font-size: 13px !important; font-weight: 600 !important; min-height: 32px; }
-.pos-bold .label { font-size: 11px !important; font-weight: 800 !important; }
-.pos-bold table td, .pos-bold table th { font-size: 13px !important; font-weight: 600; }
-.pos-bold table th { font-weight: 800; }
-.pos-bold .text-xs { font-size: 0.8125rem !important; font-weight: 600; }
-.pos-bold .text-sm { font-size: 0.9375rem !important; font-weight: 600; }
-.pos-bold .text-\[11px\], .pos-bold .text-\[10px\] { font-size: 0.75rem !important; font-weight: 600; }
-.pos-bold .font-medium, .pos-bold .font-semibold { font-weight: 700 !important; }
-.pos-bold .btn-ghost, .pos-bold .btn-primary { font-size: 13px !important; font-weight: 700 !important; }
-.pos-bold h3 { font-size: 15px; font-weight: 800; }
+.pos-bold { font-weight: 700; }
+.pos-bold .input { font-size: 14.5px !important; font-weight: 700 !important; min-height: 36px; }
+.pos-bold .label { font-size: 12.5px !important; font-weight: 900 !important; }
+.pos-bold table td, .pos-bold table th { font-size: 14.5px !important; font-weight: 700; }
+.pos-bold table th { font-weight: 900; }
+.pos-bold .text-xs { font-size: 0.9375rem !important; font-weight: 700; }
+.pos-bold .text-sm { font-size: 1.0625rem !important; font-weight: 700; }
+.pos-bold .text-\[11px\], .pos-bold .text-\[10px\] { font-size: 0.875rem !important; font-weight: 700; }
+.pos-bold .font-medium, .pos-bold .font-semibold { font-weight: 800 !important; }
+.pos-bold .btn-ghost, .pos-bold .btn-primary { font-size: 14.5px !important; font-weight: 800 !important; }
+.pos-bold h3 { font-size: 17px; font-weight: 900; }
