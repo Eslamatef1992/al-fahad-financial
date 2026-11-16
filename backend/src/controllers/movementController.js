@@ -8,7 +8,7 @@ const {
 
 const num = (v) => Number(v || 0);
 const r3 = (v) => Math.round(num(v) * 1000) / 1000;
-const day = (d) => (d ? String(d).slice(0, 10) : null);
+const day = (d) => (d ? (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10)) : null);
 
 async function invoiceMovement(companyId, invoiceId) {
   const inv = await Invoice.findOne({
@@ -119,6 +119,7 @@ exports.client = async (req, res) => {
 // transfers / damages / manual adjustments, each linked to its document, plus booking events.
 exports.item = async (req, res) => {
   const { InventoryTransaction, ItemDamage, StockTransfer, Supplier, User } = require('../models');
+  const SalesReturnLineM = require('../models').SalesReturnLine;
   const companyId = req.companyId;
   const item = await Item.findOne({ where: { id: req.params.itemId, company_id: companyId }, attributes: ['id', 'code', 'name_en', 'name_ar', 'unit', 'selling_price', 'created_at'] });
   if (!item) return res.status(404).json({ message: 'Item not found' });
@@ -129,6 +130,8 @@ exports.item = async (req, res) => {
     ItemDamage.findAll({ where: { item_id: item.id, company_id: companyId }, order: [['createdAt', 'ASC']] }),
     Branch.findAll({ where: { company_id: companyId }, attributes: ['id', 'name_en', 'name_ar'] }),
   ]);
+  const retLines = await SalesReturnLineM.findAll({ where: { item_id: item.id }, include: [{ model: SalesReturn, as: 'salesReturn', required: true, where: { company_id: companyId }, include: [{ model: Client, as: 'client', attributes: ['name_en'] }] }] });
+  const retByNo = new Map(retLines.map((l) => [l.salesReturn.return_no, l.salesReturn]));
   const bName = new Map(branches.map((b) => [b.id, b.name_en]));
   const bookingById = new Map(bookings.map((b) => [b.id, b]));
 
@@ -161,10 +164,12 @@ exports.item = async (req, res) => {
     else if (t.reference_type === 'damage') { kind = 'damage'; label = 'Damage written off'; }
     else { kind = 'adjustment'; label = 'Stock adjustment'; }
     const party = inv ? (inv.type === 'sales' ? inv.client?.name_en : inv.supplier?.name_en) : null;
+    const retNo = (notes.match(/RET-\d+/) || [])[0];
+    const retDoc = retNo && retByNo.get(retNo) ? { type: 'return', id: retByNo.get(retNo).id, no: retNo } : null;
     events.push({
       at: day(t.date), ts: t.createdAt, kind, label, stock: true, qty,
-      doc: inv ? { type: 'invoice', id: inv.id, no: inv.invoice_no } : t.reference_type === 'transfer' && trById.get(t.reference_id) ? { type: 'transfer', id: t.reference_id, no: trById.get(t.reference_id) } : null,
-      party: party || null, branch: t.branch_id ? bName.get(t.branch_id) || null : 'Main store', unit_cost: num(t.unit_cost), notes, user: uName.get(t.created_by) || null,
+      doc: retDoc || (inv ? { type: 'invoice', id: inv.id, no: inv.invoice_no } : t.reference_type === 'transfer' && trById.get(t.reference_id) ? { type: 'transfer', id: t.reference_id, no: trById.get(t.reference_id) } : null),
+      party: party || (retNo && retByNo.get(retNo)?.client?.name_en) || null, branch: t.branch_id ? bName.get(t.branch_id) || null : 'Main store', unit_cost: num(t.unit_cost), notes, user: uName.get(t.created_by) || null,
     });
   });
   bookings.forEach((b) => {
@@ -172,6 +177,15 @@ exports.item = async (req, res) => {
     const doc = inv ? { type: 'invoice', id: inv.id, no: inv.invoice_no } : null;
     events.push({ at: day(b.createdAt), ts: b.createdAt, kind: 'booked', label: 'Booked for client (stock stays in store)', stock: false, qty: num(b.quantity), doc, party: inv?.client?.name_en || null, branch: 'Main store', notes: b.delivery_date ? `Delivery ${day(b.delivery_date)}` : '', user: uName.get(b.created_by) || null });
     if (b.status === 'cancelled') events.push({ at: day(b.updatedAt), ts: b.updatedAt, kind: 'released', label: 'Booking released (back to available)', stock: false, qty: num(b.quantity), doc, party: inv?.client?.name_en || null, branch: 'Main store', notes: '' });
+  });
+  retLines.forEach((l) => {
+    const sr = l.salesReturn;
+    const how = sr.refund_method === 'credit' ? 'client credit' : sr.refund_method;
+    events.push({
+      at: day(sr.date), ts: sr.createdAt, kind: 'refund', label: `Refund ${sr.return_no} — ${l.disposition === 'damaged' ? 'damaged (written off)' : 'back to stock'}`, stock: false, qty: num(l.quantity),
+      doc: { type: 'return', id: sr.id, no: sr.return_no }, party: sr.client?.name_en || null, branch: 'Main store',
+      notes: `Value ${num(l.line_total).toFixed(3)} · via ${how}${num(l.release_qty) > 0 ? ` · ${num(l.release_qty)} booked units released` : ''} · stock ${l.stock_status}`,
+    });
   });
   damages.filter((d) => d.status === 'reported').forEach((d) => events.push({ at: day(d.createdAt), ts: d.createdAt, kind: 'damage', label: `Damage reported (${d.damage_type})`, stock: false, qty: num(d.quantity), doc: null, party: null, branch: d.branch_id ? bName.get(d.branch_id) : 'Main store', notes: d.notes || '' }));
 

@@ -5,6 +5,7 @@ import { Search, Boxes, ArrowDownToLine, ArrowUpFromLine, Lock, Wallet, Printer,
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
+import { printCreditNote } from '@/utils/printCreditNote';
 import StatCard from '@/components/StatCard';
 
 const q = (v) => Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 3 });
@@ -20,6 +21,7 @@ const KIND = {
   adjustment: ['Adjustment', 'تسوية', 'bg-amber-50 text-amber-700'],
   booked: ['Booked', 'حجز', 'bg-yellow-50 text-yellow-700'],
   released: ['Released', 'تحرير', 'bg-slate-100 text-slate-500'],
+  refund: ['Refund', 'استرداد', 'bg-rose-50 text-rose-700'],
 };
 
 // Everything that ever happened to one item — entry, purchases, sales, deliveries, returns,
@@ -128,14 +130,14 @@ export default function ItemMovementPage() {
                     <tr key={i} className="border-t border-slate-100 dark:border-navy-800">
                       <td className="px-3 py-2 whitespace-nowrap">{e.at}</td>
                       <td className="px-3 py-2 whitespace-nowrap"><span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${k[2]}`}>{isAr ? k[1] : k[0]}</span> <span className="text-xs text-slate-500">{e.label}</span></td>
-                      <td className="px-3 py-2 whitespace-nowrap">{e.doc ? (e.doc.type === 'invoice' ? <Link className="text-indigo-600 hover:underline" to={`/invoices/${e.doc.id}`}>{e.doc.no}</Link> : e.doc.no) : '—'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{e.doc ? (e.doc.type === 'invoice' ? <Link className="text-indigo-600 hover:underline" to={`/invoices/${e.doc.id}`}>{e.doc.no}</Link> : e.doc.type === 'return' ? <button type="button" title={L('Print credit note', 'طباعة إشعار دائن')} onClick={() => printCreditNote(e.doc.id)} className="text-pink-600 hover:underline">{e.doc.no}</button> : e.doc.no) : '—'}</td>
                       <td className="px-3 py-2">{e.party || '—'}</td>
                       <td className="px-3 py-2 whitespace-nowrap">{e.branch || '—'}</td>
                       <td className="px-3 py-2 tabular-nums text-emerald-600 font-semibold">{e.stock && e.qty > 0 ? q(e.qty) : ''}</td>
-                      <td className="px-3 py-2 tabular-nums text-rose-600 font-semibold">{e.stock && e.qty < 0 ? q(-e.qty) : (!e.stock && ['booked', 'released'].includes(e.kind) ? <span className="text-amber-600">{e.kind === 'booked' ? '🔒 ' : '🔓 '}{q(e.qty)}</span> : '')}</td>
+                      <td className="px-3 py-2 tabular-nums text-rose-600 font-semibold">{e.stock && e.qty < 0 ? q(-e.qty) : (!e.stock && ['booked', 'released', 'refund'].includes(e.kind) ? <span className={e.kind === 'refund' ? 'text-pink-600' : 'text-amber-600'}>{e.kind === 'booked' ? '🔒 ' : e.kind === 'released' ? '🔓 ' : '↩ '}{q(e.qty)}</span> : '')}</td>
                       <td className="px-3 py-2 tabular-nums font-bold">{q(e.balance)}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-500">{e.user || '—'}</td>
-                      <td className="px-3 py-2 text-xs text-slate-500 max-w-[260px] truncate" title={e.notes}>{e.notes || ''}</td>
+                      <td className="px-3 py-2 text-xs text-slate-500 max-w-[320px]" title={e.notes}>{e.notes || ''}</td>
                     </tr>
                   );
                 })}
