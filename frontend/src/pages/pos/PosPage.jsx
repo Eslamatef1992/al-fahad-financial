@@ -1211,7 +1211,7 @@ export default function PosPage() {
 					🎁 {t("pos.giftShort", { defaultValue: "Gift" })}
 				</label>
 			)}
-			{!l.item.is_manufacture && !l.is_gift && (
+			{!l.item.is_manufacture && (
 				<>
 					<label className={`inline-flex items-center gap-1 !text-[11px] leading-none font-bold px-2.5 py-1 rounded-full border cursor-pointer select-none transition-colors ${!(l.is_booked && deliveryDate) ? "bg-emerald-600 border-emerald-600 text-white" : "bg-white dark:bg-navy-900 border-emerald-200 text-emerald-700 hover:bg-emerald-50"}`}>
 						<input type="checkbox" className="hidden" checked={!(l.is_booked && deliveryDate)}
