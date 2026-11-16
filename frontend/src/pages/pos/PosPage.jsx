@@ -1157,14 +1157,6 @@ export default function PosPage() {
 							</div>
 						</div>
 
-						{(() => {
-							const a = cart.find((l) => l.item.id === activeItemId);
-							return a ? (
-								<div className="mb-2">
-									<ItemStockStrip itemId={a.item.id} name={a.item.name_en} branchId={null} hideCost qtyInCart={Number(a.quantity)} sellingPrice={a.item.selling_price} />
-								</div>
-							) : null;
-						})()}
 						<div className="flex-1 overflow-y-auto max-h-[38vh] mb-2 border border-slate-100 dark:border-navy-800 rounded-xl">
 							<table className="w-full text-sm">
 								<thead>
@@ -1396,6 +1388,14 @@ export default function PosPage() {
 								</button>
 							</div>
 						</div>
+						{(() => {
+							const a = cart.find((l) => l.item.id === activeItemId);
+							return a ? (
+								<div className="mt-3">
+									<ItemStockStrip itemId={a.item.id} name={a.item.name_en} branchId={null} hideCost qtyInCart={Number(a.quantity)} sellingPrice={a.item.selling_price} />
+								</div>
+							) : null;
+						})()}
 					</div>
 				</div>
 
