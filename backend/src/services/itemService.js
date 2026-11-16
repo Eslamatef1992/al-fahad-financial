@@ -16,6 +16,23 @@ async function nextItemCode(companyId) {
   return `ITM-${String(count + 1).padStart(5, '0')}`;
 }
 
+// If a (default) account is a group, use its first active postable descendant instead,
+// so a company default like "4101000 Sales" (a group) doesn't block item creation.
+async function leafOf(companyId, accountId, t) {
+  if (!accountId) return accountId;
+  const queue = [accountId]; const seen = new Set();
+  while (queue.length) {
+    const id = queue.shift();
+    if (seen.has(id)) continue; seen.add(id);
+    const acc = await Account.findOne({ where: { id, company_id: companyId }, transaction: t });
+    if (!acc) continue;
+    if (!acc.is_group) return acc.id;
+    const kids = await Account.findAll({ where: { company_id: companyId, parent_id: id }, order: [['code', 'ASC']], transaction: t });
+    kids.forEach((k) => { if (k.is_active !== false) queue.push(k.id); });
+  }
+  return accountId; // no leaf found: let validateAccount report the real problem
+}
+
 async function validateAccount(companyId, accountId, expectedType, label, t) {
   const account = await Account.findOne({ where: { id: accountId, company_id: companyId }, transaction: t });
   if (!account) throw badRequest(`${label}: account not found`);
@@ -152,10 +169,10 @@ function pickExtended(payload) {
 // the balance is traceable from day one, exactly like any other stock change.
 async function createItem(companyId, userId, payload) {
   const {
-    name_en, name_ar, category, category_id, unit, unit_id, sku, variant_attributes, inventory_account_id, cogs_account_id,
+    name_en, name_ar, category, category_id, unit, unit_id, sku, variant_attributes,
     selling_price, reorder_level, opening_quantity, opening_cost,
   } = payload;
-  let { income_account_id } = payload;
+  let { income_account_id, inventory_account_id, cogs_account_id } = payload;
 
   if (!name_en || !name_ar) throw badRequest('name_en and name_ar are required');
 
@@ -178,6 +195,9 @@ async function createItem(companyId, userId, payload) {
   }
 
   return sequelize.transaction(async (t) => {
+    inventory_account_id = await leafOf(companyId, inventory_account_id, t);
+    income_account_id = await leafOf(companyId, income_account_id, t);
+    cogs_account_id = await leafOf(companyId, cogs_account_id, t);
     await validateAccount(companyId, inventory_account_id, 'asset', 'Inventory account', t);
     await validateAccount(companyId, income_account_id, 'revenue', 'Income account', t);
     await validateAccount(companyId, cogs_account_id, 'expense', 'COGS account', t);
