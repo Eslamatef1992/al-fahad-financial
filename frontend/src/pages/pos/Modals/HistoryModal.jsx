@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { History, X, Printer, RotateCcw } from "lucide-react";
 
 const money = (n) => Number(n || 0).toFixed(3);
@@ -16,6 +17,7 @@ export default function HistoryModal({
 	setRefundTarget,
 	todayStr,
 }) {
+	const navigate = useNavigate();
 	if (!open) return null;
 	return (
 		<>
@@ -85,7 +87,10 @@ export default function HistoryModal({
 								<div
 									key={row.id}
 									className="flex items-center justify-between gap-3 border-b border-slate-100 dark:border-navy-800 pb-2 text-sm">
-									<div className="min-w-0">
+									<div
+										className="min-w-0 flex-1 cursor-pointer rounded-lg hover:bg-slate-50 dark:hover:bg-navy-800/50 transition-colors -mx-1 px-1"
+										title={t("pos.viewInvoice")}
+										onClick={() => { onClose(); navigate(`/invoices/${row.id}`); }}>
 										<p className="font-medium text-navy-900 dark:text-white">
 											{row.invoice_no} — {row.date}
 										</p>
