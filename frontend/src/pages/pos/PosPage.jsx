@@ -5,7 +5,7 @@ import { printInvoiceById } from "@/utils/printInvoice";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Search, Plus, Minus, Trash2, ShoppingCart, PauseCircle, Lock, Unlock, CreditCard, Users, CalendarClock, RotateCcw, UserPlus, X, FileText, Boxes, Factory, Ticket, PieChart, Tag, History, Paperclip } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingCart, PauseCircle, Lock, Unlock, CreditCard, Users, CalendarClock, RotateCcw, UserPlus, X, FileText, Boxes, Factory, Ticket, PieChart, Tag, History, Paperclip, Truck } from "lucide-react";
 import api, { printFile } from "@/api/client";
 import { useCompanyStore } from "@/store/companyStore";
 import PageHeader from "@/components/PageHeader";
@@ -1245,39 +1245,40 @@ export default function PosPage() {
 												</button>
 											</td>
 										</tr>
-<tr className="bg-slate-50/50 dark:bg-navy-900/30">
-	<td colSpan={6} className="px-3 pb-2.5 pt-0">
-		<div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+<tr className={`transition-colors ${activeItemId === l.item.id ? "bg-indigo-50/60 dark:bg-navy-800" : "bg-slate-50/40 dark:bg-navy-900/30"}`}>
+	<td colSpan={6} className="px-3 pb-3 pt-0">
+		<div className="flex flex-wrap items-center gap-2 ms-1 ps-3 border-s-2 border-indigo-200 dark:border-navy-700">
 			{!l.item.is_manufacture && (
-				<label className="flex items-center gap-1.5 text-xs font-semibold text-pink-600 cursor-pointer">
-					<input type="checkbox" className="rounded" checked={!!l.is_gift}
+				<label className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border cursor-pointer select-none transition-colors ${l.is_gift ? "bg-pink-500 border-pink-500 text-white" : "bg-white dark:bg-navy-900 border-pink-200 text-pink-600 hover:bg-pink-50"}`}>
+					<input type="checkbox" className="hidden" checked={!!l.is_gift}
 						onChange={(e) => updateCartLine(l.item.id, e.target.checked
 							? { is_gift: true, gift_orig_price: Number(l.unit_price), unit_price: 0, discount_code: "", discount_preview: null, discount_error: "" }
 							: { is_gift: false, unit_price: Number(l.gift_orig_price ?? l.item.selling_price ?? 0) })} />
 					🎁 {t("pos.gift", { defaultValue: "Gift (free)" })}
 				</label>
 			)}
-				{!l.item.is_manufacture && !l.is_gift && (
-					<>
-						<label className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 cursor-pointer">
-							<input type="checkbox" className="rounded" checked={!l.is_booked}
-								onChange={(e) => updateCartLine(l.item.id, { is_booked: !e.target.checked })} />
-							{t("pos.directDelivery", { defaultValue: "Direct delivery (deduct stock now)" })}
-						</label>
-						<label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
-							<input type="checkbox" className="rounded" checked={!!l.is_booked}
-								onChange={(e) => updateCartLine(l.item.id, { is_booked: e.target.checked })} />
-							<CalendarClock size={13} className="text-slate-400" />
-							{t("invoices.bookForLater", { defaultValue: "Book for later delivery" })}
-							{l.is_booked && <span className="text-slate-400">({deliveryDate || t("pos.setDeliveryDate", { defaultValue: "set the order delivery date" })})</span>}
-						</label>
-						{!l.is_booked && Number(l.quantity) > Number(l.item.available_quantity) && (
-							<span className="text-xs font-semibold text-rose-600">
-								{t("pos.noStockDirect", { defaultValue: "Not enough stock for direct delivery" })} — {t("items.available", { defaultValue: "Available" })}: {Number(l.item.available_quantity)}
-							</span>
-						)}
-					</>
-				)}
+			{!l.item.is_manufacture && !l.is_gift && (
+				<>
+					<label className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border cursor-pointer select-none transition-colors ${!l.is_booked ? "bg-emerald-600 border-emerald-600 text-white" : "bg-white dark:bg-navy-900 border-emerald-200 text-emerald-700 hover:bg-emerald-50"}`}>
+						<input type="checkbox" className="hidden" checked={!l.is_booked}
+							onChange={() => updateCartLine(l.item.id, { is_booked: false })} />
+						<Truck size={13} />
+						{t("pos.directDelivery", { defaultValue: "Direct delivery (deduct stock now)" })}
+					</label>
+					<label className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border cursor-pointer select-none transition-colors ${l.is_booked ? "bg-amber-500 border-amber-500 text-white" : "bg-white dark:bg-navy-900 border-amber-200 text-amber-700 hover:bg-amber-50"}`}>
+						<input type="checkbox" className="hidden" checked={!!l.is_booked}
+							onChange={() => updateCartLine(l.item.id, { is_booked: true })} />
+						<CalendarClock size={13} />
+						{t("invoices.bookForLater", { defaultValue: "Book for later delivery" })}
+						{l.is_booked && <span className="opacity-90 font-semibold">· {deliveryDate || t("pos.setDeliveryDate", { defaultValue: "set the order delivery date" })}</span>}
+					</label>
+					{!l.is_booked && Number(l.quantity) > Number(l.item.available_quantity) && (
+						<span className="text-xs font-bold text-rose-600 bg-rose-50 rounded-full px-3 py-1.5">
+							⚠ {t("pos.noStockDirect", { defaultValue: "Not enough stock for direct delivery" })} — {t("items.available", { defaultValue: "Available" })}: {Number(l.item.available_quantity)}
+						</span>
+					)}
+				</>
+			)}
 			{!discountPreview && (
 				<div className="flex items-center gap-1.5">
 					<Tag size={12} className="text-slate-400 shrink-0" />
