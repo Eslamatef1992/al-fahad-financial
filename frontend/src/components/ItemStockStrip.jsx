@@ -22,7 +22,7 @@ export default function ItemStockStrip({ itemId, name, branchId, qtyInCart = 0, 
   }, [itemId]);
 
   if (!itemId || String(itemId).startsWith('mfg:')) return null;
-  const rows = (d?.rows || []).filter((r) => r.on_hand !== 0 || r.booked !== 0 || r.branch_id === branchId);
+  const rows = (d?.rows || []).filter((r) => r.on_hand !== 0 || r.booked !== 0 || r.required !== 0 || r.branch_id === branchId);
   const th = 'px-2 py-1 text-start text-[10px] uppercase tracking-wide text-slate-500 font-semibold whitespace-nowrap';
   return (
     <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/20 overflow-x-auto">
@@ -32,28 +32,23 @@ export default function ItemStockStrip({ itemId, name, branchId, qtyInCart = 0, 
       </div>
       <table className="w-full text-xs">
         <thead><tr>
-          {[L('Store', 'المخزن'), L('Balance', 'الرصيد'), L('Booked', 'المحجوز'), L('Available', 'المتاح'), L('This invoice', 'هذه الفاتورة'), L('After', 'المتبقي'), ...(hideCost ? [] : [L('Cost', 'التكلفة')]), L('Min', 'الحد الأدنى'), L('Price', 'سعر البيع')].map((h) => <th key={h} className={th}>{h}</th>)}
+          {[L('Store', 'المخزن'), L('Available', 'المتاح'), L('Booked', 'المحجوز'), L('Balance', 'الرصيد'), L('Ordered (PO)', 'المطلوب (أوامر الشراء)')].map((h) => <th key={h} className={th}>{h}</th>)}
         </tr></thead>
         <tbody>
-          {!d && <tr><td colSpan={hideCost ? 8 : 9} className="px-2 py-2 text-slate-400">…</td></tr>}
+          {!d && <tr><td colSpan={5} className="px-2 py-2 text-slate-400">…</td></tr>}
           {rows.map((r) => {
             const mine = r.branch_id === branchId || (!branchId && !r.branch_id);
-            const after = r.available - (mine ? qtyInCart : 0);
             return (
               <tr key={r.branch_id || 'pool'} className={`border-t border-amber-200/60 dark:border-amber-900/30 ${mine ? 'bg-white dark:bg-navy-800 font-semibold' : ''}`}>
                 <td className="px-2 py-1 whitespace-nowrap">{isAr ? r.name_ar || r.name_en : r.name_en}</td>
-                <td className="px-2 py-1 tabular-nums">{q(r.on_hand)}</td>
-                <td className="px-2 py-1 tabular-nums text-amber-600">{q(r.booked)}</td>
                 <td className={`px-2 py-1 tabular-nums ${r.available <= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{q(r.available)}</td>
-                <td className="px-2 py-1 tabular-nums">{mine ? q(qtyInCart) : '—'}</td>
-                <td className={`px-2 py-1 tabular-nums ${after < 0 ? 'text-rose-600 font-bold' : ''}`}>{mine ? q(after) : '—'}</td>
-                {!hideCost && <td className="px-2 py-1 tabular-nums">{m(r.cost)}</td>}
-                <td className="px-2 py-1 tabular-nums">{q(d.reorder_level)}</td>
-                <td className="px-2 py-1 tabular-nums">{m(sellingPrice)}</td>
+                <td className="px-2 py-1 tabular-nums text-amber-600">{q(r.booked)}</td>
+                <td className="px-2 py-1 tabular-nums">{q(r.on_hand)}</td>
+                <td className="px-2 py-1 tabular-nums text-sky-700">{q(r.required)}</td>
               </tr>
             );
           })}
-          {d && !rows.length && <tr><td colSpan={hideCost ? 8 : 9} className="px-2 py-2 text-slate-400">{L('No stock in any store.', 'لا مخزون في أي مخزن.')}</td></tr>}
+          {d && !rows.length && <tr><td colSpan={5} className="px-2 py-2 text-slate-400">{L('No stock in any store.', 'لا مخزون في أي مخزن.')}</td></tr>}
         </tbody>
       </table>
     </div>
