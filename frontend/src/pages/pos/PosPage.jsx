@@ -77,6 +77,8 @@ export default function PosPage() {
 	const [loadingAccess, setLoadingAccess] = useState(true);
 	const [branches, setBranches] = useState([]);
 	const [clients, setClients] = useState([]);
+	const [clientDue, setClientDue] = useState({});
+	const loadClientDue = () => api.get("/pos/client-balances").then((r) => setClientDue(r.data || {})).catch(() => {});
 	const [manufacturers, setManufacturers] = useState([]);
 	const [salesPeople, setSalesPeople] = useState([]);
 	const [activeItemId, setActiveItemId] = useState(null);
@@ -195,6 +197,7 @@ export default function PosPage() {
 			.get("/clients")
 			.then((r) => setClients(r.data))
 			.catch(() => {});
+		loadClientDue();
 		api
 			.get("/manufacturers")
 			.then((r) => setManufacturers(r.data))
@@ -792,6 +795,7 @@ export default function PosPage() {
 			resetTender();
 			clearCart();
 			setCompletedInvoiceId(data.id);
+				loadClientDue();
 		} catch (e) {
 			/* toast handled globally */
 		} finally {
@@ -951,6 +955,11 @@ export default function PosPage() {
 												? ` — ${clients.find((c) => c.id === clientId).phone}`
 												: ""}
 										</span>
+										{clientDue[clientId] > 0 && (
+											<span className="shrink-0 rounded-full bg-rose-100 text-rose-700 text-[11px] font-bold px-2 py-0.5 whitespace-nowrap">
+												{t("pos.dueBalance", { defaultValue: "Due balance" })}: {money(clientDue[clientId])}
+											</span>
+										)}
 										<button
 											type="button"
 											onClick={() => {
@@ -986,7 +995,8 @@ export default function PosPage() {
 														}}
 														className={`w-full text-start px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors ${i === 0 ? "bg-slate-100 dark:bg-navy-800" : "hover:bg-slate-50 dark:hover:bg-navy-800"}`}>
 														<span className="truncate">{c.name_en}</span>
-														<span className="text-xs text-slate-400 shrink-0">
+														<span className="text-xs text-slate-400 shrink-0 flex items-center gap-2">
+															{clientDue[c.id] > 0 && <span className="rounded-full bg-rose-100 text-rose-700 font-bold px-2 py-0.5">{t("pos.due", { defaultValue: "Due" })}: {money(clientDue[c.id])}</span>}
 															{c.phone || "-"}
 														</span>
 													</button>

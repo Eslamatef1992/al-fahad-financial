@@ -121,3 +121,19 @@ exports.updateCashier = async (req, res) => {
     pos_permissions: row.pos_permissions || [],
   });
 };
+
+// Outstanding (unpaid) balance per client from posted / partially paid sales invoices.
+exports.clientBalances = async (req, res) => {
+  const { Invoice } = require('../models');
+  const { Op } = require('sequelize');
+  const rows = await Invoice.findAll({
+    where: { company_id: req.companyId, type: 'sales', client_id: { [Op.ne]: null }, status: { [Op.in]: ['posted', 'partially_paid'] } },
+    attributes: ['client_id', 'total', 'paid_total'], raw: true,
+  });
+  const out = {};
+  for (const r of rows) {
+    const due = Number(r.total) - Number(r.paid_total || 0);
+    if (due > 0.0005) out[r.client_id] = Math.round(((out[r.client_id] || 0) + due) * 1000) / 1000;
+  }
+  res.json(out);
+};

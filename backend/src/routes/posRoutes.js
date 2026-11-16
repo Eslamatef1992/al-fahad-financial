@@ -16,6 +16,7 @@ router.post('/sales', ctrl.createSale);
 router.get('/sales/held', ctrl.heldSales);
 router.get('/sales/pending', requireMinRole('admin'), ctrl.pendingSales);
 router.get('/sales/history', ctrl.salesHistory);
+router.get('/client-balances', ctrl.clientBalances);
 router.post('/sales/:id/attachments', withCategory('pos-attachments'), upload.array('files', 10), ctrl.addAttachments);
 router.post('/sales/:id/void', ctrl.voidSale);
 router.post('/sales/:id/refund', ctrl.refundSale);
