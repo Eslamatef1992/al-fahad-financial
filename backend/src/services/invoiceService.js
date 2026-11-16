@@ -84,6 +84,10 @@ async function createInvoice(companyId, userId, payload) {
       companyId, { lines, discount_code }, t,
     );
 
+    // A client with no saved address picks up the delivery address typed on their first order.
+    if (type === 'sales' && client_id && delivery_address) {
+      await Client.update({ address: delivery_address }, { where: { id: client_id, company_id: companyId, address: { [require('sequelize').Op.or]: [null, ''] } }, transaction: t });
+    }
     const invoice_no = await nextInvoiceNo(companyId, type, t);
     const invoice = await Invoice.create({
       company_id: companyId,
