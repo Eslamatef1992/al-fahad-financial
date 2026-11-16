@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard, ReceiptText, Clock, XCircle, GitMerge, Undo2, Repeat, Building2, PackageX,
-  ArrowLeftRight, Timer, Users, BarChart3, Settings, CalendarDays, MonitorSmartphone, Factory, Gift, ShieldCheck,
+  ArrowLeftRight, Timer, Users, BarChart3, Settings, CalendarDays, MonitorSmartphone, Factory, Gift, ShieldCheck, Wallet,
 } from 'lucide-react';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
@@ -18,6 +18,7 @@ export const POS_MENU = [
   { to: 'pending', icon: Clock, en: 'Pending orders', ar: 'الطلبات المعلقة' },
   { to: 'canceled', icon: XCircle, en: 'Canceled orders', ar: 'الطلبات الملغاة' },
   { to: 'returns', icon: Undo2, en: 'Refunds & Returns', ar: 'المستردات والمرتجعات' },
+  { to: 'balances', icon: Wallet, en: 'Balance statement', ar: 'كشف الحساب' },
   { to: 'client-movement', icon: GitMerge, en: 'Client movement', ar: 'حركة العميل' },
   { to: 'warranty', icon: ShieldCheck, en: 'Warranty & exchange', ar: 'الضمان والتبديل' },
   { to: 'gifts', icon: Gift, en: 'Gifts', ar: 'الهدايا' },

@@ -62,6 +62,7 @@ import StockReportsPage from '@/pages/inventory/StockReportsPage';
 import ManufactureItemsPage from '@/pages/manufactureItems/ManufactureItemsPage';
 import QuickAccessPage from '@/pages/QuickAccess';
 import PosModule from '@/pages/posModule/PosModule';
+import ClientBalancesPage from '@/pages/posModule/ClientBalancesPage';
 import {
   PosDashboard, PosOrders, PosPending, PosCanceled, PosConsolidated, PosRefunded, PosExchange, PosBranches,
   PosBackorder, PosTransactions, PosSessions, PosUsers, PosReports, PosSettings,
@@ -150,6 +151,7 @@ export default function App() {
             <Route path="sales-people" element={<SalesPeoplePage />} />
             <Route path="gifts" element={<GiftsPage />} />
             <Route path="warranty" element={<WarrantyPage />} />
+            <Route path="balances" element={<ClientBalancesPage />} />
             <Route path="client-movement" element={<ClientMovementPage />} />
             <Route path="canceled" element={<PosCanceled />} />
             <Route path="consolidated" element={<PosConsolidated />} />
