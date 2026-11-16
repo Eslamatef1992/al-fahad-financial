@@ -99,8 +99,13 @@ export default function InvoiceDetailPage() {
 
   // Opening "Record payment" settles what the client owes (it was sold on credit), so everything is
   // pre-selected: amount = remaining balance, first active payment method (cash preferred) and its account.
+  const usableMethods = () => {
+    const act = paymentMethods.filter((m) => m.is_active);
+    const br = act.filter((m) => !m.branch_id || !invoice?.branch_id || m.branch_id === invoice.branch_id);
+    return br.length ? br : act;
+  };
   const openPayment = () => {
-    const usable = paymentMethods.filter((m) => m.is_active && (!m.branch_id || !invoice?.branch_id || m.branch_id === invoice.branch_id));
+    const usable = usableMethods();
     const method = usable.find((m) => /cash|نقد/i.test(`${m.name_en} ${m.name_ar || ''}`)) || usable[0];
     setPayForm((f) => ({
       ...f,
@@ -323,7 +328,7 @@ export default function InvoiceDetailPage() {
           <label className="label">{t('nav.paymentMethods')}</label>
           <select className="input" value={payForm.payment_method_id} onChange={(e) => pickPaymentMethod(e.target.value)}>
             <option value="">{t('common.select')}</option>
-            {paymentMethods.filter((m) => m.is_active && (!m.branch_id || !invoice?.branch_id || m.branch_id === invoice.branch_id)).map((m) => <option key={m.id} value={m.id}>{m.name_en}</option>)}
+            {usableMethods().map((m) => <option key={m.id} value={m.id}>{m.name_en}</option>)}
           </select>
         </div>
         <div>
@@ -331,6 +336,9 @@ export default function InvoiceDetailPage() {
           <select required className="input" value={payForm.cash_account_id} onChange={(e) => setPayForm({ ...payForm, cash_account_id: e.target.value })}>
             <option value="">{t('common.select')}</option>
             {cashAccounts.map((c) => <option key={c.id} value={c.account_id}>{c.name_en}</option>)}
+            {payForm.cash_account_id && !cashAccounts.some((c) => c.account_id === payForm.cash_account_id) && (
+              <option value={payForm.cash_account_id}>{paymentMethods.find((m) => m.id === payForm.payment_method_id)?.name_en || t('invoices.cashBankAccount')}</option>
+            )}
           </select>
         </div>
         <div><label className="label">{t('common.notes')}</label><textarea className="input" rows={2} value={payForm.notes} onChange={(e) => setPayForm({ ...payForm, notes: e.target.value })} /></div>
