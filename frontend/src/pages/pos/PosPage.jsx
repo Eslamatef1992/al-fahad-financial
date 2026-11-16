@@ -431,7 +431,7 @@ export default function PosPage() {
 					discount_code: "",
 					discount_preview: null,
 					discount_error: "",
-					is_booked: false,
+					is_booked: true,
 					delivery_date: "",
 				},
 			];
