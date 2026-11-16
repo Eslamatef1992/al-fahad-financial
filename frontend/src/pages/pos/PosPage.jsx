@@ -119,7 +119,7 @@ export default function PosPage() {
 	const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
 	const [dueDate, setDueDate] = useState("");
 	const [invoiceBranch, setInvoiceBranch] = useState("");
-	useEffect(() => { const br = invoiceBranch || access?.shift?.branch_id; if (!salespersonId || !br || !salesPeople.length) return; const sp = salesPeople.find((x) => x.id === salespersonId); if (sp && sp.branch_id !== br) setSalespersonId(""); }, [invoiceBranch, access?.shift?.branch_id, salesPeople]);
+	useEffect(() => { const br = invoiceBranch || access?.shift?.branch_id; if (!salespersonId || !br || !salesPeople.length) return; const sp = salesPeople.find((x) => x.id === salespersonId); if (sp && sp.branch_id && sp.branch_id !== br) setSalespersonId(""); }, [invoiceBranch, access?.shift?.branch_id, salesPeople]);
 	const [invoiceNotes, setInvoiceNotes] = useState("");
 	const [newClientOpen, setNewClientOpen] = useState(false);
 	const [newClient, setNewClient] = useState({ name_en: "", phone: "" });
@@ -921,7 +921,7 @@ export default function PosPage() {
 									<label className="label !text-[11px] !mb-1.5">{t("pos.salesPerson", { defaultValue: "Sales person" })}</label>
 									<select className="input text-sm py-2" value={salespersonId} onChange={(e) => setSalespersonId(e.target.value)}>
 										<option value="">—</option>
-										{salesPeople.filter((sp) => { const br = invoiceBranch || access?.shift?.branch_id; return !br || sp.branch_id === br; }).map((sp) => <option key={sp.id} value={sp.id}>{i18n.language?.startsWith("ar") ? sp.name_ar || sp.name_en : sp.name_en}</option>)}
+										{salesPeople.filter((sp) => { const br = invoiceBranch || access?.shift?.branch_id; return !br || !sp.branch_id || sp.branch_id === br; }).map((sp) => <option key={sp.id} value={sp.id}>{i18n.language?.startsWith("ar") ? sp.name_ar || sp.name_en : sp.name_en}</option>)}
 									</select>
 								</div>
 <div className="col-span-full grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-sky-200 dark:border-sky-900/40">
