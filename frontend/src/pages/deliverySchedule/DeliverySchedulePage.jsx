@@ -63,8 +63,17 @@ export default function DeliverySchedulePage() {
     if (shortages().length) return toast.error(shortages()[0]);
     if (!lines.some((l) => l.quantity > 0)) return toast.error(L('Enter a quantity to deliver', 'أدخل كمية للتسليم'));
     await api.post(`/invoices/${dn.row.id}/delivery/deliver`, { lines, branch_id: dn.from || null });
-    toast.success(L('Delivery recorded', 'تم تسجيل التسليم'));
-    setDn(null); load();
+    toast.success(L('Delivery recorded – stock deducted', 'تم تسجيل التسليم – تم خصم المخزون'));
+    load();
+    // Live refresh: keep the dialog open with updated delivered/remaining/stock while items remain.
+    try {
+      const { data } = await api.get(`/invoices/${dn.row.id}/delivery-lines`);
+      const left = data.lines.reduce((s, l) => s + Number(l.remaining || 0), 0);
+      if (left > 0.0005) {
+        const qty = {}; data.lines.forEach((l) => { qty[l.id] = l.remaining; });
+        setDn({ ...dn, data, qty });
+      } else setDn(null);
+    } catch { setDn(null); }
   };
   const cancelRest = async () => {
     if (!window.confirm(L('Cancel what is not delivered yet? Booked items return to available stock.', 'إلغاء ما لم يُسلَّم بعد؟ ستعود الأصناف المحجوزة إلى المتاح.'))) return;

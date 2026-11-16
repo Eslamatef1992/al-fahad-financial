@@ -440,21 +440,32 @@ async function queryDeliverySchedule(
 	companyId,
 	{ date_from, date_to, status, branch_id } = {},
 ) {
+	const { ItemBooking } = require("../models");
+	// Invoices that have booked items but no header delivery date must show too.
+	const bookings = await ItemBooking.findAll({
+		where: { company_id: companyId, status: { [Op.ne]: "cancelled" } },
+		attributes: ["invoice_id", "delivery_date"],
+		raw: true,
+	});
+	const bookingDate = {}; // invoice_id -> earliest booking delivery date (or "" if none)
+	for (const b of bookings) {
+		const d = b.delivery_date ? String(b.delivery_date).slice(0, 10) : "";
+		const cur = bookingDate[b.invoice_id];
+		if (cur === undefined || (d && (!cur || d < cur))) bookingDate[b.invoice_id] = d;
+	}
+	const bookedIds = Object.keys(bookingDate);
+
 	const where = {
 		company_id: companyId,
 		type: "sales",
-		delivery_date: { [Op.ne]: null },
+		[Op.or]: [
+			{ delivery_date: { [Op.ne]: null } },
+			...(bookedIds.length ? [{ id: { [Op.in]: bookedIds } }] : []),
+		],
 	};
 	if (status && status !== "all") where.status = status;
 	if (branch_id) where.branch_id = branch_id;
-	if (date_from || date_to) {
-		where.delivery_date = {
-			[Op.ne]: null,
-			...(date_from && { [Op.gte]: date_from }),
-			...(date_to && { [Op.lte]: date_to }),
-		};
-	}
-	return Invoice.findAll({
+	const rows = await Invoice.findAll({
 		where,
 		include: partyInclude,
 		// Newest invoice first (by when it was created, i.e. highest invoice number first).
@@ -462,6 +473,18 @@ async function queryDeliverySchedule(
 			["createdAt", "DESC"],
 		],
 	});
+	// Effective date = header date, else earliest booking date, else invoice date.
+	const out = [];
+	for (const inv of rows) {
+		if (!inv.delivery_date) {
+			inv.setDataValue("delivery_date", bookingDate[inv.id] || inv.date);
+		}
+		const eff = String(inv.delivery_date).slice(0, 10);
+		if (date_from && eff < date_from) continue;
+		if (date_to && eff > date_to) continue;
+		out.push(inv);
+	}
+	return out;
 }
 
 exports.deliverySchedule = async (req, res) => {
