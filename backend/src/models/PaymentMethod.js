@@ -12,6 +12,8 @@ module.exports = (sequelize, DataTypes) => {
     name_en: { type: DataTypes.STRING(100), allowNull: false },
     name_ar: { type: DataTypes.STRING(100), allowNull: false },
     account_id: { type: DataTypes.UUID, allowNull: false },
+    // null = available in every branch; set = only offered for that branch.
+    branch_id: { type: DataTypes.UUID, allowNull: true },
     is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
   }, {
     tableName: 'payment_methods',

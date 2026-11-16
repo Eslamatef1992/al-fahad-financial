@@ -719,7 +719,8 @@ export default function PosPage() {
 		} catch (e) {}
 	};
 
-	const activePaymentMethods = paymentMethods.filter((pm) => pm.is_active);
+	const payBranch = invoiceBranch || access?.shift?.branch_id || null;
+	const activePaymentMethods = paymentMethods.filter((pm) => pm.is_active && (!pm.branch_id || !payBranch || pm.branch_id === payBranch));
 	const tenderTotal =
 		Object.values(tenderAmounts).reduce((s, v) => s + Number(v || 0), 0) +
 		Number(creditAmount || 0);

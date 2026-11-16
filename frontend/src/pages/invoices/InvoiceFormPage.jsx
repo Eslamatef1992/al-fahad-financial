@@ -350,7 +350,7 @@ export default function InvoiceFormPage() {
   // Mirrors POS checkout exactly: every active Payment Setting Option can
   // take a tender, plus Credit, and the tendered total must match the
   // invoice total before it's allowed through.
-  const activePaymentMethods = paymentMethods.filter((pm) => pm.is_active);
+  const activePaymentMethods = paymentMethods.filter((pm) => pm.is_active && (!pm.branch_id || !header.branch_id || pm.branch_id === header.branch_id));
   const tenderTotal = Object.values(tenderAmounts).reduce((s, v) => s + Number(v || 0), 0) + Number(creditAmount || 0);
   const completeAndPay = async () => {
     if (!header.client_id) return toast.error(t('invoices.pleaseSelectClient'));

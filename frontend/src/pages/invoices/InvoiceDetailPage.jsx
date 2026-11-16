@@ -287,7 +287,7 @@ export default function InvoiceDetailPage() {
           <label className="label">{t('nav.paymentMethods')}</label>
           <select className="input" value={payForm.payment_method_id} onChange={(e) => pickPaymentMethod(e.target.value)}>
             <option value="">{t('common.select')}</option>
-            {paymentMethods.filter((m) => m.is_active).map((m) => <option key={m.id} value={m.id}>{m.name_en}</option>)}
+            {paymentMethods.filter((m) => m.is_active && (!m.branch_id || !invoice?.branch_id || m.branch_id === invoice.branch_id)).map((m) => <option key={m.id} value={m.id}>{m.name_en}</option>)}
           </select>
         </div>
         <div>

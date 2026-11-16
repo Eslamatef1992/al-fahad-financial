@@ -9,7 +9,7 @@ import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
 import usePermissions from '@/hooks/usePermissions';
 
-const empty = { name_en: '', name_ar: '', account_id: '' };
+const empty = { name_en: '', name_ar: '', account_id: '', branch_id: '' };
 
 // Super-admin-only: defines the ways a payment can be tendered (Cash, Knet,
 // Tabby, Bank Transfer, ...), each linked to exactly one Chart-of-Accounts
@@ -22,6 +22,7 @@ export default function PaymentMethodsPage() {
   const { isSuperAdmin } = usePermissions();
   const [rows, setRows] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showInactive, setShowInactive] = useState(false);
   const [open, setOpen] = useState(false);
@@ -37,6 +38,7 @@ export default function PaymentMethodsPage() {
     if (!activeCompany) return;
     load();
     api.get('/accounts').then((r) => setAccounts(r.data)).catch(() => {});
+    api.get('/branches').then((r) => setBranches(r.data)).catch(() => {});
   }, [activeCompany, showInactive]);
 
   const sortedAccounts = [...accounts].sort((a, b) => a.code.localeCompare(b.code));
@@ -44,15 +46,16 @@ export default function PaymentMethodsPage() {
   const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
   const openEdit = (row) => {
     setEditing(row);
-    setForm({ name_en: row.name_en, name_ar: row.name_ar || '', account_id: row.account_id || '' });
+    setForm({ name_en: row.name_en, name_ar: row.name_ar || '', account_id: row.account_id || '', branch_id: row.branch_id || '' });
     setOpen(true);
   };
 
   const submit = async (e) => {
     e.preventDefault(); setSaving(true);
     try {
-      if (editing) await api.put(`/payment-methods/${editing.id}`, form);
-      else await api.post('/payment-methods', form);
+      const body = { ...form, branch_id: form.branch_id || null };
+      if (editing) await api.put(`/payment-methods/${editing.id}`, body);
+      else await api.post('/payment-methods', body);
       toast.success(t('common.save')); setOpen(false); load();
     } finally { setSaving(false); }
   };
@@ -67,6 +70,7 @@ export default function PaymentMethodsPage() {
     { key: 'name_en', label: t('common.nameEn'), render: (r) => <span className="font-semibold">{r.name_en}</span> },
     { key: 'name_ar', label: t('common.nameAr'), render: (r) => r.name_ar || '—' },
     { key: 'account', label: t('paymentMethods.linkedAccount'), render: (r) => r.account ? `${r.account.code} - ${r.account.name_en}` : '—' },
+    { key: 'branch', label: t('nav.branch', { defaultValue: 'Branch' }), render: (r) => r.branch ? r.branch.name_en : <span className="text-slate-400">{t('common.allBranches', { defaultValue: 'All branches' })}</span> },
     { key: 'is_active', label: t('common.status'), render: (r) => (
       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${r.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
         {r.is_active ? t('common.active') : t('common.inactive')}
@@ -122,6 +126,14 @@ export default function PaymentMethodsPage() {
             ))}
           </select>
           <p className="text-xs text-slate-400 mt-1">{t('paymentMethods.linkedAccountHint')}</p>
+        </div>
+        <div>
+          <label className="label">{t('nav.branch', { defaultValue: 'Branch' })}</label>
+          <select className="input" value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: e.target.value })}>
+            <option value="">{t('common.allBranches', { defaultValue: 'All branches (no link)' })}</option>
+            {branches.map((b) => <option key={b.id} value={b.id}>{b.name_en}</option>)}
+          </select>
+          <p className="text-xs text-slate-400 mt-1">{t('paymentMethods.branchHint', { defaultValue: 'Leave empty to offer this method in every branch; pick a branch to offer it only there.' })}</p>
         </div>
       </SlideOver>
     </div>

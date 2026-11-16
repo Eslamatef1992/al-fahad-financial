@@ -166,6 +166,7 @@ PosShift.belongsTo(User, { foreignKey: 'cashier_id', as: 'cashier' });
 Invoice.belongsTo(PosShift, { foreignKey: 'pos_shift_id', as: 'posShift' });
 Invoice.belongsTo(Manufacturer, { foreignKey: 'manufacturer_id', as: 'manufacturer' });
 PaymentMethod.belongsTo(Account, { foreignKey: 'account_id', as: 'account' });
+PaymentMethod.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
 InvoicePayment.belongsTo(PaymentMethod, { foreignKey: 'payment_method_id', as: 'paymentMethodRef' });
 PosShift.hasMany(Invoice, { foreignKey: 'pos_shift_id', as: 'sales' });
 InvoicePayment.belongsTo(Invoice, { foreignKey: 'invoice_id' });
