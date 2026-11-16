@@ -874,7 +874,7 @@ export default function PosPage() {
 	}
 
 	return (
-		<div className="dense">
+		<div className="dense pos-bold">
 			<PageHeader
 				title={t("nav.pos")}
 				subtitle={t("pos.shiftInfo", {
