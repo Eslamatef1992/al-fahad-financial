@@ -67,7 +67,7 @@ export default function InvoiceMovementPanel({ invoiceId, onClose }) {
         <>
           <div className="rounded-xl bg-slate-50 dark:bg-navy-800/50 px-4 py-3 text-sm grid grid-cols-2 gap-1">
             <span>{L('Client', 'العميل')}: <b>{d.invoice.client?.name_en || '—'}</b></span>
-            <span>{L('Sales person', 'المندوب')}: <b>{d.invoice.salesperson?.name_en || '—'}</b></span>
+            <span>{L('Sales person', 'البائع')}: <b>{d.invoice.salesperson?.name_en || '—'}</b></span>
             <span>{L('Total', 'الإجمالي')}: <b>{n3(d.invoice.total)}</b></span>
             <span>{L('Returned value', 'قيمة المرتجع')}: <b>{n3(d.invoice.returned_total)}</b></span>
           </div>

@@ -113,6 +113,8 @@ export default function InvoicePrintTemplate({ invoice, company, deliveryNote = 
         .invoice-print .date-field { justify-self: end; width: 62mm; margin-top: 2mm; font-size: 11px; }
         .invoice-print .date-field .filled, .invoice-print .name-field .filled { height: auto; min-height: 13px; overflow: visible; line-height: 1.3; }
         .invoice-print .name-field { margin: 3mm 0 1.5mm; font-size: 11px; }
+        .invoice-print .name-extra { display: grid; grid-template-columns: 1.6fr 1fr; gap: 4mm; }
+        .invoice-print .name-extra .name-field { margin: 0 0 1.5mm; font-size: 9.5px; }
         .invoice-print table.items { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .invoice-print table.items th, .invoice-print table.items td { border: var(--line) solid var(--ink); }
         .invoice-print table.items thead th { background: var(--fill); font-weight: 700; font-size: 8.5px; line-height: 1.25; padding: 1.5mm 1mm; vertical-align: middle; }
@@ -204,6 +206,19 @@ export default function InvoicePrintTemplate({ invoice, company, deliveryNote = 
 							: ""}
 					</span>
 					<span className="ar">: الإسم</span>
+				</div>
+
+				<div className="name-extra">
+					<div className="field name-field">
+						<span>Address :</span>
+						<span className="filled">{client?.address || ""}</span>
+						<span className="ar">: العنوان</span>
+					</div>
+					<div className="field name-field">
+						<span>Seller :</span>
+						<span className="filled">{invoice.salesperson?.name_ar || invoice.salesperson?.name_en || ""}</span>
+						<span className="ar">: البائع</span>
+					</div>
 				</div>
 
 				<table className="items">

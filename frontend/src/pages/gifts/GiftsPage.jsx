@@ -40,7 +40,7 @@ export default function GiftsPage() {
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="bg-slate-50 dark:bg-navy-900 text-[11px] uppercase tracking-wide text-slate-500">
-            {[L('Date', 'التاريخ'), L('Invoice', 'الفاتورة'), L('Client', 'العميل'), L('Item', 'الصنف'), L('Qty', 'الكمية'), L('Cost', 'التكلفة'), L('Retail value', 'القيمة البيعية'), L('Sales person', 'المندوب'), L('Branch', 'الفرع')].map((h) => <th key={h} className="px-3 py-2.5 text-start whitespace-nowrap">{h}</th>)}
+            {[L('Date', 'التاريخ'), L('Invoice', 'الفاتورة'), L('Client', 'العميل'), L('Item', 'الصنف'), L('Qty', 'الكمية'), L('Cost', 'التكلفة'), L('Retail value', 'القيمة البيعية'), L('Sales person', 'البائع'), L('Branch', 'الفرع')].map((h) => <th key={h} className="px-3 py-2.5 text-start whitespace-nowrap">{h}</th>)}
           </tr></thead>
           <tbody>
             {!data?.rows.length && <tr><td colSpan={9} className="px-3 py-8 text-center text-slate-400">{L('No gifts in this period.', 'لا هدايا في هذه الفترة.')}</td></tr>}

@@ -73,14 +73,14 @@ export default function SalesPeoplePage() {
     <div>
       <PageHeader
         title={L('Sales people & targets', 'مندوبو المبيعات والأهداف')}
-        subtitle={L('Sales people appear in the POS invoice dropdown; targets are matched against their real sales (net of returns)', 'يظهر المندوبون في قائمة فاتورة نقطة البيع؛ وتُقارن الأهداف بمبيعاتهم الفعلية (صافي المرتجعات)')}
+        subtitle={L('Sales people appear in the POS invoice dropdown; targets are matched against their real sales (net of returns)', 'يظهر البائعون في قائمة فاتورة نقطة البيع؛ وتُقارن الأهداف بمبيعاتهم الفعلية (صافي المرتجعات)')}
         actions={<input type="month" className="input" value={month} onChange={(e) => setMonth(e.target.value)} />}
       />
 
       <div className="grid xl:grid-cols-[360px_1fr] gap-5">
         <div className="card p-4 h-fit">
           <div className="flex items-center justify-between mb-3">
-            <p className="font-bold flex items-center gap-2"><Users size={16} className="text-slate-400" />{L('Sales people', 'المندوبون')}</p>
+            <p className="font-bold flex items-center gap-2"><Users size={16} className="text-slate-400" />{L('Sales people', 'البائعون')}</p>
             <button onClick={() => { setPForm(emptyPerson); setPOpen(true); }} className="btn-primary !py-1.5 text-xs"><Plus size={14} />{L('Add', 'إضافة')}</button>
           </div>
           <ul className="divide-y divide-slate-100 dark:divide-navy-800">
@@ -142,7 +142,7 @@ export default function SalesPeoplePage() {
 
       {tForm && (
         <SlideOver open={tOpen} onClose={() => setTOpen(false)} title={tForm.id ? L('Edit target', 'تعديل هدف') : L('New target', 'هدف جديد')} onSubmit={saveTarget} submitting={saving}>
-          <div><label className="label">{L('Sales person', 'المندوب')} *</label>
+          <div><label className="label">{L('Sales person', 'البائع')} *</label>
             <select required className="input" value={tForm.salesperson_id} onChange={(e) => setTForm({ ...tForm, salesperson_id: e.target.value })}>
               {people.filter((p) => p.is_active || p.id === tForm.salesperson_id).map((p) => <option key={p.id} value={p.id}>{nameOf(p)}</option>)}
             </select></div>
