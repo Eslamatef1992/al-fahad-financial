@@ -9,6 +9,7 @@ import DataTable from '@/components/DataTable';
 import SlideOver from '@/components/SlideOver';
 import ItemForm from '@/components/ItemForm';
 import usePermissions from '@/hooks/usePermissions';
+import { printStock } from '@/utils/printStock';
 import useFinancialDefaults from '@/hooks/useFinancialDefaults';
 
 const EXT_DEFAULTS = {
@@ -348,6 +349,7 @@ export default function ItemsPage() {
         actions={
           <div className="flex items-center gap-2">
             <button onClick={() => printFile('/items/pdf', exportParams())} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
+            <button onClick={() => printStock({ branch_id: filterBranch || undefined, branchName: branches?.find?.((b) => b.id === filterBranch)?.name_en })} className="btn-ghost"><Printer size={16} /> {t('items.printStock', { defaultValue: 'Print Stock' })}</button>
             <button onClick={() => downloadFile('/items/excel', exportParams(), 'items.xlsx')} className="btn-ghost"><Download size={16} /> {t('common.excel')}</button>
             {canCreateEdit && <button onClick={openNew} className="btn-primary"><Plus size={16} /> {t('common.add')}</button>}
           </div>
