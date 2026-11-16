@@ -548,7 +548,18 @@ exports.deliveryLines = async (req, res) => {
 		};
 	});
 	const invBranch = inv.branch_id ? await Branch.findByPk(inv.branch_id, { attributes: ["code", "name_en", "name_ar"] }) : null;
-	res.json({ invoice_no: inv.invoice_no, delivery_status: inv.delivery_status, branch: invBranch ? { code: invBranch.code, name_en: invBranch.name_en, name_ar: invBranch.name_ar } : null, stores, lines });
+	const cl = inv.client_id ? await Client.findByPk(inv.client_id) : null;
+	let clientDue = 0;
+	if (cl) {
+		const open = await Invoice.findAll({ where: { company_id: req.companyId, type: "sales", client_id: cl.id, status: { [Op.notIn]: ["cancelled", "draft"] } }, attributes: ["total", "paid_total"], raw: true });
+		clientDue = open.reduce((a, r) => a + Math.max(0, Number(r.total) - Number(r.paid_total || 0)), 0);
+	}
+	const money = {
+		total: Number(inv.total), paid: Number(inv.paid_total || 0),
+		due: Math.max(0, Math.round((Number(inv.total) - Number(inv.paid_total || 0)) * 1000) / 1000),
+		client_due: Math.round(clientDue * 1000) / 1000,
+	};
+	res.json({ money, client: cl ? { name_en: cl.name_en, name_ar: cl.name_ar, phone: cl.phone, address: inv.delivery_address || cl.address } : null, invoice_no: inv.invoice_no, delivery_status: inv.delivery_status, branch: invBranch ? { code: invBranch.code, name_en: invBranch.name_en, name_ar: invBranch.name_ar } : null, stores, lines });
 };
 
 exports.deliveryDeliver = async (req, res) => {

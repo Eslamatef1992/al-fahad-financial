@@ -155,6 +155,26 @@ export default function DeliverySchedulePage() {
                 <button onClick={() => setDn(null)} className="p-1.5 rounded-lg hover:bg-slate-100"><X size={18} /></button>
               </div>
               <div className="overflow-y-auto p-5 space-y-3">
+                {(dn.data.client || dn.data.money) && (
+                  <div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                    <div><span className="text-slate-400">{L('Client', 'العميل')}: </span><b>{(i18n.language?.startsWith('ar') ? (dn.data.client?.name_ar || dn.data.client?.name_en) : dn.data.client?.name_en) || L('Walk-in', 'عميل نقدي')}</b></div>
+                    <div><span className="text-slate-400">{L('Phone', 'الهاتف')}: </span><b dir="ltr">{dn.data.client?.phone || '—'}</b></div>
+                    <div className="sm:col-span-2"><span className="text-slate-400">{L('Address', 'العنوان')}: </span><b>{dn.data.client?.address || '—'}</b></div>
+                    {dn.data.money && (
+                      <div className="sm:col-span-2 flex flex-wrap gap-x-6 gap-y-1 pt-1.5 border-t border-slate-100 dark:border-navy-800">
+                        <span><span className="text-slate-400">{L('Invoice total', 'إجمالي الفاتورة')}: </span><b>{dn.data.money.total.toFixed(3)}</b></span>
+                        <span><span className="text-slate-400">{L('Paid', 'المدفوع')}: </span><b className="text-emerald-600">{dn.data.money.paid.toFixed(3)}</b></span>
+                        <span><span className="text-slate-400">{L('Due on this invoice', 'المتبقي على الفاتورة')}: </span><b className={dn.data.money.due > 0 ? 'text-rose-600' : 'text-emerald-600'}>{dn.data.money.due.toFixed(3)}</b></span>
+                        {dn.data.money.client_due > 0 && <span><span className="text-slate-400">{L('Client total due', 'إجمالي مستحق على العميل')}: </span><b className="text-rose-600">{dn.data.money.client_due.toFixed(3)}</b></span>}
+                      </div>
+                    )}
+                    {dn.data.money?.due > 0 && (
+                      <div className="sm:col-span-2 rounded-lg bg-rose-50 text-rose-700 font-bold px-3 py-2">
+                        ⚠ {L(`Collect ${dn.data.money.due.toFixed(3)} from the client before/at delivery.`, `يجب تحصيل ${dn.data.money.due.toFixed(3)} من العميل عند التسليم.`)}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="rounded-xl border border-slate-100 dark:border-navy-800 overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead><tr className="bg-slate-50 dark:bg-navy-900 text-[11px] uppercase tracking-wide text-slate-500">
