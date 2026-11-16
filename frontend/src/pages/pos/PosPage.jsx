@@ -890,8 +890,9 @@ export default function PosPage() {
 				<div className="space-y-3 min-w-0">
 					{/* Header strip: client, quick code entry, coupon, total, hold/pay */}
 					<div className="card p-4 sm:p-5">
-						<div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4">
-								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+						<div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-5 mb-4">
+<div className="col-span-2 lg:col-span-4 xl:col-span-6 rounded-xl border border-sky-200 dark:border-sky-900/40 bg-sky-50/70 dark:bg-sky-950/20 p-3 grid grid-cols-2 lg:grid-cols-5 gap-3">
+								<div className="min-w-0">
 									<label className="label !text-[11px] !mb-1.5">{t("common.branch", { defaultValue: "Branch" })}</label>
 									<select className="input text-sm py-2" value={invoiceBranch} onChange={(e) => setInvoiceBranch(e.target.value)}>
 										<option value="">
@@ -904,26 +905,26 @@ export default function PosPage() {
 										))}
 									</select>
 								</div>
-															<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+															<div className="min-w-0">
 									<label className="label !text-[11px] !mb-1.5">{t("invoices.referenceNo", { defaultValue: "Reference No." })}</label>
 									<input className="input text-sm py-2" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
 								</div>
-								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+								<div className="min-w-0">
 									<label className="label !text-[11px] !mb-1.5">{t("common.date", { defaultValue: "Date" })}</label>
 									<input type="date" className="input text-sm py-2" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
 								</div>
-								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+								<div className="min-w-0">
 									<label className="label !text-[11px] !mb-1.5">{t("invoices.dueDate", { defaultValue: "Due Date" })}</label>
 									<input type="date" className="input text-sm py-2" value={dueDate} min={invoiceDate} onChange={(e) => setDueDate(e.target.value)} />
 								</div>
-								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+								<div className="min-w-0">
 									<label className="label !text-[11px] !mb-1.5">{t("pos.salesPerson", { defaultValue: "Sales person" })}</label>
 									<select className="input text-sm py-2" value={salespersonId} onChange={(e) => setSalespersonId(e.target.value)}>
 										<option value="">—</option>
 										{salesPeople.filter((sp) => { const br = invoiceBranch || access?.shift?.branch_id; return !br || sp.branch_id === br; }).map((sp) => <option key={sp.id} value={sp.id}>{i18n.language?.startsWith("ar") ? sp.name_ar || sp.name_en : sp.name_en}</option>)}
 									</select>
 								</div>
-<div className="col-span-2 lg:col-span-4 xl:col-span-6 rounded-xl border border-sky-200 dark:border-sky-900/40 bg-sky-50/70 dark:bg-sky-950/20 p-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+<div className="col-span-full grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-sky-200 dark:border-sky-900/40">
 <div className="md:col-span-2">
 								<div className="flex items-center justify-between mb-2">
 									<label className="flex items-center gap-1.5 text-xs font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wide">
@@ -1024,7 +1025,8 @@ export default function PosPage() {
 									/>
 </div>
 </div>
-								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-pink-50/40 dark:bg-pink-950/10 col-span-2 lg:col-span-2 xl:col-span-3">
+								</div>
+<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-pink-50/40 dark:bg-pink-950/10 col-span-2 lg:col-span-2 xl:col-span-3">
 									<label className="flex items-center gap-1.5 text-xs font-bold text-pink-700 dark:text-pink-400 uppercase tracking-wide mb-2">
 										<Tag size={13} />
 										{t("invoices.discountCode", { defaultValue: "Discount Code" })}
@@ -1055,7 +1057,7 @@ export default function PosPage() {
 								</div>
 								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40 col-span-2 lg:col-span-2 xl:col-span-3">
 									<label className="label !text-[11px] !mb-1.5">{t("common.notes", { defaultValue: "Notes" })}</label>
-									<textarea rows={2} className="input text-sm py-2" value={invoiceNotes} onChange={(e) => setInvoiceNotes(e.target.value)} />
+									<textarea rows={1} className="input text-sm py-2 resize-none" value={invoiceNotes} onChange={(e) => setInvoiceNotes(e.target.value)} />
 								</div>
 <div className="rounded-xl border border-slate-100 dark:border-navy-800 px-3 py-2.5 bg-indigo-50/40 dark:bg-indigo-950/10 col-span-2 lg:col-span-4 xl:col-span-6">
 <div className="flex items-center gap-3">
