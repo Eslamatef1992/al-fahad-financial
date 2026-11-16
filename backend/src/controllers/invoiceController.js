@@ -458,8 +458,8 @@ async function queryDeliverySchedule(
 		where,
 		include: partyInclude,
 		order: [
-			["delivery_date", "ASC"],
-			["createdAt", "ASC"],
+			["delivery_date", "DESC"],
+			["createdAt", "DESC"],
 		],
 	});
 }
