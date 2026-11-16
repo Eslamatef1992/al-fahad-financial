@@ -9,7 +9,14 @@ async function assertCanRefund(req) {
 }
 
 exports.list = async (req, res) => res.json(await salesReturnService.listReturns(req.companyId, req.query));
-exports.get = async (req, res) => res.json(await salesReturnService.getReturn(req.companyId, req.params.id));
+exports.get = async (req, res) => {
+  const ret = await salesReturnService.getReturn(req.companyId, req.params.id);
+  const { amountInWordsAr, amountInWordsEn } = require('../services/numberToWords');
+  const data = ret.toJSON();
+  data.amount_in_words_ar = amountInWordsAr(Number(ret.total), ret.invoice?.currency || 'KWD');
+  data.amount_in_words_en = amountInWordsEn(Number(ret.total), ret.invoice?.currency || 'KWD');
+  res.json(data);
+};
 exports.returnable = async (req, res) => res.json(await salesReturnService.returnable(req.companyId, req.params.invoiceId));
 
 exports.confirmStock = async (req, res) => {

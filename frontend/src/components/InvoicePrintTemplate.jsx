@@ -44,7 +44,7 @@ function splitInvoiceNo(invoiceNo) {
 	return { prefix: invoiceNo.slice(0, idx), suffix: invoiceNo.slice(idx) };
 }
 
-export default function InvoicePrintTemplate({ invoice, company, deliveryNote = false }) {
+export default function InvoicePrintTemplate({ invoice, company, deliveryNote = false, creditNote = null }) {
 	if (!invoice) return null;
 	const client = invoice.client;
 	const lines = invoice.lines || [];
@@ -183,13 +183,13 @@ export default function InvoicePrintTemplate({ invoice, company, deliveryNote = 
 				</header>
 
 				<div className="title-row">
-					<div className="serial" style={deliveryNote ? { color: "var(--red)" } : undefined}>
+					<div className="serial" style={deliveryNote || creditNote ? { color: "var(--red)" } : undefined}>
 						{prefix}
 						<span>{suffix}</span>
 					</div>
 					<div className="doc-title">
-						<div className="ar" style={deliveryNote ? { color: "var(--red)", fontSize: 14 } : undefined}>{deliveryNote ? "إذن تسليم" : "فاتورة نقداً/بالحساب"}</div>
-						<div className="en" style={deliveryNote ? { color: "var(--red)" } : undefined}>{deliveryNote ? "Delivery Note" : "Cash/Credit Invoice"}</div>
+						<div className="ar" style={deliveryNote || creditNote ? { color: "var(--red)", fontSize: 14 } : undefined}>{creditNote ? "إشعار دائن / مرتجع" : deliveryNote ? "إذن تسليم" : "فاتورة نقداً/بالحساب"}</div>
+						<div className="en" style={deliveryNote || creditNote ? { color: "var(--red)" } : undefined}>{creditNote ? "Credit Note / Refund" : deliveryNote ? "Delivery Note" : "Cash/Credit Invoice"}</div>
 					</div>
 					<div className="field date-field">
 						<span>Date :</span>
@@ -363,6 +363,19 @@ export default function InvoicePrintTemplate({ invoice, company, deliveryNote = 
 						</div>
 					</div>
 
+					{creditNote ? (
+					<div className="box">
+						<div className="field"><span>Original invoice / الفاتورة الأصلية :</span><span className="filled">{creditNote.invoice_no}</span></div>
+						<div className="field"><span>Refund method / طريقة الاسترداد :</span><span className="filled">{creditNote.method}</span></div>
+						{creditNote.applied > 0 && <div className="field"><span>Deducted from invoice balance / خُصم من الفاتورة :</span><span className="filled">{creditNote.applied.toFixed(3)}</span></div>}
+						{creditNote.refunded > 0 && <div className="field"><span>Paid back to client / مردود للعميل :</span><span className="filled">{creditNote.refunded.toFixed(3)}</span></div>}
+						{creditNote.credited > 0 && <div className="field"><span>Kept as client credit / رصيد للعميل :</span><span className="filled">{creditNote.credited.toFixed(3)}</span></div>}
+						<div className="two-fields">
+							<div className="field"><span>Client signature / توقيع العميل :</span><span className="dots"></span></div>
+							<div className="field"><span>Authorised / المعتمد :</span><span className="dots"></span></div>
+						</div>
+					</div>
+					) : (
 					<div className="box ar">
 						<div className="field addr-field">
 							<span>: العنوان</span>
@@ -392,6 +405,7 @@ export default function InvoicePrintTemplate({ invoice, company, deliveryNote = 
 							</div>
 						</div>
 					</div>
+					)}
 				</section>
 
 				<section className="remarks">
