@@ -502,16 +502,27 @@ exports.deliveryLines = async (req, res) => {
 	if (!inv) return res.status(404).json({ message: "Invoice not found" });
 	const { ItemBooking } = require("../models");
 	const pend = await ItemBooking.findAll({ where: { invoice_id: inv.id, status: "pending" }, raw: true });
+	const { ItemBranchStock } = require("../models");
+	const itemIds = [...new Set((inv.lines || []).map((l) => l.item_id).filter(Boolean))];
+	const itemRows = itemIds.length ? await Item.findAll({ where: { id: { [Op.in]: itemIds } }, attributes: ["id", "quantity_on_hand"] }) : [];
+	const brStock = itemIds.length ? await ItemBranchStock.findAll({ where: { item_id: { [Op.in]: itemIds }, company_id: req.companyId } }) : [];
+	const stores = [{ id: "", name_en: "Main store", name_ar: "المخزن الرئيسي" }, ...(await Branch.findAll({ where: { company_id: req.companyId, is_active: true }, order: [["code", "ASC"]], attributes: ["id", "name_en", "name_ar"] })).map((b) => ({ id: b.id, name_en: b.name_en, name_ar: b.name_ar }))];
+	const stockOf = (itemId) => {
+		const m = { "": Number(itemRows.find((x) => x.id === itemId)?.quantity_on_hand || 0) };
+		brStock.filter((r) => r.item_id === itemId).forEach((r) => { m[r.branch_id] = Number(r.quantity_on_hand); });
+		return m;
+	};
 	const lines = (inv.lines || []).map((l) => {
 		const delivered = Number(l.delivered_qty || 0);
 		const ordered = Number(l.quantity);
 		return {
-			id: l.id, description: l.description || l.item?.name_en, code: l.item?.code || null,
+			id: l.id, item_id: l.item_id, description: l.description || l.item?.name_en, code: l.item?.code || null,
 			ordered, delivered, remaining: Math.max(0, Math.round((ordered - delivered) * 1000) / 1000),
+			stock: l.item_id ? stockOf(l.item_id) : null,
 			is_booked: !!l.is_booked, booked_pending: pend.filter((b) => b.invoice_line_id === l.id).reduce((a, b) => a + Number(b.quantity), 0),
 		};
 	});
-	res.json({ invoice_no: inv.invoice_no, delivery_status: inv.delivery_status, lines });
+	res.json({ invoice_no: inv.invoice_no, delivery_status: inv.delivery_status, stores, lines });
 };
 
 exports.deliveryDeliver = async (req, res) => {
@@ -523,6 +534,27 @@ exports.deliveryDeliver = async (req, res) => {
 	const lines = await InvoiceLine.findAll({ where: { invoice_id: inv.id } });
 	// body.lines = [{ line_id, quantity }]; omitted => deliver everything still outstanding.
 	const want = new Map((req.body?.lines || []).map((x) => [x.line_id, Number(x.quantity)]));
+	// Pre-check stock in the chosen store for every booked line BEFORE anything is changed.
+	const fromBranch = req.body?.branch_id || null;
+	{
+		const { ItemBranchStock } = require("../models");
+		const need = new Map();
+		for (const l of lines) {
+			const rem = Math.round((Number(l.quantity) - Number(l.delivered_qty || 0)) * 1000) / 1000;
+			const q = req.body?.lines ? (want.get(l.id) || 0) : rem;
+			if (q > 0 && l.is_booked && l.item_id) need.set(l.item_id, (need.get(l.item_id) || 0) + q);
+		}
+		for (const [itemId, q] of need) {
+			const have = fromBranch
+				? Number((await ItemBranchStock.findOne({ where: { item_id: itemId, branch_id: fromBranch, company_id: req.companyId } }))?.quantity_on_hand || 0)
+				: Number((await Item.findOne({ where: { id: itemId, company_id: req.companyId }, attributes: ["quantity_on_hand"] }))?.quantity_on_hand || 0);
+			if (q > have + 0.0005) {
+				const it = await Item.findByPk(itemId, { attributes: ["name_en"] });
+				const store = fromBranch ? (await Branch.findByPk(fromBranch, { attributes: ["name_en"] }))?.name_en : "Main store";
+				return res.status(400).json({ message: `Not enough stock in ${store} for "${it?.name_en}": have ${have}, need ${q}` });
+			}
+		}
+	}
 	let any = false;
 	for (const l of lines) {
 		const remaining = Math.round((Number(l.quantity) - Number(l.delivered_qty || 0)) * 1000) / 1000;
@@ -536,7 +568,7 @@ exports.deliveryDeliver = async (req, res) => {
 			for (const b of bks) {
 				if (left <= 0.0005) break;
 				const take = Math.min(left, Number(b.quantity));
-				await bookingService.fulfillBooking(req.companyId, b.id, req.user?.id, { date, quantity: take });
+				await bookingService.fulfillBooking(req.companyId, b.id, req.user?.id, { date, quantity: take, branch_id: req.body?.branch_id || null });
 				left = Math.round((left - take) * 1000) / 1000;
 			}
 		}

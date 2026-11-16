@@ -11,7 +11,7 @@ const voucherService = require('./voucherService');
 function badRequest(message) { const e = new Error(message); e.status = 400; return e; }
 function notFound(message) { const e = new Error(message || 'Booking not found'); e.status = 404; return e; }
 
-async function fulfillBooking(companyId, bookingId, userId, { date, quantity } = {}) {
+async function fulfillBooking(companyId, bookingId, userId, { date, quantity, branch_id } = {}) {
   return sequelize.transaction(async (t) => {
     const booking = await ItemBooking.findOne({
       where: { id: bookingId, company_id: companyId },
@@ -42,7 +42,8 @@ async function fulfillBooking(companyId, bookingId, userId, { date, quantity } =
       referenceId: target.id,
       userId,
       notes: 'Booked item delivered',
-      branchId: booking.branch_id,
+      // Deliver from the store the operator chose (null/'' = main store); default = where it was reserved.
+      branchId: branch_id === undefined ? booking.branch_id : (branch_id || null),
       variantId: booking.variant_id,
     }, t);
 

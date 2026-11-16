@@ -37,9 +37,22 @@ export default function DeliverySchedulePage() {
     const { data } = await api.get(`/invoices/${r.id}/delivery-lines`);
     const qty = {};
     data.lines.forEach((l) => { qty[l.id] = l.remaining; });
-    setDn({ row: r, data, qty });
+    setDn({ row: r, data, qty, from: '' });
   };
   const chosen = () => Object.fromEntries(Object.entries(dn.qty).map(([k, v]) => [k, Number(v) || 0]));
+  // Booked lines are issued from the chosen store: warn (and block) when that store lacks stock.
+  const storeName = () => { const st = dn.data.stores?.find((x) => x.id === dn.from); return (i18n.language?.startsWith('ar') ? st?.name_ar : st?.name_en) || L('Main store', 'المخزن الرئيسي'); };
+  const shortages = () => {
+    const need = {};
+    dn.data.lines.forEach((l) => { if (l.is_booked && l.item_id) need[l.item_id] = (need[l.item_id] || 0) + Number(dn.qty[l.id] || 0); });
+    const out = [];
+    dn.data.lines.forEach((l) => {
+      if (!l.is_booked || !l.stock || out.some((m) => m.includes(l.description))) return;
+      const have = Number(l.stock[dn.from] || 0); const want = need[l.item_id] || 0;
+      if (want > have + 0.0005) out.push(L(`Not enough stock in ${storeName()} for "${l.description}": have ${have}, need ${want}`, `لا يوجد مخزون كافٍ في ${storeName()} للصنف "${l.description}": المتوفر ${have}، المطلوب ${want}`));
+    });
+    return out;
+  };
   const printNote = async () => {
     await api.post(`/invoices/${dn.row.id}/delivery-note`);
     await printInvoiceById(dn.row.id, { deliveryNote: true, quantities: chosen() });
@@ -47,8 +60,9 @@ export default function DeliverySchedulePage() {
   };
   const confirmDeliver = async () => {
     const lines = Object.entries(chosen()).map(([line_id, quantity]) => ({ line_id, quantity }));
+    if (shortages().length) return toast.error(shortages()[0]);
     if (!lines.some((l) => l.quantity > 0)) return toast.error(L('Enter a quantity to deliver', 'أدخل كمية للتسليم'));
-    await api.post(`/invoices/${dn.row.id}/delivery/deliver`, { lines });
+    await api.post(`/invoices/${dn.row.id}/delivery/deliver`, { lines, branch_id: dn.from || null });
     toast.success(L('Delivery recorded', 'تم تسجيل التسليم'));
     setDn(null); load();
   };
@@ -152,12 +166,20 @@ export default function DeliverySchedulePage() {
                     </tbody>
                   </table>
                 </div>
+                <div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3">
+                  <label className="label">{L('Deliver from (stock is deducted from this store)', 'التسليم من (يُخصم المخزون من هذا المخزن)')}</label>
+                  <select className="input" value={dn.from} onChange={(e) => setDn({ ...dn, from: e.target.value })}>
+                    {(dn.data.stores || []).map((st) => <option key={st.id} value={st.id}>{i18n.language?.startsWith('ar') ? st.name_ar || st.name_en : st.name_en}</option>)}
+                  </select>
+                  {shortages().map((m) => <p key={m} className="mt-2 text-sm font-semibold text-rose-600">⚠ {m}</p>)}
+                  {dn.data.lines.some((l) => l.is_booked && l.stock) && !shortages().length && <p className="mt-2 text-xs text-emerald-600">{L('Stock is available in this store.', 'المخزون متاح في هذا المخزن.')}</p>}
+                </div>
                 <p className="text-xs text-slate-400">{L('Print the note with the quantities you are handing over now. Anything not delivered stays booked until you deliver it or cancel it.', 'اطبع الإذن بالكميات التي تسلّمها الآن. ما لم يُسلَّم يبقى محجوزاً حتى تسلّمه أو تلغيه.')}</p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2 px-5 py-4 border-t border-slate-100 dark:border-navy-800">
                 <button onClick={cancelRest} className="btn-ghost !text-rose-600"><X size={15} />{L('Cancel remaining', 'إلغاء المتبقي')}</button>
                 <button onClick={printNote} className="btn-ghost"><Printer size={15} />{L('Print note', 'طباعة الإذن')}</button>
-                <button onClick={confirmDeliver} className="btn-primary"><Check size={15} />{L('Confirm delivered', 'تأكيد التسليم')}</button>
+                <button onClick={confirmDeliver} disabled={shortages().length > 0} className="btn-primary disabled:opacity-40"><Check size={15} />{L('Confirm delivered', 'تأكيد التسليم')}</button>
               </div>
             </div>
           </div>
