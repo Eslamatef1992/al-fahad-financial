@@ -22,13 +22,15 @@ export default function ItemStockStrip({ itemId, name, branchId, qtyInCart = 0, 
   }, [itemId]);
 
   if (!itemId || String(itemId).startsWith('mfg:')) return null;
-  const rows = (d?.rows || []).filter((r) => r.on_hand !== 0 || r.booked !== 0 || r.required !== 0 || r.branch_id === branchId);
+  // Every store is listed (even empty ones) so the whole inventory picture is visible, with a total row.
+  const rows = d?.rows || [];
+  const tot = rows.reduce((t, r) => ({ av: t.av + r.available, bk: t.bk + r.booked, on: t.on + r.on_hand, po: t.po + r.required }), { av: 0, bk: 0, on: 0, po: 0 });
   const th = 'px-2 py-1 text-start text-[10px] uppercase tracking-wide text-slate-500 font-semibold whitespace-nowrap';
   return (
     <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/20 overflow-x-auto">
       <div className="px-2.5 py-1 text-xs font-bold text-amber-800 dark:text-amber-300 border-b border-amber-200 dark:border-amber-900/50 bg-amber-100/60 dark:bg-amber-950/30 flex items-center justify-between gap-2">
         <span className="truncate">{L('Stock', 'المخزون')}: {name}</span>
-        {d && <span className="font-medium text-slate-500">{L('Total available', 'إجمالي المتاح')}: <b className={d.totals.available - qtyInCart < 0 ? 'text-rose-600' : 'text-emerald-600'}>{q(d.totals.available)}</b></span>}
+        {d && <span className="font-medium text-slate-500">{L('Total available', 'إجمالي المتاح')}: <b className={tot.av - qtyInCart < 0 ? 'text-rose-600' : 'text-emerald-600'}>{q(tot.av)}</b></span>}
       </div>
       <table className="w-full text-xs">
         <thead><tr>
@@ -50,6 +52,17 @@ export default function ItemStockStrip({ itemId, name, branchId, qtyInCart = 0, 
           })}
           {d && !rows.length && <tr><td colSpan={5} className="px-2 py-2 text-slate-400">{L('No stock in any store.', 'لا مخزون في أي مخزن.')}</td></tr>}
         </tbody>
+        {d && rows.length > 0 && (
+          <tfoot>
+            <tr className="border-t-2 border-amber-300 bg-amber-100/70 dark:bg-amber-950/30 font-bold">
+              <td className="px-2 py-1.5">{L('Total', 'الإجمالي')}</td>
+              <td className={`px-2 py-1.5 tabular-nums ${tot.av <= 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{q(tot.av)}</td>
+              <td className="px-2 py-1.5 tabular-nums text-amber-700">{q(tot.bk)}</td>
+              <td className="px-2 py-1.5 tabular-nums">{q(tot.on)}</td>
+              <td className="px-2 py-1.5 tabular-nums text-sky-700">{q(tot.po)}</td>
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
