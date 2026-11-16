@@ -474,3 +474,46 @@ exports.deliverySchedulePdf = async (req, res) => {
 	const company = await Company.findByPk(req.companyId);
 	generateDeliverySchedulePdf(res, rows, company);
 };
+
+// ---- Delivery note (إذن تسليم) workflow ------------------------------------
+// 1) deliveryNote: operator prints the delivery note -> status 'note_issued'.
+// 2) deliveryDeliver: client received -> every pending booking on the invoice is
+//    fulfilled (stock leaves the warehouse, COGS posted). Non-booked lines already
+//    left stock when the invoice was posted.
+// 3) deliveryCancel: delivery fell through -> pending bookings are released back
+//    to available stock; nothing is issued.
+async function loadDeliverable(req, res) {
+	const inv = await Invoice.findOne({ where: { id: req.params.id, company_id: req.companyId, type: "sales" } });
+	if (!inv) { res.status(404).json({ message: "Invoice not found" }); return null; }
+	if (inv.status === "cancelled" || inv.status === "draft") { res.status(400).json({ message: "Only a posted sales invoice can be delivered" }); return null; }
+	if (["delivered", "cancelled"].includes(inv.delivery_status)) { res.status(400).json({ message: `Delivery already ${inv.delivery_status}` }); return null; }
+	return inv;
+}
+
+exports.deliveryNote = async (req, res) => {
+	const inv = await loadDeliverable(req, res);
+	if (!inv) return;
+	if (!inv.delivery_status) await inv.update({ delivery_status: "note_issued", delivery_note_at: new Date() });
+	res.json({ id: inv.id, delivery_status: inv.delivery_status });
+};
+
+exports.deliveryDeliver = async (req, res) => {
+	const inv = await loadDeliverable(req, res);
+	if (!inv) return;
+	const { ItemBooking } = require("../models");
+	const bookingService = require("../services/bookingService");
+	const date = req.body?.date || new Date().toISOString().slice(0, 10);
+	const pending = await ItemBooking.findAll({ where: { invoice_id: inv.id, company_id: req.companyId, status: "pending" } });
+	for (const b of pending) await bookingService.fulfillBooking(req.companyId, b.id, req.user?.id, { date });
+	await inv.update({ delivery_status: "delivered", delivery_closed_at: new Date() });
+	res.json({ id: inv.id, delivery_status: "delivered", fulfilled: pending.length });
+};
+
+exports.deliveryCancel = async (req, res) => {
+	const inv = await loadDeliverable(req, res);
+	if (!inv) return;
+	const { ItemBooking } = require("../models");
+	const [released] = await ItemBooking.update({ status: "cancelled" }, { where: { invoice_id: inv.id, company_id: req.companyId, status: "pending" } });
+	await inv.update({ delivery_status: "cancelled", delivery_closed_at: new Date() });
+	res.json({ id: inv.id, delivery_status: "cancelled", released });
+};

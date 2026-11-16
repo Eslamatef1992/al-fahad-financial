@@ -23,6 +23,11 @@ module.exports = (sequelize, DataTypes) => {
     // is fulfilled. This pair is what the Delivery Schedule report reads.
     delivery_date: { type: DataTypes.DATEONLY, allowNull: true },
     delivery_address: { type: DataTypes.TEXT, allowNull: true },
+    // Delivery-note workflow (إذن تسليم): null -> 'note_issued' (delivery note printed)
+    // -> 'delivered' (stock released, client received) or 'cancelled' (reservation released).
+    delivery_status: { type: DataTypes.STRING(20), allowNull: true },
+    delivery_note_at: { type: DataTypes.DATE, allowNull: true },
+    delivery_closed_at: { type: DataTypes.DATE, allowNull: true },
     // Purely a tag — checking "Manufacture Order" on a POS sale and picking a
     // manufacturer does not trigger any purchasing flow, it just marks this
     // sale as tied to that manufacturer for later filtering/reporting.

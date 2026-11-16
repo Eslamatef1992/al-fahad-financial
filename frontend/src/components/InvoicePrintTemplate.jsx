@@ -44,7 +44,7 @@ function splitInvoiceNo(invoiceNo) {
 	return { prefix: invoiceNo.slice(0, idx), suffix: invoiceNo.slice(idx) };
 }
 
-export default function InvoicePrintTemplate({ invoice, company }) {
+export default function InvoicePrintTemplate({ invoice, company, deliveryNote = false }) {
 	if (!invoice) return null;
 	const client = invoice.client;
 	const lines = invoice.lines || [];
@@ -181,13 +181,13 @@ export default function InvoicePrintTemplate({ invoice, company }) {
 				</header>
 
 				<div className="title-row">
-					<div className="serial">
+					<div className="serial" style={deliveryNote ? { color: "var(--red)" } : undefined}>
 						{prefix}
 						<span>{suffix}</span>
 					</div>
 					<div className="doc-title">
-						<div className="ar">فاتورة نقداً/بالحساب</div>
-						<div className="en">Cash/Credit Invoice</div>
+						<div className="ar" style={deliveryNote ? { color: "var(--red)", fontSize: 14 } : undefined}>{deliveryNote ? "إذن تسليم" : "فاتورة نقداً/بالحساب"}</div>
+						<div className="en" style={deliveryNote ? { color: "var(--red)" } : undefined}>{deliveryNote ? "Delivery Note" : "Cash/Credit Invoice"}</div>
 					</div>
 					<div className="field date-field">
 						<span>Date :</span>

@@ -19,6 +19,9 @@ router.put('/:id', requireMinRole('accountant'), ctrl.update);
 router.delete('/:id', requireMinRole('accountant'), ctrl.remove);
 router.post('/:id/post', requireMinRole('accountant'), ctrl.post);
 router.post('/:id/cancel', requireMinRole('admin'), ctrl.cancel);
+router.post('/:id/delivery-note', requireMinRole('accountant'), ctrl.deliveryNote);
+router.post('/:id/delivery/deliver', requireMinRole('accountant'), ctrl.deliveryDeliver);
+router.post('/:id/delivery/cancel', requireMinRole('accountant'), ctrl.deliveryCancel);
 router.post('/:id/payments', requireMinRole('accountant'), ctrl.addPayment);
 
 module.exports = router;
