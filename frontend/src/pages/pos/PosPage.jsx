@@ -948,7 +948,10 @@ export default function PosPage() {
 									)}
 								</div>
 								{clientId ? (
-									<div className="flex items-center justify-between gap-2 input text-sm py-2">
+									<div
+										className={`flex items-center justify-between gap-2 input text-sm py-2 ${clientDue[clientId] > 0 ? "cursor-pointer" : ""}`}
+										title={clientDue[clientId] > 0 ? t("pos.dblClickStatement", { defaultValue: "Double-click to open the account statement" }) : undefined}
+										onDoubleClick={() => { if (clientDue[clientId] > 0) window.open(`/clients/${clientId}/statement`, "_blank"); }}>
 										<span className="truncate">
 											{clients.find((c) => c.id === clientId)?.name_en}
 											{clients.find((c) => c.id === clientId)?.phone

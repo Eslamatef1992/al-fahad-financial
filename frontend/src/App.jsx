@@ -17,6 +17,7 @@ import VoucherFormPage from '@/pages/vouchers/VoucherFormPage';
 import VoucherDetailPage from '@/pages/vouchers/VoucherDetailPage';
 import LedgerPage from '@/pages/ledger/LedgerPage';
 import ClientsPage from '@/pages/clients/ClientsPage';
+import ClientStatementPage from '@/pages/clients/ClientStatementPage';
 import SuppliersPage from '@/pages/suppliers/SuppliersPage';
 import EmployeesPage from '@/pages/employees/EmployeesPage';
 import VehiclesPage from '@/pages/vehicles/VehiclesPage';
@@ -90,6 +91,7 @@ export default function App() {
           <Route path="/vouchers/:id" element={<VoucherDetailPage />} />
           <Route path="/ledger" element={<LedgerPage />} />
           <Route path="/clients" element={<ClientsPage />} />
+          <Route path="/clients/:id/statement" element={<ClientStatementPage />} />
           <Route path="/suppliers" element={<SuppliersPage />} />
           <Route path="/employees" element={<EmployeesPage />} />
           <Route path="/vehicles" element={<VehiclesPage />} />
