@@ -343,12 +343,13 @@ export default function PosPage() {
 		}
 	};
 
-	const loadHistory = () => {
+	const loadHistory = (override) => {
+		const f = override && typeof override === "object" && "q" in override ? override : historyFilters;
 		setHistoryLoading(true);
 		const params = {};
-		if (historyFilters.date_from) params.date_from = historyFilters.date_from;
-		if (historyFilters.date_to) params.date_to = historyFilters.date_to;
-		if (historyFilters.q) params.q = historyFilters.q;
+		if (f.date_from) params.date_from = f.date_from;
+		if (f.date_to) params.date_to = f.date_to;
+		if (f.q && f.q.trim()) params.q = f.q.trim();
 		api
 			.get("/pos/sales/history", { params })
 			.then((r) => setHistoryRows(r.data))

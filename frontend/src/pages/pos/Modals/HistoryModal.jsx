@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { History, X, Printer, RotateCcw } from "lucide-react";
 
@@ -18,6 +19,19 @@ export default function HistoryModal({
 	todayStr,
 }) {
 	const navigate = useNavigate();
+	// Live search: reload shortly after the filters change (no need to press Apply).
+	useEffect(() => {
+		if (!open) return undefined;
+		const h = setTimeout(() => loadHistory(historyFilters), 350);
+		return () => clearTimeout(h);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [open, historyFilters.q, historyFilters.date_from, historyFilters.date_to]);
+	const hasFilters = !!(historyFilters.q || historyFilters.date_from || historyFilters.date_to);
+	const clearFilters = () => {
+		const empty = { date_from: "", date_to: "", q: "" };
+		setHistoryFilters(empty);
+		loadHistory(empty);
+	};
 	if (!open) return null;
 	return (
 		<>
@@ -36,7 +50,7 @@ export default function HistoryModal({
 							<X size={18} />
 						</button>
 					</div>
-					<div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4">
+					<div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1.4fr_auto_auto] gap-2 mb-4">
 						<input
 							type="date"
 							className="input"
@@ -66,9 +80,13 @@ export default function HistoryModal({
 							onChange={(e) =>
 								setHistoryFilters({ ...historyFilters, q: e.target.value })
 							}
+							onKeyDown={(e) => { if (e.key === "Enter") loadHistory(historyFilters); }}
 						/>
-						<button onClick={loadHistory} className="btn-primary">
+						<button onClick={() => loadHistory(historyFilters)} className="btn-primary">
 							{t("common.applyFilters")}
+						</button>
+						<button type="button" onClick={clearFilters} disabled={!hasFilters} className="btn-ghost disabled:opacity-40">
+							{t("common.clearFilters", { defaultValue: "Clear" })}
 						</button>
 					</div>
 					<div className="flex-1 overflow-y-auto space-y-2">
