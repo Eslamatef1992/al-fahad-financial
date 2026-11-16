@@ -940,12 +940,12 @@ export default function PosPage() {
 									</div>
 								) : (
 									<div className="relative">
-										<Search
+										{!clientSearch && <Search
 											size={14}
-											className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"
-										/>
+											className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400 pointer-events-none"
+										/>}
 										<input
-											className="input !ps-8 text-sm py-2"
+											className={`input text-sm py-2 ${clientSearch ? "" : "!ps-9"}`}
 											placeholder={t("pos.searchCustomerHint")}
 											value={clientSearch}
 											onChange={(e) => setClientSearch(e.target.value)}
@@ -1061,14 +1061,14 @@ export default function PosPage() {
 									{t("pos.quickAddByCode")}
 								</label>
 								<div className="relative">
-									<Search
+									{!codeEntry && <Search
 										size={14}
-										className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400"
-									/>
+										className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400 pointer-events-none"
+									/>}
 									<input
 										ref={codeInputRef}
 										autoFocus
-										className="input !ps-8 text-sm py-2"
+										className={`input text-sm py-2 ${codeEntry ? "" : "!ps-9"}`}
 										placeholder={t("pos.quickAddByCodeHint")}
 										value={codeEntry}
 										onChange={(e) => setCodeEntry(e.target.value)}
