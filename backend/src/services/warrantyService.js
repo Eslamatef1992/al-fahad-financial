@@ -66,11 +66,11 @@ async function replacement(companyId, userId, p) {
     // Fresh unit out of stock at cost.
     const { item, cogsAmount } = await itemService.issueStock(companyId, line.item_id, {
       quantity: qty, date: today(), referenceType: 'warranty', referenceId: claim.id, userId, type: 'adjustment',
-      notes: `Warranty replacement ${claim_no} (${invoice.invoice_no})`, branchId: invoice.branch_id, variantId: line.variant_id,
+      notes: `Warranty replacement ${claim_no} (${invoice.invoice_no})`, branchId: null, variantId: line.variant_id,
     }, t);
     // Defective unit comes back: logged as damaged (supplier claim / scrap), never re-sold.
     await ItemDamage.create({
-      company_id: companyId, item_id: line.item_id, variant_id: line.variant_id || null, branch_id: invoice.branch_id, quantity: qty,
+      company_id: companyId, item_id: line.item_id, variant_id: line.variant_id || null, branch_id: null, quantity: qty,
       unit_cost: qty ? r3(cogsAmount / qty) : 0, damage_type: 'manufacturing_defect', status: 'cleared',
       notes: `Defective unit returned — ${claim_no}`, reported_by: userId, cleared_by: userId, cleared_at: new Date(),
     }, { transaction: t });

@@ -639,7 +639,7 @@ export default function InvoiceFormPage() {
           {isNewSales && activeLine !== null && lines[activeLine]?.item_id && (() => {
             const it = availableItems.find((x) => x.id === lines[activeLine].item_id);
             const same = lines.filter((l) => l.item_id === lines[activeLine].item_id).reduce((s, l) => s + Number(l.quantity || 0), 0);
-            return <div className="mt-2"><ItemStockStrip itemId={lines[activeLine].item_id} name={it?.name_en} branchId={header.branch_id || null} qtyInCart={same} sellingPrice={it?.selling_price} /></div>;
+            return <div className="mt-2"><ItemStockStrip itemId={lines[activeLine].item_id} name={it?.name_en} branchId={null} qtyInCart={same} sellingPrice={it?.selling_price} /></div>;
           })()}
           <div className="flex items-center justify-end gap-6 mt-4 pt-4 border-t border-slate-100 dark:border-navy-800 text-sm">
             <div><span className="text-slate-400">{t('common.subtotal')}: </span><span className="font-semibold">{(subtotal + totalDiscount).toFixed(3)}</span></div>

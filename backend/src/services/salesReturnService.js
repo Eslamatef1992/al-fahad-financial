@@ -250,14 +250,14 @@ async function applyStock(companyId, userId, ret, invoice, overrides, t) {
     const item = await Item.findByPk(rl.item_id, { transaction: t });
     if (disposition === 'damaged') {
       await ItemDamage.create({
-        company_id: companyId, item_id: rl.item_id, variant_id: rl.variant_id || null, branch_id: invoice.branch_id, quantity: physicalQty,
+        company_id: companyId, item_id: rl.item_id, variant_id: rl.variant_id || null, branch_id: null, quantity: physicalQty,
         unit_cost: rl.unit_cost, damage_type: 'customer_return', status: 'cleared', notes: `Returned damaged — ${ret.return_no}`,
         reported_by: userId, cleared_by: userId, cleared_at: new Date(),
       }, { transaction: t });
     } else {
       await itemService.receiveStock(companyId, rl.item_id, {
         quantity: physicalQty, unitCost: Number(rl.unit_cost), date: new Date().toISOString().slice(0, 10), referenceType: 'sales_return', referenceId: ret.id, userId,
-        notes: `Return ${ret.return_no} of ${invoice.invoice_no}`, type: 'adjustment', branchId: invoice.branch_id, variantId: rl.variant_id,
+        notes: `Return ${ret.return_no} of ${invoice.invoice_no}`, type: 'adjustment', branchId: null, variantId: rl.variant_id,
       }, t);
       const cost = r3(physicalQty * Number(rl.unit_cost));
       if (cost > 0.0009) {

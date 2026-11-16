@@ -232,7 +232,7 @@ async function postInvoice(companyId, invoiceId, userId) {
             company_id: companyId,
             item_id: l.item_id,
             variant_id: l.variant_id || null,
-            branch_id: invoice.branch_id || null,
+            branch_id: null, // central inventory: bookings reserve main-store stock
             invoice_id: invoice.id,
             invoice_line_id: l.id,
             client_id: invoice.client_id || null,
@@ -251,7 +251,7 @@ async function postInvoice(companyId, invoiceId, userId) {
           referenceId: invoice.id,
           userId,
           notes: `Sold on ${invoice.invoice_no}`,
-          branchId: invoice.branch_id,
+          branchId: null, // central inventory: main store
           variantId: l.variant_id,
         }, t);
         if (cogsAmount > 0.0009) {
@@ -280,7 +280,7 @@ async function postInvoice(companyId, invoiceId, userId) {
           referenceId: invoice.id,
           userId,
           notes: `Received on ${invoice.invoice_no}`,
-          branchId: invoice.branch_id,
+          branchId: null, // central inventory: main store
           variantId: l.variant_id,
         }, t);
       }
@@ -501,7 +501,7 @@ async function refundInvoice(companyId, userId, invoiceId, { reason } = {}) {
         type: 'adjustment', // InventoryTransaction.type is a Postgres ENUM — reuse 'adjustment'
         // rather than adding a new enum value (risky under production's sync({alter:true})).
         // The notes/reference_type/reference_id fields make this movement traceable as a refund.
-        branchId: invoice.branch_id,
+        branchId: null, // central inventory: main store
         variantId: l.variant_id,
       }, t);
     }

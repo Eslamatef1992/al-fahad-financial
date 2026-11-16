@@ -206,8 +206,9 @@ export default function PosPage() {
 		loadHeld();
 	}, [activeCompany]);
 
-	const branchScope =
-		inventoryTab === "branch" ? access?.shift?.branch_id || null : null;
+	// Central inventory: every sale (any branch) draws from the main store, so POS
+	// availability is never scoped to the shift's branch.
+	const branchScope = null;
 
 	useEffect(() => {
 		if (!access?.shift) return;
@@ -1149,7 +1150,7 @@ export default function PosPage() {
 							const a = cart.find((l) => l.item.id === activeItemId);
 							return a ? (
 								<div className="mb-2">
-									<ItemStockStrip itemId={a.item.id} name={a.item.name_en} branchId={access?.shift?.branch_id || null} hideCost qtyInCart={Number(a.quantity)} sellingPrice={a.item.selling_price} />
+									<ItemStockStrip itemId={a.item.id} name={a.item.name_en} branchId={null} hideCost qtyInCart={Number(a.quantity)} sellingPrice={a.item.selling_price} />
 								</div>
 							) : null;
 						})()}
