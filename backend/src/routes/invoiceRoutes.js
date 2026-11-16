@@ -20,6 +20,7 @@ router.delete('/:id', requireMinRole('accountant'), ctrl.remove);
 router.post('/:id/post', requireMinRole('accountant'), ctrl.post);
 router.post('/:id/cancel', requireMinRole('admin'), ctrl.cancel);
 router.get('/:id/delivery-lines', ctrl.deliveryLines);
+router.put('/:id/delivery-address', requireMinRole('accountant'), ctrl.setDeliveryAddress);
 router.post('/:id/delivery-note', requireMinRole('accountant'), ctrl.deliveryNote);
 router.post('/:id/delivery/deliver', requireMinRole('accountant'), ctrl.deliveryDeliver);
 router.post('/:id/delivery/cancel', requireMinRole('accountant'), ctrl.deliveryCancel);

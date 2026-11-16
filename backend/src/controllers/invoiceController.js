@@ -560,3 +560,15 @@ exports.deliveryCancel = async (req, res) => {
 	await inv.update({ delivery_status: anyDelivered ? "delivered" : "cancelled", delivery_closed_at: new Date() });
 	res.json({ id: inv.id, delivery_status: anyDelivered ? "delivered" : "cancelled", released });
 };
+
+// Set/replace the delivery address on any sales invoice (also fills the client's address if it was empty).
+exports.setDeliveryAddress = async (req, res) => {
+	const inv = await Invoice.findOne({ where: { id: req.params.id, company_id: req.companyId } });
+	if (!inv) return res.status(404).json({ message: "Invoice not found" });
+	const addr = String(req.body?.delivery_address || "").trim() || null;
+	await inv.update({ delivery_address: addr });
+	if (addr && inv.client_id) {
+		await Client.update({ address: addr }, { where: { id: inv.client_id, company_id: req.companyId, address: { [Op.or]: [null, ""] } } });
+	}
+	res.json({ id: inv.id, delivery_address: addr });
+};

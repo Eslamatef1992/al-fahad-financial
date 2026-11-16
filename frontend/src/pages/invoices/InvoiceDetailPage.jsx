@@ -39,6 +39,13 @@ export default function InvoiceDetailPage() {
   const [returnOpen, setReturnOpen] = useState(false);
   const [warrantyOpen, setWarrantyOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [editAddr, setEditAddr] = useState(null); // null = not editing
+  const saveAddr = async () => {
+    await api.put(`/invoices/${invoice.id}/delivery-address`, { delivery_address: editAddr });
+    toast.success(t('common.save'));
+    setInvoice({ ...invoice, delivery_address: editAddr || null, client: invoice.client && !invoice.client.address && editAddr ? { ...invoice.client, address: editAddr } : invoice.client });
+    setEditAddr(null);
+  };
   const [returns, setReturns] = useState([]);
   const [mfg, setMfg] = useState(null); // manufacture-order cost/profit summary, when this invoice is one
   useEffect(() => {
@@ -174,8 +181,22 @@ export default function InvoiceDetailPage() {
         <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.balanceDue')}</p><p className={`text-sm mt-1 font-bold ${balance > 0.001 ? 'text-red-500' : 'text-emerald-600'}`}>{balance.toFixed(3)}</p></div>
         {invoice.branch && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.branch')}</p><p className="text-sm mt-1 font-medium">{invoice.branch.code} - {invoice.branch.name_en}</p></div>}
         {invoice.delivery_date && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.deliveryDate')}</p><p className="text-sm mt-1 font-medium">{invoice.delivery_date}</p></div>}
-        {invoice.client?.address && <div className="col-span-2"><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.address', { defaultValue: 'Client address' })}</p><p className="text-sm mt-1 font-medium whitespace-pre-wrap">{invoice.client.address}</p></div>}
-        {invoice.delivery_address && <div className="col-span-2"><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.deliveryAddress')}</p><p className="text-sm mt-1 font-medium whitespace-pre-wrap">{invoice.delivery_address}</p></div>}
+        {invoice.type === 'sales' && (
+          <div className="col-span-2">
+            <p className="text-xs text-slate-400 uppercase font-semibold flex items-center gap-2">{t('invoices.deliveryAddress')}
+              {editAddr === null && <button type="button" onClick={() => setEditAddr(invoice.delivery_address || invoice.client?.address || '')} className="p-1 rounded hover:bg-slate-100 text-slate-400"><Pencil size={12} /></button>}
+            </p>
+            {editAddr === null ? (
+              <p className="text-sm mt-1 font-medium whitespace-pre-wrap">{invoice.delivery_address || invoice.client?.address || '—'}</p>
+            ) : (
+              <div className="mt-1 flex gap-2 items-start">
+                <textarea rows={2} className="input text-sm flex-1" value={editAddr} onChange={(e) => setEditAddr(e.target.value)} />
+                <button type="button" onClick={saveAddr} className="btn-primary !py-1.5">{t('common.save')}</button>
+                <button type="button" onClick={() => setEditAddr(null)} className="btn-ghost !py-1.5">{t('common.cancel')}</button>
+              </div>
+            )}
+          </div>
+        )}
         {(invoice.salesperson?.name_en || invoice.creator?.name) && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.salesperson')}</p><p className="text-sm mt-1 font-medium">{invoice.salesperson?.name_en || invoice.creator.name}</p></div>}
         {Number(invoice.discount_amount) > 0.0009 && (
           <div>

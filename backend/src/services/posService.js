@@ -316,10 +316,14 @@ async function salesHistory(companyId, { date_from, date_to, client_id, status, 
   const where = { company_id: companyId, channel: 'pos' };
   where.status = status && status !== 'all' ? status : { [Op.ne]: 'draft' };
   if (client_id) where.client_id = client_id;
+  const and = [];
   if (date_from || date_to) {
-    where.date = {};
-    if (date_from) where.date[Op.gte] = date_from;
-    if (date_to) where.date[Op.lte] = date_to;
+    // Match on the invoice date OR the day it was actually created, so a sale dated
+    // ahead of / behind today (the cashier can edit the date) never disappears from Orders.
+    const d = {}; const c = {};
+    if (date_from) { d[Op.gte] = date_from; c[Op.gte] = new Date(`${date_from}T00:00:00`); }
+    if (date_to) { d[Op.lte] = date_to; c[Op.lt] = new Date(new Date(`${date_to}T00:00:00`).getTime() + 86400000); }
+    and.push({ [Op.or]: [{ date: d }, { createdAt: c }] });
   }
   if (q) {
     const matchingClients = await Client.findAll({
@@ -334,11 +338,12 @@ async function salesHistory(companyId, { date_from, date_to, client_id, status, 
       attributes: ['id'],
     });
     const clientIds = matchingClients.map((c) => c.id);
-    where[Op.or] = [
+    and.push({ [Op.or]: [
       { invoice_no: { [Op.iLike]: `%${q}%` } },
       ...(clientIds.length ? [{ client_id: { [Op.in]: clientIds } }] : []),
-    ];
+    ] });
   }
+  if (and.length) where[Op.and] = and;
 
   return Invoice.findAll({
     where,
