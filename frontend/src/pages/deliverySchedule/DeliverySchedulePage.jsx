@@ -77,6 +77,7 @@ export default function DeliverySchedulePage() {
 
   const columns = [
     { key: 'delivery_date', label: t('invoices.deliveryDate'), render: (r) => r.delivery_date },
+    { key: 'createdAt', label: L('Created', 'وقت الإنشاء'), render: (r) => { const d = new Date(r.createdAt); return Number.isNaN(d.getTime()) ? '—' : <span className="whitespace-nowrap">{d.toLocaleDateString('en-GB')} <b className="text-slate-500">{d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</b></span>; } },
     { key: 'invoice_no', label: t('invoices.invoiceNo'), render: (r) => <Link to={`/invoices/${r.id}`} className="text-blue-500 hover:underline font-medium">{r.invoice_no}</Link> },
     { key: 'client', label: t('common.client'), render: (r) => r.client?.name_en || '—' },
     { key: 'phone', label: t('common.phone'), render: (r) => r.client?.phone || '—' },

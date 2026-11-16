@@ -457,8 +457,8 @@ async function queryDeliverySchedule(
 	return Invoice.findAll({
 		where,
 		include: partyInclude,
+		// Newest invoice first (by when it was created, i.e. highest invoice number first).
 		order: [
-			["delivery_date", "DESC"],
 			["createdAt", "DESC"],
 		],
 	});
