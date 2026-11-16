@@ -4,9 +4,13 @@ const TYPE_PREFIX = { receipt: 'RV', payment: 'PV', journal: 'JV' };
 
 async function nextVoucherNo(companyId, voucherType, t) {
   const prefix = TYPE_PREFIX[voucherType] || 'JV';
-  // Counted inside the caller's transaction so several vouchers created in one transaction get distinct numbers.
-  const count = await Voucher.count({ where: { company_id: companyId, voucher_type: voucherType }, transaction: t });
-  return `${prefix}-${String(count + 1).padStart(6, '0')}`;
+  // Highest existing number + 1 (not a row count — deleted/cancelled rows would make a count collide).
+  // Runs in the caller's transaction so several vouchers created together get distinct numbers.
+  const [row] = await sequelize.query(
+    "SELECT COALESCE(MAX(CAST(SUBSTRING(voucher_no FROM '[0-9]+$') AS INTEGER)), 0) AS m FROM vouchers WHERE company_id = :companyId AND voucher_no LIKE :like",
+    { replacements: { companyId, like: `${prefix}-%` }, type: sequelize.QueryTypes.SELECT, transaction: t },
+  );
+  return `${prefix}-${String(Number(row.m) + 1).padStart(6, '0')}`;
 }
 
 // Creates a voucher with its lines in 'draft' status. Debit/credit balance is

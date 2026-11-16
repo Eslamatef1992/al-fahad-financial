@@ -22,8 +22,11 @@ function notFound(message) { const e = new Error(message || 'Not found'); e.stat
 const r3 = (v) => Math.round(Number(v || 0) * 1000) / 1000;
 
 async function nextReturnNo(companyId, t) {
-  const count = await SalesReturn.count({ where: { company_id: companyId }, transaction: t });
-  return `RET-${String(count + 1).padStart(6, '0')}`;
+  const [row] = await sequelize.query(
+    "SELECT COALESCE(MAX(CAST(SUBSTRING(return_no FROM '[0-9]+$') AS INTEGER)), 0) AS m FROM sales_returns WHERE company_id = :companyId AND return_no LIKE :like",
+    { replacements: { companyId, like: 'RET-%' }, type: sequelize.QueryTypes.SELECT, transaction: t },
+  );
+  return `RET-${String(Number(row.m) + 1).padStart(6, '0')}`;
 }
 
 // Already-returned totals per invoice line.

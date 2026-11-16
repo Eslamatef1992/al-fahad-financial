@@ -6,14 +6,20 @@ const {
 function badRequest(message) { const e = new Error(message); e.status = 400; return e; }
 function notFound(message) { const e = new Error(message || 'Item not found'); e.status = 404; return e; }
 
-async function nextTransferNo(companyId) {
-  const count = await StockTransfer.count({ where: { company_id: companyId } });
-  return `ST-${String(count + 1).padStart(6, '0')}`;
+async function nextTransferNo(companyId, t) {
+  const [row] = await sequelize.query(
+    "SELECT COALESCE(MAX(CAST(SUBSTRING(transfer_no FROM '[0-9]+$') AS INTEGER)), 0) AS m FROM stock_transfers WHERE company_id = :companyId AND transfer_no LIKE :like",
+    { replacements: { companyId, like: 'ST-%' }, type: sequelize.QueryTypes.SELECT, transaction: t },
+  );
+  return `ST-${String(Number(row.m) + 1).padStart(6, '0')}`;
 }
 
-async function nextItemCode(companyId) {
-  const count = await Item.count({ where: { company_id: companyId } });
-  return `ITM-${String(count + 1).padStart(5, '0')}`;
+async function nextItemCode(companyId, t) {
+  const [row] = await sequelize.query(
+    "SELECT COALESCE(MAX(CAST(SUBSTRING(code FROM '[0-9]+$') AS INTEGER)), 0) AS m FROM items WHERE company_id = :companyId AND code LIKE :like",
+    { replacements: { companyId, like: 'ITM-%' }, type: sequelize.QueryTypes.SELECT, transaction: t },
+  );
+  return `ITM-${String(Number(row.m) + 1).padStart(5, '0')}`;
 }
 
 // If a (default) account is a group, use its first active postable descendant instead,
@@ -208,7 +214,7 @@ async function createItem(companyId, userId, payload) {
     if (code) {
       if (await Item.findOne({ where: { company_id: companyId, code }, transaction: t })) throw badRequest(`Item number ${code} already exists`);
     } else {
-      code = await nextItemCode(companyId);
+      code = await nextItemCode(companyId, t);
     }
     const qty = Number(opening_quantity || 0);
     const cost = Number(opening_cost || 0);
@@ -482,7 +488,7 @@ async function transferStock(companyId, userId, { fromBranchId, toBranchId, date
     if (to) await validateBranch(companyId, to, t);
 
     const transferDate = date || new Date().toISOString().slice(0, 10);
-    const transfer_no = await nextTransferNo(companyId);
+    const transfer_no = await nextTransferNo(companyId, t);
 
     const transfer = await StockTransfer.create({
       company_id: companyId, transfer_no, from_branch_id: from, to_branch_id: to, date: transferDate,

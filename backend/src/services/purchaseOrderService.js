@@ -4,9 +4,12 @@ const invoiceService = require('./invoiceService');
 function badRequest(message) { const e = new Error(message); e.status = 400; return e; }
 function notFound(message) { const e = new Error(message || 'Purchase order not found'); e.status = 404; return e; }
 
-async function nextPoNo(companyId) {
-  const count = await PurchaseOrder.count({ where: { company_id: companyId } });
-  return `PO-${String(count + 1).padStart(6, '0')}`;
+async function nextPoNo(companyId, t) {
+  const [row] = await sequelize.query(
+    "SELECT COALESCE(MAX(CAST(SUBSTRING(po_no FROM '[0-9]+$') AS INTEGER)), 0) AS m FROM purchase_orders WHERE company_id = :companyId AND po_no LIKE :like",
+    { replacements: { companyId, like: 'PO-%' }, type: sequelize.QueryTypes.SELECT, transaction: t },
+  );
+  return `PO-${String(Number(row.m) + 1).padStart(6, '0')}`;
 }
 
 function computeLine(l) {

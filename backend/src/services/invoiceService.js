@@ -8,9 +8,13 @@ const PREFIX = { sales: 'INV', purchase: 'BILL' };
 function badRequest(message) { const e = new Error(message); e.status = 400; return e; }
 function notFound(message) { const e = new Error(message || 'Invoice not found'); e.status = 404; return e; }
 
-async function nextInvoiceNo(companyId, type) {
-  const count = await Invoice.count({ where: { company_id: companyId, type } });
-  return `${PREFIX[type]}-${String(count + 1).padStart(6, '0')}`;
+async function nextInvoiceNo(companyId, type, t) {
+  const prefix = PREFIX[type];
+  const [row] = await sequelize.query(
+    "SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_no FROM '[0-9]+$') AS INTEGER)), 0) AS m FROM invoices WHERE company_id = :companyId AND type = :type AND invoice_no LIKE :like",
+    { replacements: { companyId, type, like: `${prefix}-%` }, type: sequelize.QueryTypes.SELECT, transaction: t },
+  );
+  return `${prefix}-${String(Number(row.m) + 1).padStart(6, '0')}`;
 }
 
 // `discount_amount`, if present on the line, is a pre-resolved dollar figure
@@ -80,7 +84,7 @@ async function createInvoice(companyId, userId, payload) {
       companyId, { lines, discount_code }, t,
     );
 
-    const invoice_no = await nextInvoiceNo(companyId, type);
+    const invoice_no = await nextInvoiceNo(companyId, type, t);
     const invoice = await Invoice.create({
       company_id: companyId,
       type,

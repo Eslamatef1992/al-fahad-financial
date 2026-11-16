@@ -17,8 +17,11 @@ const r3 = (v) => Math.round(Number(v || 0) * 1000) / 1000;
 const today = () => new Date().toISOString().slice(0, 10);
 
 async function nextClaimNo(companyId, t) {
-  const count = await WarrantyClaim.count({ where: { company_id: companyId }, transaction: t });
-  return `WAR-${String(count + 1).padStart(6, '0')}`;
+  const [row] = await sequelize.query(
+    "SELECT COALESCE(MAX(CAST(SUBSTRING(claim_no FROM '[0-9]+$') AS INTEGER)), 0) AS m FROM warranty_claims WHERE company_id = :companyId AND claim_no LIKE :like",
+    { replacements: { companyId, like: 'WAR-%' }, type: sequelize.QueryTypes.SELECT, transaction: t },
+  );
+  return `WAR-${String(Number(row.m) + 1).padStart(6, '0')}`;
 }
 
 // Claimed so far per invoice line (replacements + exchanges), so one sold unit can't be claimed twice.
