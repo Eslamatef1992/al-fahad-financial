@@ -211,7 +211,7 @@ export default function InvoicePrintTemplate({ invoice, company, deliveryNote = 
 				<div className="name-extra">
 					<div className="field name-field">
 						<span>Address :</span>
-						<span className="filled">{client?.address || ""}</span>
+						<span className="filled">{client?.address || invoice.delivery_address || ""}</span>
 						<span className="ar">: العنوان</span>
 					</div>
 					<div className="field name-field">

@@ -174,6 +174,7 @@ export default function InvoiceDetailPage() {
         <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.balanceDue')}</p><p className={`text-sm mt-1 font-bold ${balance > 0.001 ? 'text-red-500' : 'text-emerald-600'}`}>{balance.toFixed(3)}</p></div>
         {invoice.branch && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.branch')}</p><p className="text-sm mt-1 font-medium">{invoice.branch.code} - {invoice.branch.name_en}</p></div>}
         {invoice.delivery_date && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.deliveryDate')}</p><p className="text-sm mt-1 font-medium">{invoice.delivery_date}</p></div>}
+        {invoice.client?.address && <div className="col-span-2"><p className="text-xs text-slate-400 uppercase font-semibold">{t('common.address', { defaultValue: 'Client address' })}</p><p className="text-sm mt-1 font-medium whitespace-pre-wrap">{invoice.client.address}</p></div>}
         {invoice.delivery_address && <div className="col-span-2"><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.deliveryAddress')}</p><p className="text-sm mt-1 font-medium whitespace-pre-wrap">{invoice.delivery_address}</p></div>}
         {(invoice.salesperson?.name_en || invoice.creator?.name) && <div><p className="text-xs text-slate-400 uppercase font-semibold">{t('invoices.salesperson')}</p><p className="text-sm mt-1 font-medium">{invoice.salesperson?.name_en || invoice.creator.name}</p></div>}
         {Number(invoice.discount_amount) > 0.0009 && (
