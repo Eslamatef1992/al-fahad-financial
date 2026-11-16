@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Printer, Eye, PlusCircle } from "lucide-react";
+import { CheckCircle2, Printer, Eye, PlusCircle, FileText } from "lucide-react";
+import { printInvoiceById } from "@/utils/printInvoice";
 import api from "@/api/client";
 import InvoicePrintTemplate from "@/components/InvoicePrintTemplate";
 
@@ -32,6 +33,10 @@ export default function InvoiceSuccessModal({
 	}, [invoiceId]);
 
 	if (!invoiceId) return null;
+
+	// Only items sold as direct delivery (not booked, real stock items) go on this delivery note.
+	const directLines = (invoice?.lines || []).filter((l) => l.item_id && !l.is_booked && !l.is_gift);
+	const directQty = directLines.length ? Object.fromEntries(directLines.map((l) => [l.id, Number(l.quantity)])) : null;
 
 	return (
 		<>
@@ -89,6 +94,14 @@ export default function InvoiceSuccessModal({
 							</div>
 						)}
 						<div className="flex flex-col gap-2">
+							{directQty && (
+								<button
+									onClick={() => printInvoiceById(invoiceId, { deliveryNote: true, quantities: directQty })}
+									className="btn-ghost w-full flex items-center justify-center gap-1.5 !text-red-600">
+									<FileText size={16} />
+									{t("pos.deliveryNote", { defaultValue: "Delivery note (direct delivery items)" })}
+								</button>
+							)}
 							<button
 								onClick={() => navigate(`/invoices/${invoiceId}`)}
 								className="btn-ghost w-full flex items-center justify-center gap-1.5">

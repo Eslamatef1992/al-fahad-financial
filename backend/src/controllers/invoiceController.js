@@ -536,16 +536,19 @@ exports.deliveryLines = async (req, res) => {
 		return m;
 	};
 	const lines = (inv.lines || []).map((l) => {
-		const delivered = Number(l.delivered_qty || 0);
 		const ordered = Number(l.quantity);
+		const direct = !l.is_booked; // direct-delivery lines left stock at sale time
+		const delivered = direct ? ordered : Number(l.delivered_qty || 0);
 		return {
+			direct,
 			id: l.id, item_id: l.item_id, description: l.description || l.item?.name_en, code: l.item?.code || null,
 			ordered, delivered, remaining: Math.max(0, Math.round((ordered - delivered) * 1000) / 1000),
 			stock: l.item_id ? stockOf(l.item_id) : null,
 			is_booked: !!l.is_booked, booked_pending: pend.filter((b) => b.invoice_line_id === l.id).reduce((a, b) => a + Number(b.quantity), 0),
 		};
 	});
-	res.json({ invoice_no: inv.invoice_no, delivery_status: inv.delivery_status, stores, lines });
+	const invBranch = inv.branch_id ? await Branch.findByPk(inv.branch_id, { attributes: ["code", "name_en", "name_ar"] }) : null;
+	res.json({ invoice_no: inv.invoice_no, delivery_status: inv.delivery_status, branch: invBranch ? { code: invBranch.code, name_en: invBranch.name_en, name_ar: invBranch.name_ar } : null, stores, lines });
 };
 
 exports.deliveryDeliver = async (req, res) => {
@@ -581,6 +584,7 @@ exports.deliveryDeliver = async (req, res) => {
 	let any = false;
 	for (const l of lines) {
 		const remaining = Math.round((Number(l.quantity) - Number(l.delivered_qty || 0)) * 1000) / 1000;
+		if (!l.is_booked) continue; // direct-delivery lines were issued at sale time
 		let q = req.body?.lines ? (want.get(l.id) || 0) : remaining;
 		if (q <= 0) continue;
 		if (q > remaining + 0.0005) return res.status(400).json({ message: `Cannot deliver more than the remaining ${remaining} of "${l.description}"` });
@@ -599,7 +603,7 @@ exports.deliveryDeliver = async (req, res) => {
 	}
 	if (!any) return res.status(400).json({ message: "Enter a quantity to deliver" });
 	const fresh = await InvoiceLine.findAll({ where: { invoice_id: inv.id } });
-	const done = fresh.every((l) => Number(l.delivered_qty || 0) >= Number(l.quantity) - 0.0005);
+	const done = fresh.every((l) => !l.is_booked || Number(l.delivered_qty || 0) >= Number(l.quantity) - 0.0005);
 	await inv.update(done ? { delivery_status: "delivered", delivery_closed_at: new Date() } : { delivery_status: "partial" });
 	res.json({ id: inv.id, delivery_status: done ? "delivered" : "partial" });
 };

@@ -163,7 +163,9 @@ export default function DeliverySchedulePage() {
                     <tbody>
                       {dn.data.lines.map((l) => (
                         <tr key={l.id} className="border-t border-slate-100 dark:border-navy-800">
-                          <td className="px-3 py-2">{l.description}{l.is_booked && <span className="ms-2 text-[10px] text-amber-600">{L('booked', 'محجوز')}</span>}</td>
+                          <td className="px-3 py-2">{l.description}
+                            {l.is_booked ? <span className="ms-2 text-[10px] text-amber-600">{L('booked', 'محجوز')}</span> : <span className="ms-2 text-[10px] font-bold text-emerald-600">{L('direct – already delivered', 'تسليم مباشر – تم التسليم')}</span>}
+                            {dn.data.branch && <span className="ms-2 text-[10px] text-slate-400">· {L('Branch', 'الفرع')}: {i18n.language?.startsWith('ar') ? (dn.data.branch.name_ar || dn.data.branch.name_en) : dn.data.branch.name_en}</span>}</td>
                           <td className="px-3 py-2 tabular-nums">{l.ordered}</td>
                           <td className="px-3 py-2 tabular-nums text-emerald-600">{l.delivered}</td>
                           <td className={`px-3 py-2 tabular-nums font-semibold ${l.remaining > 0 ? 'text-rose-600' : 'text-slate-300'}`}>{l.remaining}</td>
