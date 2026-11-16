@@ -198,7 +198,7 @@ exports.item = async (req, res) => {
   const pending = bookings.filter((b) => b.status === 'pending').reduce((s, b) => s + num(b.quantity), 0);
   res.json({
     item: { id: item.id, code: item.code, name_en: item.name_en, name_ar: item.name_ar, unit: item.unit, selling_price: num(item.selling_price) },
-    summary: { total_in: r3(totalIn), total_out: r3(totalOut), on_hand: bal, booked: r3(pending), available: r3(bal - pending), first: events[0]?.at || null, last: events.length ? events[events.length - 1].at : null },
+    summary: { returned_qty: r3(retLines.reduce((a, l) => a + num(l.quantity), 0)), returned_value: r3(retLines.reduce((a, l) => a + num(l.line_total), 0)), returns_count: new Set(retLines.map((l) => l.return_id)).size, total_in: r3(totalIn), total_out: r3(totalOut), on_hand: bal, booked: r3(pending), available: r3(bal - pending), first: events[0]?.at || null, last: events.length ? events[events.length - 1].at : null },
     events,
   });
 };

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, Boxes, ArrowDownToLine, ArrowUpFromLine, Lock, Wallet, Printer, ArrowUpDown } from 'lucide-react';
+import { Search, Undo2, Boxes, ArrowDownToLine, ArrowUpFromLine, Lock, Wallet, Printer, ArrowUpDown } from 'lucide-react';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
@@ -97,9 +97,10 @@ export default function ItemMovementPage() {
       {data && (
         <>
           <p className="font-bold text-lg mb-3">{data.item.code} — {isAr ? data.item.name_ar || data.item.name_en : data.item.name_en}</p>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-4">
             <StatCard label={L('Total in', 'إجمالي الوارد')} value={q(s.total_in)} icon={ArrowDownToLine} tone="green" />
             <StatCard label={L('Total out', 'إجمالي الصادر')} value={q(s.total_out)} icon={ArrowUpFromLine} tone="red" delay={0.05} />
+            <StatCard label={`${L('Returned', 'المرتجع')} (${s.returns_count || 0})`} value={q(s.returned_qty)} unit={s.returned_value ? q(s.returned_value) : undefined} icon={Undo2} tone="pink" delay={0.08} />
             <StatCard label={L('On hand', 'المخزون')} value={q(s.on_hand)} icon={Boxes} tone="navy" delay={0.1} />
             <StatCard label={L('Booked', 'المحجوز')} value={q(s.booked)} icon={Lock} tone="gold" delay={0.15} />
             <StatCard label={L('Available', 'المتاح')} value={q(s.available)} icon={Wallet} tone="green" delay={0.2} />
