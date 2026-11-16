@@ -760,12 +760,23 @@ export default function PosPage() {
 				setPaying(false);
 				return toast.error(t("invoices.bookedNeedsDate"));
 			}
+			// A delivery date on the order without any booked line means stock is issued NOW.
+			// Offer to reserve the items for that date instead (stock stays held until delivered).
+			let saleLines = buildLines();
+			if (deliveryDate && !isManufactureOrder && !cart.some((l) => l.is_booked) && cart.some((l) => !l.item.is_manufacture && !l.is_gift)) {
+				const bookThem = window.confirm(
+					t("pos.bookForDeliveryAsk", {
+						defaultValue: `This order has a delivery date (${deliveryDate}) but no item is booked, so stock will be taken out now.\n\nPress OK to BOOK the items for that date (stock stays reserved until you deliver).\nPress Cancel to sell now and take the stock out immediately.`,
+					}),
+				);
+				if (bookThem) saleLines = saleLines.map((ln) => (ln.item_id && !ln.is_gift ? { ...ln, is_booked: true, delivery_date: deliveryDate } : ln));
+			}
 			const { data } = await api.post("/pos/sales", {
 				...headerFields(),
 				attachments: isManufactureOrder ? savedAttachments : undefined,
 				client_id: clientId || null,
 				action: "complete",
-				lines: buildLines(),
+				lines: saleLines,
 				payments,
 				delivery_date: deliveryDate || null,
 				delivery_address: deliveryAddress || null,
