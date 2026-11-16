@@ -98,7 +98,7 @@ export default function PaymentModal({
 						<div className="flex items-center justify-between text-sm pt-2 border-t border-slate-100 dark:border-navy-800">
 							<span className="text-slate-500">{t("pos.tendered")}</span>
 							<span
-								className={`font-semibold ${Math.abs(tenderTotal - netTotal) > 0.001 ? "text-red-500" : "text-emerald-500"}`}>
+								className={`font-semibold ${tenderTotal > netTotal + 0.001 ? "text-red-500" : "text-emerald-500"}`}>
 								{money(tenderTotal)}
 							</span>
 						</div>

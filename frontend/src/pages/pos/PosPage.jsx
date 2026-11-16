@@ -729,17 +729,19 @@ export default function PosPage() {
 
 	const payBranch = invoiceBranch || access?.shift?.branch_id || null;
 	const activePaymentMethods = paymentMethods.filter((pm) => pm.is_active && (!pm.branch_id || !payBranch || pm.branch_id === payBranch));
-	const tenderTotal =
-		Object.values(tenderAmounts).reduce((s, v) => s + Number(v || 0), 0) +
-		Number(creditAmount || 0);
+	// Whatever is not paid now stays on the client's account (AR) automatically.
+	const paidNow = Object.values(tenderAmounts).reduce((s, v) => s + Number(v || 0), 0);
+	const creditAuto = Math.max(0, Math.round((netTotal - paidNow) * 1000) / 1000);
+	const tenderTotal = paidNow + (clientId ? creditAuto : 0);
 	const resetTender = () => {
 		setTenderAmounts({});
 		setTenderRefs({});
 		setCreditAmount("");
 	};
 	const submitPayment = async () => {
-		if (Math.abs(tenderTotal - netTotal) > 0.001)
-			return toast.error(t("pos.tenderMismatch"));
+		if (paidNow > netTotal + 0.001) return toast.error(t("pos.tenderMismatch"));
+		if (creditAuto > 0.001 && !clientId)
+			return toast.error(t("pos.creditNeedsClient"));
 		setPaying(true);
 		try {
 			const payments = [];
@@ -754,8 +756,8 @@ export default function PosPage() {
 						reference: (tenderRefs[pm.id] || "").trim() || undefined,
 					});
 			});
-			if (Number(creditAmount) > 0)
-				payments.push({ method: "credit", amount: Number(creditAmount) });
+			if (creditAuto > 0.001)
+				payments.push({ method: "credit", amount: creditAuto });
 			if (bookedLineMissingDate()) {
 				setPaying(false);
 				return toast.error(t("invoices.bookedNeedsDate"));
@@ -1537,7 +1539,7 @@ export default function PosPage() {
 				tenderRefs={tenderRefs}
 				setTenderRefs={setTenderRefs}
 				canCredit={canCredit}
-				creditAmount={creditAmount}
+				creditAmount={creditAuto > 0 ? creditAuto.toFixed(3) : ""}
 				setCreditAmount={setCreditAmount}
 				clientId={clientId}
 				tenderTotal={tenderTotal}
