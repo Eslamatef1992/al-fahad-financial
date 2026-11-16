@@ -904,7 +904,27 @@ export default function PosPage() {
 										))}
 									</select>
 								</div>
-							<div className="col-span-2 rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-sky-50/40 dark:bg-sky-950/10">
+															<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+									<label className="label !text-[11px] !mb-1.5">{t("invoices.referenceNo", { defaultValue: "Reference No." })}</label>
+									<input className="input text-sm py-2" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
+								</div>
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+									<label className="label !text-[11px] !mb-1.5">{t("common.date", { defaultValue: "Date" })}</label>
+									<input type="date" className="input text-sm py-2" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+								</div>
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+									<label className="label !text-[11px] !mb-1.5">{t("invoices.dueDate", { defaultValue: "Due Date" })}</label>
+									<input type="date" className="input text-sm py-2" value={dueDate} min={invoiceDate} onChange={(e) => setDueDate(e.target.value)} />
+								</div>
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+									<label className="label !text-[11px] !mb-1.5">{t("pos.salesPerson", { defaultValue: "Sales person" })}</label>
+									<select className="input text-sm py-2" value={salespersonId} onChange={(e) => setSalespersonId(e.target.value)}>
+										<option value="">—</option>
+										{salesPeople.filter((sp) => { const br = invoiceBranch || access?.shift?.branch_id; return !br || sp.branch_id === br; }).map((sp) => <option key={sp.id} value={sp.id}>{i18n.language?.startsWith("ar") ? sp.name_ar || sp.name_en : sp.name_en}</option>)}
+									</select>
+								</div>
+<div className="col-span-2 lg:col-span-4 xl:col-span-6 rounded-xl border border-sky-200 dark:border-sky-900/40 bg-sky-50/70 dark:bg-sky-950/20 p-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+<div className="md:col-span-2">
 								<div className="flex items-center justify-between mb-2">
 									<label className="flex items-center gap-1.5 text-xs font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wide">
 										<Users size={13} />
@@ -979,8 +999,8 @@ export default function PosPage() {
 										)}
 									</div>
 								)}
-							</div>
-							<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-violet-50/40 dark:bg-violet-950/10">
+</div>
+<div>
 								<label className="flex items-center gap-1.5 text-xs font-bold text-violet-700 dark:text-violet-400 uppercase tracking-wide mb-2">
 									<CalendarClock size={13} />
 									{t("invoices.deliveryDate")}
@@ -992,27 +1012,8 @@ export default function PosPage() {
 									value={deliveryDate}
 									onChange={(e) => setDeliveryDate(e.target.value)}
 								/>
-							</div>
-															<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
-									<label className="label !text-[11px] !mb-1.5">{t("invoices.referenceNo", { defaultValue: "Reference No." })}</label>
-									<input className="input text-sm py-2" value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
-								</div>
-								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
-									<label className="label !text-[11px] !mb-1.5">{t("common.date", { defaultValue: "Date" })}</label>
-									<input type="date" className="input text-sm py-2" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
-								</div>
-								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
-									<label className="label !text-[11px] !mb-1.5">{t("invoices.dueDate", { defaultValue: "Due Date" })}</label>
-									<input type="date" className="input text-sm py-2" value={dueDate} min={invoiceDate} onChange={(e) => setDueDate(e.target.value)} />
-								</div>
-								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
-									<label className="label !text-[11px] !mb-1.5">{t("pos.salesPerson", { defaultValue: "Sales person" })}</label>
-									<select className="input text-sm py-2" value={salespersonId} onChange={(e) => setSalespersonId(e.target.value)}>
-										<option value="">—</option>
-										{salesPeople.filter((sp) => { const br = invoiceBranch || access?.shift?.branch_id; return !br || sp.branch_id === br; }).map((sp) => <option key={sp.id} value={sp.id}>{i18n.language?.startsWith("ar") ? sp.name_ar || sp.name_en : sp.name_en}</option>)}
-									</select>
-								</div>
-								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40 sm:col-span-2">
+</div>
+<div className="md:col-span-3">
 									<label className="label !text-[11px] !mb-1.5">{t("invoices.deliveryAddress", { defaultValue: "Delivery Address" })}</label>
 									<textarea
 										rows={1}
@@ -1021,8 +1022,9 @@ export default function PosPage() {
 										onChange={(e) => setDeliveryAddress(e.target.value)}
 										placeholder={t("invoices.deliveryAddressHint", { defaultValue: "Where this order should be delivered (prefilled from the client's address, editable)" })}
 									/>
-								</div>
-								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-pink-50/40 dark:bg-pink-950/10 sm:col-span-2">
+</div>
+</div>
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-pink-50/40 dark:bg-pink-950/10 col-span-2 lg:col-span-2 xl:col-span-3">
 									<label className="flex items-center gap-1.5 text-xs font-bold text-pink-700 dark:text-pink-400 uppercase tracking-wide mb-2">
 										<Tag size={13} />
 										{t("invoices.discountCode", { defaultValue: "Discount Code" })}
@@ -1051,16 +1053,17 @@ export default function PosPage() {
 										<p className="text-xs text-slate-400">{t("invoices.lineDiscountHint", { defaultValue: "Discount codes are applied on individual lines." })}</p>
 									)}
 								</div>
-								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40 sm:col-span-2">
+								<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40 col-span-2 lg:col-span-2 xl:col-span-3">
 									<label className="label !text-[11px] !mb-1.5">{t("common.notes", { defaultValue: "Notes" })}</label>
 									<textarea rows={2} className="input text-sm py-2" value={invoiceNotes} onChange={(e) => setInvoiceNotes(e.target.value)} />
 								</div>
-<div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-indigo-50/40 dark:bg-indigo-950/10 sm:col-span-2">
-								<label className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wide mb-2">
+<div className="rounded-xl border border-slate-100 dark:border-navy-800 px-3 py-2.5 bg-indigo-50/40 dark:bg-indigo-950/10 col-span-2 lg:col-span-4 xl:col-span-6">
+<div className="flex items-center gap-3">
+								<label className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wide mb-0 shrink-0 whitespace-nowrap">
 									<FileText size={13} />
 									{t("pos.quickAddByCode")}
 								</label>
-								<div className="relative">
+								<div className="relative flex-1 min-w-0">
 									{!codeEntry && <Search
 										size={14}
 										className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400 pointer-events-none"
@@ -1108,6 +1111,7 @@ export default function PosPage() {
 										</div>
 									)}
 								</div>
+</div>
 
 								{isManufactureOrder && (
 									<div className="mt-3 rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/10 p-3">
@@ -1246,30 +1250,30 @@ export default function PosPage() {
 											</td>
 										</tr>
 <tr className={`transition-colors ${activeItemId === l.item.id ? "bg-indigo-50/60 dark:bg-navy-800" : "bg-slate-50/40 dark:bg-navy-900/30"}`}>
-	<td colSpan={6} className="px-3 pb-3 pt-0">
-		<div className="flex flex-wrap items-center gap-2 ms-1 ps-3 border-s-2 border-indigo-200 dark:border-navy-700">
+	<td colSpan={6} className="px-3 pb-1.5 pt-0">
+		<div className="flex flex-wrap items-center gap-1.5 ms-1 ps-3 border-s-2 border-indigo-200 dark:border-navy-700">
 			{!l.item.is_manufacture && (
-				<label className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border cursor-pointer select-none transition-colors ${l.is_gift ? "bg-pink-500 border-pink-500 text-white" : "bg-white dark:bg-navy-900 border-pink-200 text-pink-600 hover:bg-pink-50"}`}>
+				<label className={`inline-flex items-center gap-1 !text-[11px] leading-none font-bold px-2.5 py-1 rounded-full border cursor-pointer select-none transition-colors ${l.is_gift ? "bg-pink-500 border-pink-500 text-white" : "bg-white dark:bg-navy-900 border-pink-200 text-pink-600 hover:bg-pink-50"}`}>
 					<input type="checkbox" className="hidden" checked={!!l.is_gift}
 						onChange={(e) => updateCartLine(l.item.id, e.target.checked
 							? { is_gift: true, gift_orig_price: Number(l.unit_price), unit_price: 0, discount_code: "", discount_preview: null, discount_error: "" }
 							: { is_gift: false, unit_price: Number(l.gift_orig_price ?? l.item.selling_price ?? 0) })} />
-					🎁 {t("pos.gift", { defaultValue: "Gift (free)" })}
+					🎁 {t("pos.giftShort", { defaultValue: "Gift" })}
 				</label>
 			)}
 			{!l.item.is_manufacture && !l.is_gift && (
 				<>
-					<label className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border cursor-pointer select-none transition-colors ${!l.is_booked ? "bg-emerald-600 border-emerald-600 text-white" : "bg-white dark:bg-navy-900 border-emerald-200 text-emerald-700 hover:bg-emerald-50"}`}>
+					<label className={`inline-flex items-center gap-1 !text-[11px] leading-none font-bold px-2.5 py-1 rounded-full border cursor-pointer select-none transition-colors ${!l.is_booked ? "bg-emerald-600 border-emerald-600 text-white" : "bg-white dark:bg-navy-900 border-emerald-200 text-emerald-700 hover:bg-emerald-50"}`}>
 						<input type="checkbox" className="hidden" checked={!l.is_booked}
 							onChange={() => updateCartLine(l.item.id, { is_booked: false })} />
 						<Truck size={13} />
-						{t("pos.directDelivery", { defaultValue: "Direct delivery (deduct stock now)" })}
+						{t("pos.directShort", { defaultValue: "Direct" })}
 					</label>
-					<label className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border cursor-pointer select-none transition-colors ${l.is_booked ? "bg-amber-500 border-amber-500 text-white" : "bg-white dark:bg-navy-900 border-amber-200 text-amber-700 hover:bg-amber-50"}`}>
+					<label className={`inline-flex items-center gap-1 !text-[11px] leading-none font-bold px-2.5 py-1 rounded-full border cursor-pointer select-none transition-colors ${l.is_booked ? "bg-amber-500 border-amber-500 text-white" : "bg-white dark:bg-navy-900 border-amber-200 text-amber-700 hover:bg-amber-50"}`}>
 						<input type="checkbox" className="hidden" checked={!!l.is_booked}
 							onChange={() => updateCartLine(l.item.id, { is_booked: true })} />
 						<CalendarClock size={13} />
-						{t("invoices.bookForLater", { defaultValue: "Book for later delivery" })}
+						{t("pos.bookShort", { defaultValue: "Book" })}
 						{l.is_booked && <span className="opacity-90 font-semibold">· {deliveryDate || t("pos.setDeliveryDate", { defaultValue: "set the order delivery date" })}</span>}
 					</label>
 					{!l.is_booked && Number(l.quantity) > Number(l.item.available_quantity) && (
