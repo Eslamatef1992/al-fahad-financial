@@ -65,7 +65,7 @@ export async function printCreditNote(returnId) {
   host.id = 'inv-print-host';
   host.style.display = 'none';
   const style = document.createElement('style');
-  style.textContent = '@media print { body > *:not(#inv-print-host) { display: none !important; } #inv-print-host { display: block !important; } }';
+  style.textContent = '@media print { body > *:not(#inv-print-host) { display: none !important; } #inv-print-host { display: block !important; } #inv-print-host, #inv-print-host * { visibility: visible !important; } }';
   document.body.append(style, host);
   const root = createRoot(host);
   flushSync(() => root.render(<CreditNote ret={ret} company={company} />));

@@ -62,7 +62,7 @@ export async function printStock({ branch_id, branchName } = {}) {
   const host = document.createElement('div');
   host.id = 'inv-print-host'; host.style.display = 'none';
   const style = document.createElement('style');
-  style.textContent = '@media print { body > *:not(#inv-print-host) { display: none !important; } #inv-print-host { display: block !important; } @page { size: A4; margin: 8mm; } tr { page-break-inside: avoid; } thead { display: table-header-group; } }';
+  style.textContent = '@media print { body > *:not(#inv-print-host) { display: none !important; } #inv-print-host { display: block !important; } #inv-print-host, #inv-print-host * { visibility: visible !important; } @page { size: A4; margin: 8mm; } tr { page-break-inside: avoid; } thead { display: table-header-group; } }';
   document.body.append(style, host);
   const root = createRoot(host);
   flushSync(() => root.render(<StockSheet rows={rows} company={company} branchName={branchName} />));
