@@ -637,7 +637,7 @@ export default function PosPage() {
 			unit_price: l.unit_price,
 			discount_code: l.discount_code?.trim() || undefined,
 			is_booked: !!l.is_booked,
-			delivery_date: l.is_booked ? l.delivery_date : undefined,
+			delivery_date: l.is_booked ? deliveryDate : undefined,
 		}));
 	const headerFields = () => ({
 		reference_no: referenceNo || undefined,
@@ -647,7 +647,7 @@ export default function PosPage() {
 		salesperson_id: salespersonId || undefined,
 		notes: invoiceNotes || undefined,
 	});
-	const bookedLineMissingDate = () => cart.some((l) => l.is_booked && !l.delivery_date);
+	const bookedLineMissingDate = () => cart.some((l) => l.is_booked) && !deliveryDate;
 
 	const hold = async () => {
 		if (!cart.length) return;
@@ -1257,26 +1257,27 @@ export default function PosPage() {
 					🎁 {t("pos.gift", { defaultValue: "Gift (free)" })}
 				</label>
 			)}
-			{!l.item.is_manufacture && <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
-				<input
-					type="checkbox"
-					className="rounded"
-					checked={!!l.is_booked}
-					onChange={(e) => updateCartLine(l.item.id, { is_booked: e.target.checked, delivery_date: e.target.checked ? l.delivery_date : "" })}
-				/>
-				<CalendarClock size={13} className="text-slate-400" />
-				{t("invoices.bookForLater", { defaultValue: "Book for later delivery" })}
-			</label>}
-			{l.is_booked && (
-				<input
-					required
-					type="date"
-					min={todayStr()}
-					className="input !py-1 !w-auto text-xs"
-					value={l.delivery_date}
-					onChange={(e) => updateCartLine(l.item.id, { delivery_date: e.target.value })}
-				/>
-			)}
+				{!l.item.is_manufacture && !l.is_gift && (
+					<>
+						<label className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 cursor-pointer">
+							<input type="checkbox" className="rounded" checked={!l.is_booked}
+								onChange={(e) => updateCartLine(l.item.id, { is_booked: !e.target.checked })} />
+							{t("pos.directDelivery", { defaultValue: "Direct delivery (deduct stock now)" })}
+						</label>
+						<label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer">
+							<input type="checkbox" className="rounded" checked={!!l.is_booked}
+								onChange={(e) => updateCartLine(l.item.id, { is_booked: e.target.checked })} />
+							<CalendarClock size={13} className="text-slate-400" />
+							{t("invoices.bookForLater", { defaultValue: "Book for later delivery" })}
+							{l.is_booked && <span className="text-slate-400">({deliveryDate || t("pos.setDeliveryDate", { defaultValue: "set the order delivery date" })})</span>}
+						</label>
+						{!l.is_booked && Number(l.quantity) > Number(l.item.available_quantity) && (
+							<span className="text-xs font-semibold text-rose-600">
+								{t("pos.noStockDirect", { defaultValue: "Not enough stock for direct delivery" })} — {t("items.available", { defaultValue: "Available" })}: {Number(l.item.available_quantity)}
+							</span>
+						)}
+					</>
+				)}
 			{!discountPreview && (
 				<div className="flex items-center gap-1.5">
 					<Tag size={12} className="text-slate-400 shrink-0" />
