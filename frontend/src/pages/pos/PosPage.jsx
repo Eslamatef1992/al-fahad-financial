@@ -244,11 +244,13 @@ export default function PosPage() {
 			api
 				.get("/items", { params })
 				.then((r) =>
+					// Out-of-stock / brand-new items are listed too (greyed out) so the
+					// cashier can see they exist; only in-stock ones can be added.
 					setCodeSuggestions(
-						r.data.filter((p) => Number(p.available_quantity) > 0).slice(0, 8),
+						[...r.data].sort((x, y) => Number(Number(y.available_quantity) > 0) - Number(Number(x.available_quantity) > 0)).slice(0, 12),
 					),
 				)
-				.catch(() => {});
+				.catch(() => setCodeSuggestions([]));
 		}, 150);
 		return () => clearTimeout(handle);
 	}, [codeEntry, access?.shift, branchScope]);
@@ -1081,8 +1083,7 @@ export default function PosPage() {
 															{money(p.selling_price)}
 														</p>
 														<p className="text-[11px] text-slate-400">
-															{Number(p.available_quantity)}{" "}
-															{t("pos.available")}
+															{Number(p.available_quantity) > 0 ? <>{Number(p.available_quantity)}{" "}{t("pos.available")}</> : <span className="text-rose-500">{t("pos.outOfStock")}</span>}
 														</p>
 													</div>
 												</button>
