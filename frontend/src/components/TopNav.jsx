@@ -60,6 +60,7 @@ export function buildGroups({ isSuperAdmin, isCompanyAdmin }) {
         { to: '/suppliers', icon: Truck, key: 'suppliers' },
         { to: '/manufacturers', icon: Factory, key: 'manufacturers' },
         ...(isCompanyAdmin ? [{ to: '/damages', icon: AlertTriangle, key: 'damages' }] : []),
+        { to: '/inventory/item-movement', icon: GitMerge, en: 'Item Movement', ar: 'حركة الصنف' },
         { to: '/inventory/reports', icon: FileBarChart, en: 'Stock Reports', ar: 'تقارير المخزون' },
       ],
     },

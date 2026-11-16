@@ -112,3 +112,79 @@ exports.client = async (req, res) => {
     events,
   });
 };
+
+
+// ---- Item movement: the full life of one item, oldest -> newest, with a running stock balance ----
+// Opening / purchases / sales / deliveries of booked goods / returns / warranty replacements /
+// transfers / damages / manual adjustments, each linked to its document, plus booking events.
+exports.item = async (req, res) => {
+  const { InventoryTransaction, ItemDamage, StockTransfer, Supplier, User } = require('../models');
+  const companyId = req.companyId;
+  const item = await Item.findOne({ where: { id: req.params.itemId, company_id: companyId }, attributes: ['id', 'code', 'name_en', 'name_ar', 'unit', 'selling_price', 'created_at'] });
+  if (!item) return res.status(404).json({ message: 'Item not found' });
+
+  const [tx, bookings, damages, branches] = await Promise.all([
+    InventoryTransaction.findAll({ where: { item_id: item.id, company_id: companyId }, order: [['date', 'ASC'], ['createdAt', 'ASC']] }),
+    ItemBooking.findAll({ where: { item_id: item.id, company_id: companyId }, order: [['createdAt', 'ASC']] }),
+    ItemDamage.findAll({ where: { item_id: item.id, company_id: companyId }, order: [['createdAt', 'ASC']] }),
+    Branch.findAll({ where: { company_id: companyId }, attributes: ['id', 'name_en', 'name_ar'] }),
+  ]);
+  const bName = new Map(branches.map((b) => [b.id, b.name_en]));
+  const bookingById = new Map(bookings.map((b) => [b.id, b]));
+
+  const invIds = new Set(bookings.map((b) => b.invoice_id));
+  tx.forEach((t) => { if (t.reference_type === 'invoice' && t.reference_id) invIds.add(t.reference_id); });
+  const invoices = invIds.size ? await Invoice.findAll({ where: { id: { [Op.in]: [...invIds] }, company_id: companyId }, include: [{ model: Client, as: 'client', attributes: ['name_en'] }, { model: Supplier, as: 'supplier', attributes: ['name_en'] }] }) : [];
+  const invById = new Map(invoices.map((i) => [i.id, i]));
+  const transferIds = tx.filter((t) => t.reference_type === 'transfer' && t.reference_id).map((t) => t.reference_id);
+  const transfers = transferIds.length ? await StockTransfer.findAll({ where: { id: { [Op.in]: transferIds } }, attributes: ['id', 'transfer_no'] }) : [];
+  const trById = new Map(transfers.map((t) => [t.id, t.transfer_no]));
+  const userIds = [...new Set([...tx.map((t) => t.created_by), ...bookings.map((b) => b.created_by)].filter(Boolean))];
+  const users = userIds.length ? await User.findAll({ where: { id: { [Op.in]: userIds } }, attributes: ['id', 'name'] }) : [];
+  const uName = new Map(users.map((u) => [u.id, u.name]));
+
+  const events = [];
+  tx.forEach((t) => {
+    const qty = num(t.quantity);
+    const notes = t.notes || '';
+    let inv = t.reference_type === 'invoice' ? invById.get(t.reference_id) : null;
+    if (t.reference_type === 'booking') inv = invById.get(bookingById.get(t.reference_id)?.invoice_id) || null;
+    let kind; let label;
+    if (t.type === 'opening') { kind = 'opening'; label = 'Opening balance'; }
+    else if (t.type === 'purchase_receipt') { kind = 'purchase'; label = 'Purchase received'; }
+    else if (t.type === 'transfer_in') { kind = 'transfer'; label = 'Transfer in'; }
+    else if (t.type === 'transfer_out') { kind = 'transfer'; label = 'Transfer out'; }
+    else if (t.type === 'sale') { kind = t.reference_type === 'booking' ? 'delivery' : 'sale'; label = t.reference_type === 'booking' ? 'Booked item delivered' : 'Sale'; }
+    else if (/^Return /i.test(notes)) { kind = 'return'; label = 'Customer return (back to stock)'; }
+    else if (/^Refund of/i.test(notes)) { kind = 'return'; label = 'Refund / cancelled sale (back to stock)'; }
+    else if (t.reference_type === 'warranty') { kind = 'warranty'; label = 'Warranty replacement'; }
+    else if (t.reference_type === 'damage') { kind = 'damage'; label = 'Damage written off'; }
+    else { kind = 'adjustment'; label = 'Stock adjustment'; }
+    const party = inv ? (inv.type === 'sales' ? inv.client?.name_en : inv.supplier?.name_en) : null;
+    events.push({
+      at: day(t.date), ts: t.createdAt, kind, label, stock: true, qty,
+      doc: inv ? { type: 'invoice', id: inv.id, no: inv.invoice_no } : t.reference_type === 'transfer' && trById.get(t.reference_id) ? { type: 'transfer', id: t.reference_id, no: trById.get(t.reference_id) } : null,
+      party: party || null, branch: t.branch_id ? bName.get(t.branch_id) || null : 'Main store', unit_cost: num(t.unit_cost), notes, user: uName.get(t.created_by) || null,
+    });
+  });
+  bookings.forEach((b) => {
+    const inv = invById.get(b.invoice_id);
+    const doc = inv ? { type: 'invoice', id: inv.id, no: inv.invoice_no } : null;
+    events.push({ at: day(b.createdAt), ts: b.createdAt, kind: 'booked', label: 'Booked for client (stock stays in store)', stock: false, qty: num(b.quantity), doc, party: inv?.client?.name_en || null, branch: 'Main store', notes: b.delivery_date ? `Delivery ${day(b.delivery_date)}` : '', user: uName.get(b.created_by) || null });
+    if (b.status === 'cancelled') events.push({ at: day(b.updatedAt), ts: b.updatedAt, kind: 'released', label: 'Booking released (back to available)', stock: false, qty: num(b.quantity), doc, party: inv?.client?.name_en || null, branch: 'Main store', notes: '' });
+  });
+  damages.filter((d) => d.status === 'reported').forEach((d) => events.push({ at: day(d.createdAt), ts: d.createdAt, kind: 'damage', label: `Damage reported (${d.damage_type})`, stock: false, qty: num(d.quantity), doc: null, party: null, branch: d.branch_id ? bName.get(d.branch_id) : 'Main store', notes: d.notes || '' }));
+
+  events.sort((a, b) => String(a.at).localeCompare(String(b.at)) || new Date(a.ts) - new Date(b.ts));
+  let bal = 0; let totalIn = 0; let totalOut = 0;
+  events.forEach((e) => {
+    if (e.stock) { bal = r3(bal + e.qty); if (e.qty > 0) totalIn += e.qty; else totalOut += -e.qty; }
+    e.balance = bal;
+  });
+  const pending = bookings.filter((b) => b.status === 'pending').reduce((s, b) => s + num(b.quantity), 0);
+  res.json({
+    item: { id: item.id, code: item.code, name_en: item.name_en, name_ar: item.name_ar, unit: item.unit, selling_price: num(item.selling_price) },
+    summary: { total_in: r3(totalIn), total_out: r3(totalOut), on_hand: bal, booked: r3(pending), available: r3(bal - pending), first: events[0]?.at || null, last: events.length ? events[events.length - 1].at : null },
+    events,
+  });
+};

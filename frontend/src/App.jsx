@@ -43,6 +43,7 @@ import PurchaseOrderDetailPage from '@/pages/purchaseOrders/PurchaseOrderDetailP
 import BranchesPage from '@/pages/branches/BranchesPage';
 import StockTransfersPage from '@/pages/stockTransfers/StockTransfersPage';
 import InventoryReportsPage from '@/pages/reports/InventoryReportsPage';
+import ItemMovementPage from '@/pages/inventory/ItemMovementPage';
 import DiscountCodesPage from '@/pages/discountCodes/DiscountCodesPage';
 import ManufacturersPage from '@/pages/manufacturers/ManufacturersPage';
 import PaymentMethodsPage from '@/pages/paymentMethods/PaymentMethodsPage';
@@ -117,6 +118,7 @@ export default function App() {
           <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
           <Route path="/inventory" element={<InventoryDashboardPage />} />
           <Route path="/inventory/reports" element={<StockReportsPage />} />
+          <Route path="/inventory/item-movement" element={<ItemMovementPage />} />
           <Route path="/items" element={<ItemsPage />} />
           <Route path="/units" element={<UnitsPage />} />
           <Route path="/manufacture-items" element={<ManufactureItemsPage />} />

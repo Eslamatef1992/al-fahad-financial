@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Printer, Download, SlidersHorizontal, Layers, Tags, X, Upload, Trash2 } from 'lucide-react';
+import { Plus, Printer, Download, SlidersHorizontal, Layers, Tags, X, Upload, Trash2, GitMerge } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api, { downloadFile, printFile, fileUrl } from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
@@ -401,6 +401,7 @@ export default function ItemsPage() {
             <button onClick={() => openVariants(row)} title={t('items.variants')} className="p-2 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-950 text-purple-500">
               <Tags size={15} />
             </button>
+            <a href={`/inventory/item-movement?item=${row.id}`} title="Item movement / حركة الصنف" className="p-2 rounded-lg hover:bg-violet-50 text-violet-500 inline-flex"><GitMerge size={15} /></a>
             <button onClick={() => openStock(row)} title={t('branches.stock')} className="p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-blue-500">
               <Layers size={15} />
             </button>
