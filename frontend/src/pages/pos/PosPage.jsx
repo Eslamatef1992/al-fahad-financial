@@ -636,8 +636,8 @@ export default function PosPage() {
 			quantity: l.quantity,
 			unit_price: l.unit_price,
 			discount_code: l.discount_code?.trim() || undefined,
-			is_booked: !!l.is_booked,
-			delivery_date: l.is_booked ? deliveryDate : undefined,
+			is_booked: !!(l.is_booked && deliveryDate),
+			delivery_date: l.is_booked && deliveryDate ? deliveryDate : undefined,
 		}));
 	const headerFields = () => ({
 		reference_no: referenceNo || undefined,
@@ -647,7 +647,7 @@ export default function PosPage() {
 		salesperson_id: salespersonId || undefined,
 		notes: invoiceNotes || undefined,
 	});
-	const bookedLineMissingDate = () => cart.some((l) => l.is_booked) && !deliveryDate;
+	const bookedLineMissingDate = () => false;
 
 	const hold = async () => {
 		if (!cart.length) return;
@@ -763,7 +763,7 @@ export default function PosPage() {
 			// A delivery date on the order without any booked line means stock is issued NOW.
 			// Offer to reserve the items for that date instead (stock stays held until delivered).
 			let saleLines = buildLines();
-			if (deliveryDate && !isManufactureOrder && !cart.some((l) => l.is_booked) && cart.some((l) => !l.item.is_manufacture && !l.is_gift)) {
+			if (false && deliveryDate && !isManufactureOrder && !cart.some((l) => l.is_booked) && cart.some((l) => !l.item.is_manufacture && !l.is_gift)) {
 				const bookThem = window.confirm(
 					t("pos.bookForDeliveryAsk", {
 						defaultValue: `This order has a delivery date (${deliveryDate}) but no item is booked, so stock will be taken out now.\n\nPress OK to BOOK the items for that date (stock stays reserved until you deliver).\nPress Cancel to sell now and take the stock out immediately.`,
@@ -1213,20 +1213,14 @@ export default function PosPage() {
 			)}
 			{!l.item.is_manufacture && !l.is_gift && (
 				<>
-					<label className={`inline-flex items-center gap-1 !text-[11px] leading-none font-bold px-2.5 py-1 rounded-full border cursor-pointer select-none transition-colors ${!l.is_booked ? "bg-emerald-600 border-emerald-600 text-white" : "bg-white dark:bg-navy-900 border-emerald-200 text-emerald-700 hover:bg-emerald-50"}`}>
-						<input type="checkbox" className="hidden" checked={!l.is_booked}
-							onChange={() => updateCartLine(l.item.id, { is_booked: false })} />
+					<label className={`inline-flex items-center gap-1 !text-[11px] leading-none font-bold px-2.5 py-1 rounded-full border cursor-pointer select-none transition-colors ${!(l.is_booked && deliveryDate) ? "bg-emerald-600 border-emerald-600 text-white" : "bg-white dark:bg-navy-900 border-emerald-200 text-emerald-700 hover:bg-emerald-50"}`}>
+						<input type="checkbox" className="hidden" checked={!(l.is_booked && deliveryDate)}
+							onChange={() => updateCartLine(l.item.id, { is_booked: !(l.is_booked && deliveryDate) })} />
 						<Truck size={13} />
 						{t("pos.directShort", { defaultValue: "Direct" })}
 					</label>
-					<label className={`inline-flex items-center gap-1 !text-[11px] leading-none font-bold px-2.5 py-1 rounded-full border cursor-pointer select-none transition-colors ${l.is_booked ? "bg-amber-500 border-amber-500 text-white" : "bg-white dark:bg-navy-900 border-amber-200 text-amber-700 hover:bg-amber-50"}`}>
-						<input type="checkbox" className="hidden" checked={!!l.is_booked}
-							onChange={() => updateCartLine(l.item.id, { is_booked: true })} />
-						<CalendarClock size={13} />
-						{t("pos.bookShort", { defaultValue: "Book" })}
-						{l.is_booked && deliveryDate && <span className="opacity-90 font-semibold">· {deliveryDate}</span>}
-					</label>
-					{!l.is_booked && Number(l.quantity) > Number(l.item.available_quantity) && (
+					
+					{!(l.is_booked && deliveryDate) && Number(l.quantity) > Number(l.item.available_quantity) && (
 						<span className="text-xs font-bold text-rose-600 bg-rose-50 rounded-full px-3 py-1.5">
 							⚠ {t("pos.noStockDirect", { defaultValue: "Not enough stock for direct delivery" })} — {t("items.available", { defaultValue: "Available" })}: {Number(l.item.available_quantity)}
 						</span>
