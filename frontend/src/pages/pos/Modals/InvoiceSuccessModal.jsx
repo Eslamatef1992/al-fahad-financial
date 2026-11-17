@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, Printer, Eye, PlusCircle, FileText } from "lucide-react";
 import { printInvoiceById } from "@/utils/printInvoice";
+import { printReceiptVoucher } from "@/utils/printReceiptVoucher";
 import api from "@/api/client";
 import InvoicePrintTemplate from "@/components/InvoicePrintTemplate";
 
@@ -36,6 +37,10 @@ export default function InvoiceSuccessModal({
 
 	// Only items sold as direct delivery (not booked, real stock items) go on this delivery note.
 	const directLines = (invoice?.lines || []).filter((l) => l.item_id && !l.is_booked && !l.is_gift);
+	// Part-paid / credit sale: the money received is backed by receipt voucher(s) — offer to print them.
+	const paidTotal = Number(invoice?.paid_total || 0);
+	const receiptVouchers = [...new Set((invoice?.payments || []).map((p) => p.voucher_id).filter(Boolean))];
+	const showReceipt = !!invoice && paidTotal > 0 && paidTotal < Number(invoice.total) - 0.001 && receiptVouchers.length > 0;
 	const directQty = directLines.length ? Object.fromEntries(directLines.map((l) => [l.id, Number(l.quantity)])) : null;
 
 	return (
@@ -94,6 +99,14 @@ export default function InvoiceSuccessModal({
 							</div>
 						)}
 						<div className="flex flex-col gap-2">
+							{showReceipt && (
+								<button
+									onClick={async () => { for (const vid of receiptVouchers) await printReceiptVoucher(vid); }}
+									className="btn-ghost w-full flex items-center justify-center gap-1.5 !text-indigo-700">
+									<FileText size={16} />
+									{t("pos.printReceiptVoucher", { defaultValue: "Print Receipt Voucher" })}
+								</button>
+							)}
 							{directQty && (
 								<button
 									onClick={() => printInvoiceById(invoiceId, { deliveryNote: true, quantities: directQty })}
