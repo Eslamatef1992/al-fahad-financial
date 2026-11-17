@@ -23,7 +23,10 @@ const STATUS_COLOR = {
 };
 
 export default function InvoiceDetailPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const ar = i18n.language?.startsWith('ar');
+  const L = (en, a) => (ar ? a : en);
+  const PM_AR = { cash: 'نقداً', knet: 'كي نت', other: 'أخرى', credit: 'رصيد عميل', card: 'بطاقة' };
   const { id } = useParams();
   const navigate = useNavigate();
   const { canCreateEdit, canDelete } = usePermissions();
@@ -165,7 +168,7 @@ export default function InvoiceDetailPage() {
         subtitle={`${invoice.type === 'sales' ? t('invoices.salesInvoice') : t('invoices.purchaseBill')} · ${invoice.date}`}
         actions={
           <div className="flex items-center gap-2">
-            <button onClick={() => setMoveOpen(true)} className="btn-ghost"><GitMerge size={16} /> Movement</button>
+            <button onClick={() => setMoveOpen(true)} className="btn-ghost"><GitMerge size={16} /> {L('Movement', 'حركة الفاتورة')}</button>
             <button onClick={() => window.print()} className="btn-ghost"><Printer size={16} /> {t('common.print')}</button>
             <button onClick={downloadPdf} disabled={capturing} className="btn-ghost"><Download size={16} /> PDF</button>
             {invoice.status === 'draft' && canCreateEdit && (
@@ -181,10 +184,10 @@ export default function InvoiceDetailPage() {
               <button onClick={openPayment} className="btn-primary"><Wallet size={16} /> {t('invoices.recordPayment')}</button>
             )}
             {invoice.type === 'sales' && ['posted', 'partially_paid', 'paid'].includes(invoice.status) && canCreateEdit && (
-              <button onClick={() => setReturnOpen(true)} className="btn-ghost"><Undo2 size={16} /> Return items</button>
+              <button onClick={() => setReturnOpen(true)} className="btn-ghost"><Undo2 size={16} /> {L('Return items', 'إرجاع أصناف')}</button>
             )}
             {invoice.type === 'sales' && ['posted', 'partially_paid', 'paid'].includes(invoice.status) && canCreateEdit && (
-              <button onClick={() => setWarrantyOpen(true)} className="btn-ghost"><ShieldCheck size={16} /> Warranty / exchange</button>
+              <button onClick={() => setWarrantyOpen(true)} className="btn-ghost"><ShieldCheck size={16} /> {L('Warranty / exchange', 'الضمان / الاستبدال')}</button>
             )}
             {invoice.status === 'posted' && canDelete && (
               <button onClick={() => setConfirmAction('cancel')} className="btn-danger"><XCircle size={16} /> {t('common.cancel')}</button>
@@ -255,15 +258,15 @@ export default function InvoiceDetailPage() {
       {invoice.is_manufacture_order && mfg && (
         <div className="card p-5 mb-4">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <h3 className="font-bold flex items-center gap-2"><Factory size={16} />Manufacture order</h3>
-            <button type="button" onClick={() => navigate(`/accounting/manufacture?open=${invoice.id}`)} className="btn-ghost !py-1 text-xs">Open in Manufactured Orders</button>
+            <h3 className="font-bold flex items-center gap-2"><Factory size={16} />{L('Manufacture order', 'طلب تصنيع')}</h3>
+            <button type="button" onClick={() => navigate(`/accounting/manufacture?open=${invoice.id}`)} className="btn-ghost !py-1 text-xs">{L('Open in Manufactured Orders', 'فتح في طلبات التصنيع')}</button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
-            <div><p className="text-xs text-slate-400">Manufacturer</p><p className="font-semibold">{mfg.manufacturer?.name_en || '—'}</p></div>
-            <div><p className="text-xs text-slate-400">Status</p><p className="font-semibold capitalize">{String(mfg.manufacture_status).replace('_', ' ')}</p></div>
-            <div><p className="text-xs text-slate-400">Total cost</p><p className="font-semibold">{Number(mfg.total_cost).toFixed(3)}</p></div>
-            <div><p className="text-xs text-slate-400">Profit</p><p className={`font-bold ${Number(mfg.profit) < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{Number(mfg.profit).toFixed(3)}</p></div>
-            <div><p className="text-xs text-slate-400">Branch</p><p className="font-semibold">{mfg.branch?.name_en || '—'}</p></div>
+            <div><p className="text-xs text-slate-400">{L('Manufacturer', 'المصنّع')}</p><p className="font-semibold">{(ar ? mfg.manufacturer?.name_ar : null) || mfg.manufacturer?.name_en || '—'}</p></div>
+            <div><p className="text-xs text-slate-400">{L('Status', 'الحالة')}</p><p className="font-semibold capitalize">{String(mfg.manufacture_status).replace('_', ' ')}</p></div>
+            <div><p className="text-xs text-slate-400">{L('Total cost', 'إجمالي التكلفة')}</p><p className="font-semibold">{Number(mfg.total_cost).toFixed(3)}</p></div>
+            <div><p className="text-xs text-slate-400">{L('Profit', 'الربح')}</p><p className={`font-bold ${Number(mfg.profit) < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{Number(mfg.profit).toFixed(3)}</p></div>
+            <div><p className="text-xs text-slate-400">{L('Branch', 'الفرع')}</p><p className="font-semibold">{(ar ? mfg.branch?.name_ar : null) || mfg.branch?.name_en || '—'}</p></div>
           </div>
         </div>
       )}
@@ -293,7 +296,7 @@ export default function InvoiceDetailPage() {
                 <div>
                   <span className="font-medium">{p.date}</span>
                   <span className="px-2 py-0.5 mx-2 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 dark:bg-blue-950">
-                    {p.paymentMethodRef?.name_en || p.payment_method || t('nav.paymentMethods')}
+                    {(ar ? p.paymentMethodRef?.name_ar : null) || p.paymentMethodRef?.name_en || (ar ? PM_AR[String(p.payment_method || '').toLowerCase()] : null) || p.payment_method || t('nav.paymentMethods')}
                   </span>
                   {p.reference && <span className="text-slate-400 text-xs">{t('pos.referenceOptionalPlaceholder')}: {p.reference}</span>}
                   {p.notes && <span className="text-slate-400"> · {p.notes}</span>}
