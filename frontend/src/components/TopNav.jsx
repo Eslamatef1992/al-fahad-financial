@@ -29,7 +29,11 @@ export function buildGroups({ isSuperAdmin, isCompanyAdmin }) {
       key: 'pos', label: 'pos',
       items: [
         { to: '/pos', icon: ShoppingCart, key: 'pos' },
-        ...POS_MENU.map((m) => ({ to: m.to ? `/pos-module/${m.to}` : '/pos-module', icon: m.icon, en: m.en, ar: m.ar, end: m.end })),
+        ...POS_MENU.flatMap((m) => {
+          const it = { to: m.to ? `/pos-module/${m.to}` : '/pos-module', icon: m.icon, en: m.en, ar: m.ar, end: m.end };
+          // Delivery schedule sits right after "Pending orders".
+          return m.to === 'pending' ? [it, { to: '/delivery-schedule', icon: Truck, key: 'deliverySchedule' }] : [it];
+        }),
       ],
     }] : []),
     {
