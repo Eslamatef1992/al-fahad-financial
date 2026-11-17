@@ -33,7 +33,12 @@ exports.get = async (req, res) => {
     ],
   });
   if (!voucher) return res.status(404).json({ message: 'Voucher not found' });
-  res.json(voucher);
+  const { amountInWordsAr, amountInWordsEn } = require('../services/numberToWords');
+  const data = voucher.toJSON();
+  const amt = Number(voucher.total_debit || 0);
+  data.amount_in_words_ar = amountInWordsAr(amt, voucher.currency || 'KWD');
+  data.amount_in_words_en = amountInWordsEn(amt, voucher.currency || 'KWD');
+  res.json(data);
 };
 
 exports.create = async (req, res) => {

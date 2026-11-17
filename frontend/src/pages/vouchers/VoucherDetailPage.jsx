@@ -7,6 +7,7 @@ import api, { downloadFile, printFile } from '@/api/client';
 import PageHeader from '@/components/PageHeader';
 import usePermissions from '@/hooks/usePermissions';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import { printReceiptVoucher } from '@/utils/printReceiptVoucher';
 
 const STATUS_COLOR = { draft: 'bg-slate-100 text-slate-500', posted: 'bg-emerald-50 text-emerald-600', cancelled: 'bg-red-50 text-red-500' };
 
@@ -53,7 +54,7 @@ export default function VoucherDetailPage() {
         subtitle={`${voucher.voucher_type} · ${voucher.date}`}
         actions={
           <div className="flex items-center gap-2">
-            <button onClick={() => printFile(`/vouchers/${id}/pdf`, {})} className="btn-ghost">
+            <button onClick={() => (voucher.voucher_type === 'receipt' ? printReceiptVoucher(id) : printFile(`/vouchers/${id}/pdf`, {}))} className="btn-ghost">
               <Printer size={16} /> {t('common.print')}
             </button>
             <button onClick={() => downloadFile(`/vouchers/${id}/pdf`, {}, `${voucher.voucher_no}.pdf`)} className="btn-ghost">
