@@ -158,3 +158,37 @@ exports.cancel = async (req, res) => {
   const voucher = await voucherService.cancelVoucher(req.companyId, req.params.id);
   res.json(voucher);
 };
+
+// Receipt vouchers for clients (POS part-payments, invoice payments and manual receipts),
+// enriched with client name, branch and the invoice each one settles.
+exports.receipts = async (req, res) => {
+  const { Op } = require('sequelize');
+  const { InvoicePayment, Invoice } = require('../models');
+  const { from, to, branch_id, q, status } = req.query;
+  const where = { company_id: req.companyId, voucher_type: 'receipt', status: status && status !== 'all' ? status : { [Op.ne]: 'cancelled' } };
+  if (branch_id) where.branch_id = branch_id;
+  if (from || to) where.date = { ...(from && { [Op.gte]: from }), ...(to && { [Op.lte]: to }) };
+  const vouchers = await Voucher.findAll({
+    where, include: [{ model: Branch, as: 'branch' }, { model: VoucherLine, as: 'lines', include: [{ model: Client, as: 'client' }] }],
+    order: [['date', 'DESC'], ['createdAt', 'DESC']],
+  });
+  const ids = vouchers.map((v) => v.id);
+  const pays = ids.length ? await InvoicePayment.findAll({ where: { voucher_id: { [Op.in]: ids } }, attributes: ['voucher_id', 'invoice_id'], raw: true }) : [];
+  const invs = pays.length ? await Invoice.findAll({ where: { id: { [Op.in]: pays.map((x) => x.invoice_id) } }, attributes: ['id', 'invoice_no'], raw: true }) : [];
+  const invNo = Object.fromEntries(invs.map((i) => [i.id, i.invoice_no]));
+  const byV = Object.fromEntries(pays.map((p) => [p.voucher_id, invNo[p.invoice_id]]));
+  let rows = vouchers.map((v) => {
+    const cl = (v.lines || []).map((l) => l.client).find(Boolean);
+    return {
+      id: v.id, voucher_no: v.voucher_no, date: v.date, status: v.status, description: v.description,
+      amount: Number(v.total_debit || 0), invoice_no: byV[v.id] || null,
+      client: cl ? { id: cl.id, name_en: cl.name_en, name_ar: cl.name_ar, phone: cl.phone } : null,
+      branch: v.branch ? { code: v.branch.code, name_en: v.branch.name_en, name_ar: v.branch.name_ar } : null,
+    };
+  });
+  if (q) {
+    const s = String(q).toLowerCase();
+    rows = rows.filter((r) => [r.voucher_no, r.invoice_no, r.client?.name_en, r.client?.name_ar, r.client?.phone, r.description].some((x) => String(x || '').toLowerCase().includes(s)));
+  }
+  res.json(rows);
+};

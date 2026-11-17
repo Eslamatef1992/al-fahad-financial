@@ -29,6 +29,16 @@ function StatusPill({ r, L }) {
 }
 
 // Shared order-list builder used by Orders / Pending / Canceled / Refunded.
+// Instant, language-aware hover tooltip for icon buttons (native `title` is slow and easy to miss).
+function Tip({ label, children }) {
+  return (
+    <span className="relative inline-flex group">
+      {children}
+      <span className="pointer-events-none absolute bottom-full start-1/2 -translate-x-1/2 mb-1 z-50 whitespace-nowrap rounded-md bg-navy-900 text-white text-[11px] font-semibold px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">{label}</span>
+    </span>
+  );
+}
+
 function OrdersTable({ rows, loading, extraCols = [] }) {
   const { L, isAr, branchName, cashierName } = useOutletContext();
   const [moveId, setMoveId] = useState(null);
@@ -50,18 +60,18 @@ function OrdersTable({ rows, loading, extraCols = [] }) {
       extraActions={(r) => (
         <>
           {r.status !== 'draft' && (
-            <Link to={`/invoices/${r.id}`} title={L('View', 'عرض')} className="p-2 rounded-lg hover:bg-sky-50 text-sky-500"><Eye size={15} /></Link>
+            <Tip label={L('View invoice', 'عرض الفاتورة')}><Link to={`/invoices/${r.id}`} className="p-2 rounded-lg hover:bg-sky-50 text-sky-500"><Eye size={15} /></Link></Tip>
           )}
           {r.status !== 'draft' && (
-            <button onClick={() => setMoveId(r.id)} title={L('Movement', 'الحركة')} className="p-2 rounded-lg hover:bg-violet-50 text-violet-500"><GitMerge size={15} /></button>
+            <Tip label={L('Invoice movement', 'حركة الفاتورة')}><button onClick={() => setMoveId(r.id)} className="p-2 rounded-lg hover:bg-violet-50 text-violet-500"><GitMerge size={15} /></button></Tip>
           )}
           {r.status !== 'draft' && [...new Set((r.payments || []).map((p) => p.voucher_id).filter(Boolean))].length > 0 && (
-            <button
+            <Tip label={L('Print receipt voucher', 'طباعة سند قبض')}><button
               onClick={async () => { for (const vid of new Set((r.payments || []).map((p) => p.voucher_id).filter(Boolean))) await printReceiptVoucher(vid); }}
-              title={L('Print receipt voucher', 'طباعة سند قبض')} className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600"><HandCoins size={15} /></button>
+              className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600"><HandCoins size={15} /></button></Tip>
           )}
           {r.status !== 'draft' && (
-            <button onClick={() => printInvoiceById(r.id)} title={L('Print', 'طباعة')} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"><Printer size={15} /></button>
+            <Tip label={L('Print invoice', 'طباعة الفاتورة')}><button onClick={() => printInvoiceById(r.id)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"><Printer size={15} /></button></Tip>
           )}
         </>
       )}

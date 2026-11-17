@@ -6,6 +6,7 @@ const { requireMinRole } = require('../middleware/permissions');
 router.use(requireAuth, requireCompany);
 router.get('/', ctrl.list);
 router.get('/excel', ctrl.exportExcel);
+router.get('/receipts', ctrl.receipts);
 router.get('/:id', ctrl.get);
 router.get('/:id/pdf', ctrl.pdf);
 router.post('/', requireMinRole('accountant'), ctrl.create);
