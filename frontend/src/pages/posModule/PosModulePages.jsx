@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import InvoiceMovementPanel from '@/pages/movement/InvoiceMovement';
 import { printInvoiceById } from '@/utils/printInvoice';
 import { Link, useOutletContext } from 'react-router-dom';
-import { ReceiptText, Wallet, Percent, Banknote, Clock, XCircle, Undo2, Timer, Printer, Eye, CreditCard, Tag, Boxes, Users, Building2, GitMerge } from 'lucide-react';
+import { ReceiptText, Wallet, Percent, Banknote, Clock, XCircle, Undo2, Timer, Printer, Eye, CreditCard, Tag, Boxes, Users, Building2, GitMerge, HandCoins } from 'lucide-react';
+import { printReceiptVoucher } from '@/utils/printReceiptVoucher';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import api, { printFile } from '@/api/client';
 import StatCard from '@/components/StatCard';
@@ -53,6 +54,11 @@ function OrdersTable({ rows, loading, extraCols = [] }) {
           )}
           {r.status !== 'draft' && (
             <button onClick={() => setMoveId(r.id)} title={L('Movement', 'الحركة')} className="p-2 rounded-lg hover:bg-violet-50 text-violet-500"><GitMerge size={15} /></button>
+          )}
+          {r.status !== 'draft' && [...new Set((r.payments || []).map((p) => p.voucher_id).filter(Boolean))].length > 0 && (
+            <button
+              onClick={async () => { for (const vid of new Set((r.payments || []).map((p) => p.voucher_id).filter(Boolean))) await printReceiptVoucher(vid); }}
+              title={L('Print receipt voucher', 'طباعة سند قبض')} className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-600"><HandCoins size={15} /></button>
           )}
           {r.status !== 'draft' && (
             <button onClick={() => printInvoiceById(r.id)} title={L('Print', 'طباعة')} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"><Printer size={15} /></button>
