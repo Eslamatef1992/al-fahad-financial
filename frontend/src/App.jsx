@@ -52,6 +52,7 @@ import UnitsPage from '@/pages/units/UnitsPage';
 import FinancialSettingsPage from '@/pages/financialSettings/FinancialSettingsPage';
 import BookingsPage from '@/pages/bookings/BookingsPage';
 import PosPage from '@/pages/pos/PosPage';
+import PosInvoicesPage from '@/pages/pos/PosInvoicesPage';
 import PosCashiersPage from '@/pages/pos/PosCashiersPage';
 import AccountingModule from '@/pages/accounting/AccountingModule';
 import { AccDashboard, AccIncome, AccExpense, AccOnline, AccJournal, AccSettings } from '@/pages/accounting/AccountingPages';
@@ -128,6 +129,7 @@ export default function App() {
           <Route path="/manufacture-items" element={<ManufactureItemsPage />} />
           <Route path="/bookings" element={<BookingsPage />} />
           <Route path="/pos" element={<PosPage />} />
+          <Route path="/pos/invoices" element={<PosInvoicesPage />} />
           <Route path="/pos-cashiers" element={<PosCashiersPage />} />
           <Route path="/accounting" element={<AccountingModule />}>
             <Route index element={<AccDashboard />} />

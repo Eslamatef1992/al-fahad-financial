@@ -357,9 +357,9 @@ export default function PosPage() {
 			.then((r) => setHistoryRows(r.data))
 			.finally(() => setHistoryLoading(false));
 	};
+	// Invoice History / Refund open the full-screen invoices page in a new tab (the open sale stays untouched here).
 	const openHistory = () => {
-		setHistoryOpen(true);
-		loadHistory();
+		window.open("/pos/invoices", "_blank");
 	};
 	const todayStr = () => new Date().toISOString().slice(0, 10);
 	const printHistoryInvoice = (row) => {
