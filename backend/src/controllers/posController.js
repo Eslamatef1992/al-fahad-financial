@@ -15,6 +15,7 @@ exports.myAccess = async (req, res) => {
 exports.openShift = async (req, res) => {
   const profile = await profileFor(req);
   if (!profile.hasAccess) return res.status(403).json({ message: 'You do not have POS access' });
+  if (req.posOnly) req.body = { ...req.body, branch_id: req.posBranchId };
   const shift = await posService.openShift(req.companyId, req.user.id, req.body);
   res.status(201).json(shift);
 };
@@ -42,6 +43,7 @@ exports.listShifts = async (req, res) => {
 exports.createSale = async (req, res) => {
   const profile = await profileFor(req);
   if (!profile.hasAccess) return res.status(403).json({ message: 'You do not have POS access' });
+  if (req.posOnly) req.body = { ...req.body, branch_id: req.posBranchId, ...(req.posSalespersonId ? { salesperson_id: req.posSalespersonId } : {}) };
   const invoice = await posService.createSale(req.companyId, req.user.id, profile, req.body);
   res.status(201).json(invoice);
 };

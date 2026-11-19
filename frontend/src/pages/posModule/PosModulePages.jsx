@@ -9,6 +9,7 @@ import api, { printFile } from '@/api/client';
 import StatCard from '@/components/StatCard';
 import DataTable from '@/components/DataTable';
 import PosCashiersPage from '@/pages/pos/PosCashiersPage';
+import PosOperatorsPanel from '@/pages/pos/PosOperatorsPanel';
 import { useCompanyStore } from '@/store/companyStore';
 
 const n3 = (v) => Number(v || 0).toFixed(3);
@@ -281,7 +282,7 @@ export function PosSessions() {
   return <DataTable columns={columns} data={rows} loading={loading} pageSize={25} />;
 }
 
-export const PosUsers = () => <PosCashiersPage />;
+export const PosUsers = () => (<><PosOperatorsPanel /><PosCashiersPage /></>);
 
 export function PosReports() {
   const { L, completed, cashierName, currency } = useOutletContext();

@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { Search, Plus, Minus, Trash2, ShoppingCart, PauseCircle, Lock, Unlock, CreditCard, Users, CalendarClock, RotateCcw, UserPlus, X, FileText, Boxes, Factory, Ticket, PieChart, Tag, History, Paperclip, Truck } from "lucide-react";
 import api, { printFile } from "@/api/client";
 import { useCompanyStore } from "@/store/companyStore";
+import { useAuthStore } from "@/store/authStore";
 import PageHeader from "@/components/PageHeader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import useFinancialDefaults from "@/hooks/useFinancialDefaults";
@@ -69,6 +70,10 @@ function RailButton({ icon: Icon, label, onClick, badge, shortcut, active }) {
 export default function PosPage() {
 	const { t, i18n } = useTranslation();
 	const navigate = useNavigate();
+	// POS-only sign-in (pos.<domain>): branch (and optionally sales person) are fixed by the login.
+	const posUser = useAuthStore((s) => s.user);
+	const lockBranch = posUser?.pos_only ? posUser.pos_branch_id : null;
+	const lockSalesperson = posUser?.pos_only ? posUser.pos_salesperson_id : null;
 	const activeCompany = useCompanyStore((s) => s.activeCompany);
 	const financialDefaults = useFinancialDefaults();
 
@@ -81,7 +86,7 @@ export default function PosPage() {
 	const [manufacturers, setManufacturers] = useState([]);
 	const [salesPeople, setSalesPeople] = useState([]);
 	const [activeItemId, setActiveItemId] = useState(null);
-	const [salespersonId, setSalespersonId] = useState(() => localStorage.getItem("pos.salesperson") || "");
+	const [salespersonId, setSalespersonId] = useState(() => (useAuthStore.getState().user?.pos_only && useAuthStore.getState().user?.pos_salesperson_id) || localStorage.getItem("pos.salesperson") || "");
 	useEffect(() => { api.get("/sales-people").then((r) => setSalesPeople(r.data)).catch(() => {}); }, []);
 	useEffect(() => { localStorage.setItem("pos.salesperson", salespersonId || ""); }, [salespersonId]);
 	const [manufactureOrderOpen, setManufactureOrderOpen] = useState(false);
@@ -106,7 +111,7 @@ export default function PosPage() {
 	const [savedAttachments, setSavedAttachments] = useState([]);
 
 	const [openFloat, setOpenFloat] = useState("");
-	const [openBranch, setOpenBranch] = useState("");
+	const [openBranch, setOpenBranch] = useState(() => useAuthStore.getState().user?.pos_only ? (useAuthStore.getState().user.pos_branch_id || "") : "");
 
 	const [query, setQuery] = useState("");
 	const [products, setProducts] = useState([]);
@@ -119,7 +124,7 @@ export default function PosPage() {
 	const [referenceNo, setReferenceNo] = useState("");
 	const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
 	const [dueDate, setDueDate] = useState("");
-	const [invoiceBranch, setInvoiceBranch] = useState("");
+	const [invoiceBranch, setInvoiceBranch] = useState(() => useAuthStore.getState().user?.pos_only ? (useAuthStore.getState().user.pos_branch_id || "") : "");
 	useEffect(() => { const br = invoiceBranch || access?.shift?.branch_id; if (!salespersonId || !br || !salesPeople.length) return; const sp = salesPeople.find((x) => x.id === salespersonId); if (sp && sp.branch_id && sp.branch_id !== br) setSalespersonId(""); }, [invoiceBranch, access?.shift?.branch_id, salesPeople]);
 	const [invoiceNotes, setInvoiceNotes] = useState("");
 	const [newClientOpen, setNewClientOpen] = useState(false);
@@ -487,7 +492,7 @@ export default function PosPage() {
 		setReferenceNo("");
 		setInvoiceDate(new Date().toISOString().slice(0, 10));
 		setDueDate("");
-		setInvoiceBranch("");
+		setInvoiceBranch(lockBranch || "");
 		setInvoiceNotes("");
 		setDiscountCode("");
 		setDiscountPreview(null);
@@ -875,6 +880,7 @@ export default function PosPage() {
 							<select
 								className="input"
 								value={openBranch}
+								disabled={!!lockBranch}
 								onChange={(e) => setOpenBranch(e.target.value)}>
 								<option value="">{t("common.select")}</option>
 								{branches.map((b) => (
@@ -991,7 +997,7 @@ export default function PosPage() {
 <div className="col-span-2 lg:col-span-4 xl:col-span-6 rounded-xl border border-sky-200 dark:border-sky-900/40 bg-sky-50/70 dark:bg-sky-950/20 p-3 grid grid-cols-2 lg:grid-cols-5 gap-3">
 								<div className="min-w-0">
 									<label className="label !text-[11px] !mb-1.5">{t("common.branch", { defaultValue: "Branch" })}</label>
-									<select className="input text-sm py-2" value={invoiceBranch} onChange={(e) => setInvoiceBranch(e.target.value)}>
+									<select className="input text-sm py-2" value={invoiceBranch} disabled={!!lockBranch} onChange={(e) => setInvoiceBranch(e.target.value)}>
 										<option value="">
 											{access?.shift?.branch_id
 												? `${t("pos.shiftBranch", { defaultValue: "Shift branch" })} — ${(i18n.language?.startsWith("ar") ? branches.find((b) => b.id === access.shift.branch_id)?.name_ar : branches.find((b) => b.id === access.shift.branch_id)?.name_en) || ""}`
@@ -1016,7 +1022,7 @@ export default function PosPage() {
 								</div>
 								<div className="min-w-0">
 									<label className="label !text-[11px] !mb-1.5">{t("pos.salesPerson", { defaultValue: "Sales person" })}</label>
-									<select className="input text-sm py-2" value={salespersonId} onChange={(e) => setSalespersonId(e.target.value)}>
+									<select className="input text-sm py-2" value={salespersonId} disabled={!!lockSalesperson} onChange={(e) => setSalespersonId(e.target.value)}>
 										<option value="">—</option>
 										{salesPeople.filter((sp) => { const br = invoiceBranch || access?.shift?.branch_id; return !br || !sp.branch_id || sp.branch_id === br; }).map((sp) => <option key={sp.id} value={sp.id}>{i18n.language?.startsWith("ar") ? sp.name_ar || sp.name_en : sp.name_en}</option>)}
 									</select>

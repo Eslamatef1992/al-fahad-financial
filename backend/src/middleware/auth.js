@@ -12,6 +12,13 @@ async function requireAuth(req, res, next) {
     if (!user || !user.is_active) return res.status(401).json({ message: 'Not authenticated' });
 
     req.user = user;
+    if (payload.pos) {
+      // POS-only session (pos.<domain>): locked to its branch and kept away from back-office APIs.
+      req.posOnly = true; req.posBranchId = payload.pb || null; req.posSalespersonId = payload.sp || null;
+      const url = req.originalUrl || '';
+      const blocked = /^\/api\/(users|companies|accounts|cost-centers|ledger|reports|financial-settings|audit-logs|pos-operators|employees|employee-leaves|vehicles|suppliers|purchase-orders|recurring-invoices|recurring-vouchers|stock-transfers|inventory-reports|damages|sales-targets|manufacture-orders|units|item-categories|auth\/register)(\/|\?|$)/.test(url);
+      if (blocked || (/^\/api\/vouchers/.test(url) && req.method !== 'GET')) return res.status(403).json({ message: 'Not available for POS sign-ins' });
+    }
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Invalid or expired token' });

@@ -53,6 +53,7 @@ const PosShift = require('./PosShift')(sequelize, DataTypes);
 const ItemDamage = require('./ItemDamage')(sequelize, DataTypes);
 const Manufacturer = require('./Manufacturer')(sequelize, DataTypes);
 const PaymentMethod = require('./PaymentMethod')(sequelize, DataTypes);
+const PosOperator = require('./PosOperator')(sequelize, DataTypes);
 
 // ---- Associations ----
 
@@ -63,11 +64,15 @@ UserCompany.belongsTo(Company, { foreignKey: 'company_id' });
 UserCompany.belongsTo(User, { foreignKey: 'user_id' });
 
 // Company has many of everything
-const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, RecurringVoucher, ManufactureCategory, ManufactureItem, ManufactureItemPrice, SalesPerson, SalesTarget, WarrantyClaim, SalesReturn, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit, FinancialSetting, ItemBooking, PosShift, ItemDamage, Manufacturer, PaymentMethod];
+const companyHasMany = [Account, CostCenter, Client, Supplier, Employee, Vehicle, CashAccount, FiscalYear, Voucher, LedgerEntry, Invoice, RecurringInvoice, RecurringVoucher, ManufactureCategory, ManufactureItem, ManufactureItemPrice, SalesPerson, SalesTarget, WarrantyClaim, SalesReturn, EmployeeLeave, Item, InventoryTransaction, PurchaseOrder, Branch, ItemBranchStock, StockTransfer, ItemVariant, ItemVariantBranchStock, ItemCategory, DiscountCode, Unit, FinancialSetting, ItemBooking, PosShift, ItemDamage, Manufacturer, PaymentMethod, PosOperator];
 companyHasMany.forEach((Model) => {
   Company.hasMany(Model, { foreignKey: 'company_id' });
   Model.belongsTo(Company, { foreignKey: 'company_id' });
 });
+
+PosOperator.belongsTo(Branch, { foreignKey: 'branch_id', as: 'branch' });
+PosOperator.belongsTo(SalesPerson, { foreignKey: 'salesperson_id', as: 'salesperson' });
+PosOperator.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 // Chart of Accounts - self referencing tree (dynamic sub-levels)
 Account.hasMany(Account, { as: 'children', foreignKey: 'parent_id' });
@@ -282,6 +287,7 @@ module.exports = {
   SalesReturnLine,
   ManufactureItemPrice,
   SalesPerson,
+  PosOperator,
   SalesTarget,
   WarrantyClaim,
   Account,

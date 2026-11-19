@@ -41,6 +41,12 @@ api.interceptors.response.use(
   (err) => {
     const message = err.response?.data?.message || err.message || 'Request failed';
     if (err.response?.status === 401) {
+      const wasPos = useAuthStore.getState().user?.pos_only;
+      if (wasPos && !/pos-login/.test(window.location.pathname)) {
+        useAuthStore.getState().logout();
+        window.location.href = '/pos-login';
+        return Promise.reject(err);
+      }
       useAuthStore.getState().logout();
     }
     toast.error(message);

@@ -12,7 +12,17 @@ const auditLogger = require('./middleware/audit');
 const app = express();
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: process.env.CLIENT_URL || '*', credentials: true }));
+// Allowed browser origins: CLIENT_URL (comma separated) plus the POS sub-domain (pos.<same host>).
+const allowedOrigins = (() => {
+  const list = String(process.env.CLIENT_URL || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const extra = [];
+  list.forEach((o) => { try { const u = new URL(o); extra.push(`${u.protocol}//pos.${u.host.replace(/^www\./, '')}`); } catch (e) { /* ignore */ } });
+  return [...list, ...extra];
+})();
+app.use(cors({
+  origin: allowedOrigins.length ? (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)) : '*',
+  credentials: true,
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 app.use(auditLogger);
@@ -23,6 +33,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
 app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/pos-auth', require('./routes/posAuthRoutes'));
+app.use('/api/pos-operators', require('./routes/posOperatorRoutes'));
 app.use('/api/companies', require('./routes/companyRoutes'));
 app.use('/api/accounts', require('./routes/accountRoutes'));
 app.use('/api/cost-centers', require('./routes/costCenterRoutes'));

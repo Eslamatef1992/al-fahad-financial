@@ -8,6 +8,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useUiStore } from '@/store/uiStore';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AppLayout from '@/layouts/AppLayout';
+import PosOnlyLayout from '@/layouts/PosOnlyLayout';
+import PosLogin from '@/pages/pos/PosLogin';
+import { isPosHost } from '@/components/ProtectedRoute';
+import { useAuthStore } from '@/store/authStore';
 
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
@@ -74,14 +78,29 @@ import DeliverySchedulePage from '@/pages/deliverySchedule/DeliverySchedulePage'
 
 export default function App() {
   const theme = useUiStore((s) => s.theme);
+  const posOnly = useAuthStore((s) => !!s.user?.pos_only);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
   return (
+    posOnly ? (
+      <Routes>
+        <Route path="/pos-login" element={<Navigate to="/pos" replace />} />
+        <Route element={<PosOnlyLayout />}>
+          <Route path="/pos" element={<PosPage />} />
+          <Route path="/pos/invoices" element={<PosInvoicesPage />} />
+          <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+          <Route path="/clients/:id/statement" element={<ClientStatementPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/pos" replace />} />
+      </Routes>
+    ) : (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={isPosHost() ? <Navigate to="/pos-login" replace /> : <Login />} />
+      <Route path="/pos-login" element={<PosLogin />} />
+      {isPosHost() && <Route path="/" element={<Navigate to="/pos-login" replace />} />}
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
@@ -184,5 +203,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    )
   );
 }

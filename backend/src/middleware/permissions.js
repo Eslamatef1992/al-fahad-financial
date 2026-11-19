@@ -23,4 +23,17 @@ function requireMinRole(minRole) {
   };
 }
 
-module.exports = { effectiveRole, requireMinRole };
+// Like requireMinRole, but a POS cashier/operator (UserCompany.pos_role) also passes — used for
+// actions a till operator legitimately needs (e.g. creating a new customer at the counter).
+function requireMinRoleOrPos(minRole) {
+  return async (req, res, next) => {
+    const role = effectiveRole(req);
+    if ((RANK[role] || 0) >= RANK[minRole]) return next();
+    const { UserCompany } = require('../models');
+    const uc = await UserCompany.findOne({ where: { user_id: req.user.id, company_id: req.companyId } });
+    if (uc && ['cashier', 'operator'].includes(uc.pos_role)) return next();
+    return res.status(403).json({ message: `This action requires the '${minRole}' role or higher.` });
+  };
+}
+
+module.exports = { effectiveRole, requireMinRole, requireMinRoleOrPos };
