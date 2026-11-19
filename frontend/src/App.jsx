@@ -93,6 +93,8 @@ export default function App() {
           <Route path="/pos/invoices" element={<PosInvoicesPage />} />
           <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
           <Route path="/clients/:id/statement" element={<ClientStatementPage />} />
+          <Route path="/delivery-schedule" element={<DeliverySchedulePage />} />
+          <Route path="/warranty" element={<WarrantyPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/pos" replace />} />
       </Routes>

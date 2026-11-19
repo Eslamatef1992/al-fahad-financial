@@ -5,7 +5,7 @@ import { printInvoiceById } from "@/utils/printInvoice";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Search, Plus, Minus, Trash2, ShoppingCart, PauseCircle, Lock, Unlock, CreditCard, Users, CalendarClock, RotateCcw, UserPlus, X, FileText, Boxes, Factory, Ticket, PieChart, Tag, History, Paperclip, Truck } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingCart, PauseCircle, Lock, Unlock, CreditCard, Users, CalendarClock, RotateCcw, UserPlus, X, FileText, Boxes, Factory, Ticket, PieChart, Tag, History, Paperclip, Truck, Repeat, ShieldCheck } from "lucide-react";
 import api, { printFile } from "@/api/client";
 import { useCompanyStore } from "@/store/companyStore";
 import { useAuthStore } from "@/store/authStore";
@@ -70,6 +70,7 @@ function RailButton({ icon: Icon, label, onClick, badge, shortcut, active }) {
 export default function PosPage() {
 	const { t, i18n } = useTranslation();
 	const navigate = useNavigate();
+	const isAr = !!i18n.language?.startsWith("ar");
 	// POS-only sign-in (pos.<domain>): branch (and optionally sales person) are fixed by the login.
 	const posUser = useAuthStore((s) => s.user);
 	const lockBranch = posUser?.pos_only ? posUser.pos_branch_id : null;
@@ -533,6 +534,9 @@ export default function PosPage() {
 				KeyM: () => setManufactureOrderOpen(true),
 				KeyD: () => setDeliveryOpen(true),
 				KeyK: () => { setCouponsOpen(true); loadDiscountCodes(); },
+				KeyS: () => navigate("/delivery-schedule"),
+				KeyX: () => navigate("/warranty?type=exchange"),
+				KeyW: () => navigate("/warranty"),
 				KeyS: () => cart.length && hold(),
 				Enter: () => cart.length && setPayOpen(true),
 			};
@@ -986,6 +990,24 @@ export default function PosPage() {
 							setCouponsOpen(true);
 							loadDiscountCodes();
 						}}
+					/>
+					<RailButton
+						icon={Truck}
+						label={t("pos.deliverySchedule", { defaultValue: isAr ? "جدول التسليم" : "Delivery schedule" })}
+						shortcut="Alt+S"
+						onClick={() => navigate("/delivery-schedule")}
+					/>
+					<RailButton
+						icon={Repeat}
+						label={t("pos.exchange", { defaultValue: isAr ? "استبدال" : "Exchange" })}
+						shortcut="Alt+X"
+						onClick={() => navigate("/warranty?type=exchange")}
+					/>
+					<RailButton
+						icon={ShieldCheck}
+						label={t("pos.warranty", { defaultValue: isAr ? "الضمان" : "Warranty" })}
+						shortcut="Alt+W"
+						onClick={() => navigate("/warranty")}
 					/>
 									</div>
 			<div className="grid grid-cols-1 gap-3 flex-1 min-w-0">

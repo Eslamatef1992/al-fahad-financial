@@ -20,7 +20,7 @@ export function WarrantyClaimPanel({ open, onClose, presetInvoiceNo, onDone }) {
   const [invNo, setInvNo] = useState('');
   const [info, setInfo] = useState(null);
   const [lineId, setLineId] = useState('');
-  const [type, setType] = useState('replacement');
+  const [type, setType] = useState(() => (new URLSearchParams(window.location.search).get('type') === 'exchange' ? 'exchange' : 'replacement'));
   const [qty, setQty] = useState(1);
   const [reason, setReason] = useState('');
   const [items, setItems] = useState([]);
