@@ -46,20 +46,22 @@ const RAIL_COLORS = {
 	slate: "bg-slate-100 text-slate-600 dark:bg-navy-800 dark:text-slate-300",
 };
 
-function RailButton({ icon: Icon, label, onClick, badge, color = "slate" }) {
+function RailButton({ icon: Icon, label, onClick, badge, color = "slate", shortcut }) {
 	return (
 		<button
 			onClick={onClick}
-			className="relative card p-3 flex flex-col items-center justify-center gap-1.5 hover:shadow-md hover:-translate-y-0.5 transition-all text-center">
+			title={shortcut ? `${label} (${shortcut})` : label}
+			className="relative card !rounded-xl px-2.5 py-1.5 flex items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all text-start">
 			<span
-				className={`w-10 h-10 rounded-xl flex items-center justify-center ${RAIL_COLORS[color] || RAIL_COLORS.slate}`}>
-				<Icon size={20} strokeWidth={2} />
+				className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${RAIL_COLORS[color] || RAIL_COLORS.slate}`}>
+				<Icon size={15} strokeWidth={2} />
 			</span>
-			<span className="text-[11px] font-semibold text-navy-900 dark:text-white leading-tight">
-				{label}
+			<span className="flex flex-col leading-tight">
+				<span className="text-[11px] font-bold text-navy-900 dark:text-white whitespace-nowrap">{label}</span>
+				{shortcut && <kbd className="text-[9px] font-semibold text-slate-400 font-sans">{shortcut}</kbd>}
 			</span>
 			{!!badge && (
-				<span className="absolute top-1.5 end-1.5 bg-red-500 text-white text-[10px] leading-none rounded-full min-w-[18px] min-h-[18px] flex items-center justify-center px-1">
+				<span className="absolute -top-1.5 -end-1.5 bg-red-500 text-white text-[10px] leading-none rounded-full min-w-[18px] min-h-[18px] flex items-center justify-center px-1">
 					{badge}
 				</span>
 			)}
@@ -514,6 +516,32 @@ export default function PosPage() {
 	// "Invoice" rail icon — starts a fresh blank sale.
 	const newInvoice = () => clearCart();
 
+	// Keyboard shortcuts: F2 = focus "Add item by code"; Alt+N/I/H/R/C/L/M/D/K/P = action bar; Alt+S = hold; Alt+Enter = pay.
+	useEffect(() => {
+		const onKey = (e) => {
+			if (e.key === "F2") { e.preventDefault(); codeInputRef.current?.focus(); return; }
+			if (!e.altKey || e.ctrlKey || e.metaKey) return;
+			const map = {
+				KeyN: () => newInvoice(),
+				KeyI: () => setInventoryOpen(true),
+				KeyH: () => openHistory(),
+				KeyR: () => canRefund && openHistory(),
+				KeyC: () => setCloseOpen(true),
+				KeyL: () => setHeldOpen(true),
+				KeyM: () => setManufactureOrderOpen(true),
+				KeyD: () => setDeliveryOpen(true),
+				KeyK: () => { setCouponsOpen(true); loadDiscountCodes(); },
+				KeyP: () => navigate("/reports"),
+				KeyS: () => cart.length && hold(),
+				Enter: () => cart.length && setPayOpen(true),
+			};
+			const fn = map[e.code];
+			if (fn) { e.preventDefault(); fn(); }
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	});
+
 	// Quick code/barcode entry: typed into the always-visible box above the
 	// invoice table, or scanned. Looks for an exact code/sku match first (what
 	// a barcode scan produces); falls back to the first search result so a
@@ -892,7 +920,87 @@ export default function PosPage() {
 				})}
 			/>
 
-			<div className="grid grid-cols-1 lg:grid-cols-[1fr_120px] gap-3">
+				{/* Action bar (above the invoice) */}
+				<div className="flex flex-wrap gap-2 mb-3">
+					<RailButton
+						icon={FileText}
+						label={t("pos.railInvoice")}
+						shortcut="Alt+N"
+						onClick={newInvoice}
+						color="sky"
+					/>
+					<RailButton
+						icon={Boxes}
+						label={t("pos.railInventory")}
+						shortcut="Alt+I"
+						onClick={() => setInventoryOpen(true)}
+						color="indigo"
+					/>
+					<RailButton
+						icon={History}
+						label={t("pos.invoiceHistory")}
+						shortcut="Alt+H"
+						onClick={openHistory}
+						color="cyan"
+					/>
+					{canRefund && (
+						<RailButton
+							icon={RotateCcw}
+							label={t("pos.refund")}
+						shortcut="Alt+R"
+							onClick={openHistory}
+							color="rose"
+						/>
+					)}
+					<RailButton
+						icon={Lock}
+						label={t("pos.closeShift")}
+						shortcut="Alt+C"
+						onClick={() => setCloseOpen(true)}
+						color="slate"
+					/>
+					<RailButton
+						icon={PauseCircle}
+						label={t("pos.railHoldInvoices")}
+						shortcut="Alt+L"
+						onClick={() => setHeldOpen(true)}
+						badge={held.length || null}
+						color="amber"
+					/>
+					<RailButton
+						icon={Factory}
+						label={t("pos.railManufactureOrder")}
+						shortcut="Alt+M"
+						onClick={() => setManufactureOrderOpen(true)}
+						badge={isManufactureOrder ? "✓" : null}
+						color="orange"
+					/>
+					<RailButton
+						icon={CalendarClock}
+						label={t("invoices.deliveryDate")}
+						shortcut="Alt+D"
+						onClick={() => setDeliveryOpen(true)}
+						color="violet"
+					/>
+					<RailButton
+						icon={Ticket}
+						label={t("pos.railCoupons")}
+						shortcut="Alt+K"
+						onClick={() => {
+							setCouponsOpen(true);
+							loadDiscountCodes();
+						}}
+						color="fuchsia"
+					/>
+					<RailButton
+						icon={PieChart}
+						label={t("nav.reports")}
+						shortcut="Alt+P"
+						onClick={() => navigate("/reports")}
+						color="emerald"
+					/>
+				</div>
+			<div className="grid grid-cols-1 gap-3">
 				{/* Invoice */}
 				<div className="space-y-3 min-w-0">
 					{/* Header strip: client, quick code entry, coupon, total, hold/pay */}
@@ -1416,76 +1524,6 @@ export default function PosPage() {
 					</div>
 				</div>
 
-				{/* Action rail */}
-				<div className="grid grid-cols-3 lg:grid-cols-1 gap-2 content-start">
-					<RailButton
-						icon={FileText}
-						label={t("pos.railInvoice")}
-						onClick={newInvoice}
-						color="sky"
-					/>
-					<RailButton
-						icon={Boxes}
-						label={t("pos.railInventory")}
-						onClick={() => setInventoryOpen(true)}
-						color="indigo"
-					/>
-					<RailButton
-						icon={History}
-						label={t("pos.invoiceHistory")}
-						onClick={openHistory}
-						color="cyan"
-					/>
-					{canRefund && (
-						<RailButton
-							icon={RotateCcw}
-							label={t("pos.refund")}
-							onClick={openHistory}
-							color="rose"
-						/>
-					)}
-					<RailButton
-						icon={Lock}
-						label={t("pos.closeShift")}
-						onClick={() => setCloseOpen(true)}
-						color="slate"
-					/>
-					<RailButton
-						icon={PauseCircle}
-						label={t("pos.railHoldInvoices")}
-						onClick={() => setHeldOpen(true)}
-						badge={held.length || null}
-						color="amber"
-					/>
-					<RailButton
-						icon={Factory}
-						label={t("pos.railManufactureOrder")}
-						onClick={() => setManufactureOrderOpen(true)}
-						badge={isManufactureOrder ? "✓" : null}
-						color="orange"
-					/>
-					<RailButton
-						icon={CalendarClock}
-						label={t("invoices.deliveryDate")}
-						onClick={() => setDeliveryOpen(true)}
-						color="violet"
-					/>
-					<RailButton
-						icon={Ticket}
-						label={t("pos.railCoupons")}
-						onClick={() => {
-							setCouponsOpen(true);
-							loadDiscountCodes();
-						}}
-						color="fuchsia"
-					/>
-					<RailButton
-						icon={PieChart}
-						label={t("nav.reports")}
-						onClick={() => navigate("/reports")}
-						color="emerald"
-					/>
-				</div>
 			</div>
 			<InventorySearchModal
 				open={inventoryOpen}
