@@ -516,7 +516,7 @@ export default function PosPage() {
 	// "Invoice" rail icon — starts a fresh blank sale.
 	const newInvoice = () => clearCart();
 
-	// Keyboard shortcuts: F2 = focus "Add item by code"; Alt+N/I/H/R/C/L/M/D/K/P = action bar; Alt+S = hold; Alt+Enter = pay.
+	// Keyboard shortcuts: F2 = focus "Add item by code"; Alt+N/I/H/R/C/L/M/D/K = action bar; Alt+S = hold; Alt+Enter = pay.
 	useEffect(() => {
 		const onKey = (e) => {
 			if (e.key === "F2") { e.preventDefault(); codeInputRef.current?.focus(); return; }
@@ -531,7 +531,6 @@ export default function PosPage() {
 				KeyM: () => setManufactureOrderOpen(true),
 				KeyD: () => setDeliveryOpen(true),
 				KeyK: () => { setCouponsOpen(true); loadDiscountCodes(); },
-				KeyP: () => navigate("/reports"),
 				KeyS: () => cart.length && hold(),
 				Enter: () => cart.length && setPayOpen(true),
 			};
@@ -992,14 +991,7 @@ export default function PosPage() {
 						}}
 						color="fuchsia"
 					/>
-					<RailButton
-						icon={PieChart}
-						label={t("nav.reports")}
-						shortcut="Alt+P"
-						onClick={() => navigate("/reports")}
-						color="emerald"
-					/>
-				</div>
+									</div>
 			<div className="grid grid-cols-1 gap-3">
 				{/* Invoice */}
 				<div className="space-y-3 min-w-0">
