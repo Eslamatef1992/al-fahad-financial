@@ -13,7 +13,7 @@ export default function PosSideRail({ items }) {
     return () => window.removeEventListener('keydown', onKey);
   });
   return (
-    <div className="flex flex-col items-center gap-1 rounded-2xl bg-black py-2 px-1.5 shrink-0 sticky top-16 shadow-lg print:hidden">
+    <div className="flex flex-col items-center gap-1 rounded-2xl bg-black py-2 px-1.5 shrink-0 sticky top-16 z-40 shadow-lg print:hidden">
       {items.map((it) => (
         <button
           key={it.label} type="button" onClick={it.onClick} aria-label={it.label}

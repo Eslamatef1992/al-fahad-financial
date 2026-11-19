@@ -918,7 +918,7 @@ export default function PosPage() {
 
 				{/* Action bar (above the invoice) */}
 				<div className="flex items-start gap-3">
-				<div className="flex flex-col items-center gap-1 rounded-2xl bg-black py-2 px-1.5 shrink-0 sticky top-16 shadow-lg">
+				<div className="flex flex-col items-center gap-1 rounded-2xl bg-black py-2 px-1.5 shrink-0 sticky top-16 z-40 shadow-lg">
 					<RailButton
 						icon={FileText}
 						label={t("pos.railInvoice")}
