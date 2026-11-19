@@ -1,4 +1,4 @@
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LogOut, Store } from 'lucide-react';
 import BrandLogo from '@/components/BrandLogo';
@@ -15,10 +15,10 @@ export default function PosOnlyLayout() {
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-navy-950">
       <header className="bg-navy-900 h-14 px-4 flex items-center justify-between print:hidden">
-        <div className="flex items-center gap-3">
+        <Link to="/pos" className="flex items-center gap-3" title={isAr ? 'شاشة البيع' : 'Sales screen'}>
           <div className="bg-white rounded-lg px-2 py-0.5"><BrandLogo className="h-7" /></div>
-          <span className="hidden sm:flex items-center gap-1.5 text-sky-200 text-sm"><Store size={15} />{isAr ? 'نقطة البيع' : 'Point of Sale'}</span>
-        </div>
+          <span className="hidden sm:flex items-center gap-1.5 text-sky-200 hover:text-white text-sm"><Store size={15} />{isAr ? 'نقطة البيع' : 'Point of Sale'}</span>
+        </Link>
         <div className="flex items-center gap-3">
           <span className="text-white text-sm font-semibold">{user?.name}</span>
           <LanguageSwitcher />
