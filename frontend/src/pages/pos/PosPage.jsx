@@ -46,22 +46,19 @@ const RAIL_COLORS = {
 	slate: "bg-slate-100 text-slate-600 dark:bg-navy-800 dark:text-slate-300",
 };
 
-function RailButton({ icon: Icon, label, onClick, badge, color = "slate", shortcut }) {
+function RailButton({ icon: Icon, label, onClick, badge, shortcut, active }) {
 	return (
 		<button
 			onClick={onClick}
-			title={shortcut ? `${label} (${shortcut})` : label}
-			className="relative card !rounded-xl px-2.5 py-1.5 flex items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all text-start">
-			<span
-				className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${RAIL_COLORS[color] || RAIL_COLORS.slate}`}>
-				<Icon size={15} strokeWidth={2} />
-			</span>
-			<span className="flex flex-col leading-tight">
-				<span className="text-[11px] font-bold text-navy-900 dark:text-white whitespace-nowrap">{label}</span>
-				{shortcut && <kbd className="text-[9px] font-semibold text-slate-400 font-sans">{shortcut}</kbd>}
+			aria-label={label}
+			className={`relative group w-11 h-11 rounded-xl flex items-center justify-center text-white transition-colors ${active ? "bg-white/25" : "hover:bg-white/15"}`}>
+			<Icon size={22} strokeWidth={1.8} />
+			<span className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-full ms-2 z-50 whitespace-nowrap rounded-md bg-navy-900 text-white text-[11px] font-semibold px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg flex items-center gap-2">
+				{label}
+				{shortcut && <kbd className="font-sans text-[10px] text-slate-300 bg-white/10 rounded px-1">{shortcut}</kbd>}
 			</span>
 			{!!badge && (
-				<span className="absolute -top-1.5 -end-1.5 bg-red-500 text-white text-[10px] leading-none rounded-full min-w-[18px] min-h-[18px] flex items-center justify-center px-1">
+				<span className="absolute top-0 end-0 bg-red-500 text-white text-[10px] leading-none rounded-full min-w-[16px] min-h-[16px] flex items-center justify-center px-1">
 					{badge}
 				</span>
 			)}
@@ -920,27 +917,25 @@ export default function PosPage() {
 			/>
 
 				{/* Action bar (above the invoice) */}
-				<div className="flex flex-wrap gap-2 mb-3">
+				<div className="flex items-start gap-3">
+				<div className="flex flex-col items-center gap-1 rounded-2xl bg-black py-2 px-1.5 shrink-0 sticky top-16 shadow-lg">
 					<RailButton
 						icon={FileText}
 						label={t("pos.railInvoice")}
 						shortcut="Alt+N"
 						onClick={newInvoice}
-						color="sky"
 					/>
 					<RailButton
 						icon={Boxes}
 						label={t("pos.railInventory")}
 						shortcut="Alt+I"
 						onClick={() => setInventoryOpen(true)}
-						color="indigo"
 					/>
 					<RailButton
 						icon={History}
 						label={t("pos.invoiceHistory")}
 						shortcut="Alt+H"
 						onClick={openHistory}
-						color="cyan"
 					/>
 					{canRefund && (
 						<RailButton
@@ -948,7 +943,6 @@ export default function PosPage() {
 							label={t("pos.refund")}
 						shortcut="Alt+R"
 							onClick={openHistory}
-							color="rose"
 						/>
 					)}
 					<RailButton
@@ -956,7 +950,6 @@ export default function PosPage() {
 						label={t("pos.closeShift")}
 						shortcut="Alt+C"
 						onClick={() => setCloseOpen(true)}
-						color="slate"
 					/>
 					<RailButton
 						icon={PauseCircle}
@@ -964,7 +957,6 @@ export default function PosPage() {
 						shortcut="Alt+L"
 						onClick={() => setHeldOpen(true)}
 						badge={held.length || null}
-						color="amber"
 					/>
 					<RailButton
 						icon={Factory}
@@ -972,14 +964,13 @@ export default function PosPage() {
 						shortcut="Alt+M"
 						onClick={() => setManufactureOrderOpen(true)}
 						badge={isManufactureOrder ? "✓" : null}
-						color="orange"
+						active={isManufactureOrder}
 					/>
 					<RailButton
 						icon={CalendarClock}
 						label={t("invoices.deliveryDate")}
 						shortcut="Alt+D"
 						onClick={() => setDeliveryOpen(true)}
-						color="violet"
 					/>
 					<RailButton
 						icon={Ticket}
@@ -989,10 +980,9 @@ export default function PosPage() {
 							setCouponsOpen(true);
 							loadDiscountCodes();
 						}}
-						color="fuchsia"
 					/>
 									</div>
-			<div className="grid grid-cols-1 gap-3">
+			<div className="grid grid-cols-1 gap-3 flex-1 min-w-0">
 				{/* Invoice */}
 				<div className="space-y-3 min-w-0">
 					{/* Header strip: client, quick code entry, coupon, total, hold/pay */}
@@ -1516,6 +1506,7 @@ export default function PosPage() {
 					</div>
 				</div>
 
+			</div>
 			</div>
 			<InventorySearchModal
 				open={inventoryOpen}

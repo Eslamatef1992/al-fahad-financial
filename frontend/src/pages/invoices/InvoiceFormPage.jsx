@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Save, Tag, X, CalendarClock, Search, Banknote, Users, CheckCircle2, Wallet, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Tag, X, CalendarClock, Search, Banknote, Users, CheckCircle2, Wallet, FileText, History, RotateCcw, Truck, HandCoins } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
 import PageHeader from '@/components/PageHeader';
 import useFinancialDefaults from '@/hooks/useFinancialDefaults';
+import PosSideRail from '@/components/PosSideRail';
 
 const emptyLine = () => ({
   account_id: '', item_id: '', item_query: '', description: '', quantity: 1, unit_price: '', tax_rate: 0,
@@ -399,7 +400,18 @@ export default function InvoiceFormPage() {
   if (loading) return <p className="text-slate-400">{t('common.loading')}</p>;
 
   return (
-    <div className="dense">
+    <div className="dense flex items-start gap-3">
+      {type === 'sales' && (
+        <PosSideRail items={[
+          { icon: FileText, label: t('pos.railInvoice', { defaultValue: 'New invoice' }), shortcut: 'Alt+N', code: 'KeyN', onClick: () => { window.location.href = '/invoices/sales/new'; } },
+          { icon: History, label: t('pos.invoiceHistory', { defaultValue: 'Invoice history' }), shortcut: 'Alt+H', code: 'KeyH', onClick: () => window.open('/pos/invoices', '_blank') },
+          { icon: RotateCcw, label: t('pos.refund', { defaultValue: 'Refund' }), shortcut: 'Alt+R', code: 'KeyR', onClick: () => window.open('/pos/invoices', '_blank') },
+          { icon: Truck, label: t('nav.deliverySchedule', { defaultValue: 'Delivery schedule' }), shortcut: 'Alt+D', code: 'KeyD', onClick: () => window.open('/delivery-schedule', '_blank') },
+          { icon: HandCoins, label: t('posModule.receiptVouchers', { defaultValue: 'Receipt vouchers' }), shortcut: 'Alt+V', code: 'KeyV', onClick: () => window.open('/pos-module/receipts', '_blank') },
+          { icon: Users, label: t('posModule.balanceStatement', { defaultValue: 'Balance statement' }), shortcut: 'Alt+B', code: 'KeyB', onClick: () => window.open('/pos-module/balances', '_blank') },
+        ]} />
+      )}
+      <div className="flex-1 min-w-0">
       <button onClick={() => navigate(`/invoices/${type}`)} className="btn-ghost !px-2 mb-3"><ArrowLeft size={16} /> {t('common.back')}</button>
       <PageHeader title={isEdit
         ? (type === 'sales' ? t('invoices.editSalesInvoiceTitle') : t('invoices.editPurchaseBillTitle'))
@@ -873,6 +885,7 @@ export default function InvoiceFormPage() {
           </div>
         </>
       )}
+    </div>
     </div>
   );
 }
