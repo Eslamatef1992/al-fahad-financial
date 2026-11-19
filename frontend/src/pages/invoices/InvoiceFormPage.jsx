@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Trash2, Save, Tag, X, CalendarClock, Search, Banknote, Users, CheckCircle2, Wallet } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Tag, X, CalendarClock, Search, Banknote, Users, CheckCircle2, Wallet, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/api/client';
 import { useCompanyStore } from '@/store/companyStore';
@@ -73,9 +73,11 @@ export default function InvoiceFormPage() {
     client_id: '', supplier_id: '', date: new Date().toISOString().slice(0, 10), due_date: '',
     cost_center_id: '', branch_id: '', reference_no: '', notes: '',
     discount_code: '', discount_preview: null, discount_error: '',
-    delivery_date: '', delivery_address: '',
+    delivery_date: '', delivery_address: '', salesperson_id: '',
   });
   const [lines, setLines] = useState([emptyLine()]);
+  const [salesPeople, setSalesPeople] = useState([]);
+  const [codeEntry, setCodeEntry] = useState('');
   const [applyingDiscount, setApplyingDiscount] = useState(false);
 
   useEffect(() => {
@@ -90,6 +92,7 @@ export default function InvoiceFormPage() {
     api.get('/items').then((r) => setAvailableItems(r.data));
     if (type === 'sales') {
       api.get('/clients').then((r) => setClients(r.data));
+      api.get('/sales-people').then((r) => setSalesPeople(r.data)).catch(() => {});
       api.get('/payment-methods').then((r) => setPaymentMethods(r.data)).catch(() => {});
     } else api.get('/suppliers').then((r) => setSuppliers(r.data));
   }, [activeCompany, type]);
@@ -108,6 +111,7 @@ export default function InvoiceFormPage() {
         discount_error: '',
         delivery_date: inv.delivery_date || '',
         delivery_address: inv.delivery_address || '',
+        salesperson_id: inv.salesperson_id || '',
       });
       setLines(inv.lines.map((l) => ({
         account_id: l.account_id, item_id: l.item_id || '', description: l.description || '',
@@ -229,6 +233,21 @@ export default function InvoiceFormPage() {
     e.preventDefault();
     addLine(true);
   };
+  // Quick add: type/scan an item code (or SKU) and press Enter — adds the item as a new line (or +1 qty if already there).
+  const addByCode = () => {
+    const q = codeEntry.trim().toLowerCase();
+    if (!q) return;
+    const exact = availableItems.find((i) => [i.code, i.sku].some((v) => String(v || '').toLowerCase() === q));
+    const item = exact || itemMatches(codeEntry)[0];
+    if (!item) return toast.error(t('common.noData'));
+    setLines((ls) => {
+      const idx = ls.findIndex((l) => l.item_id === item.id);
+      if (idx >= 0) return ls.map((l, i) => (i === idx ? { ...l, quantity: Number(l.quantity || 0) + 1 } : l));
+      const base = ls.filter((l) => l.item_id || l.description || Number(l.unit_price) > 0);
+      return [...base, { ...emptyLine(), item_id: item.id, description: item.name_en, unit_price: item.selling_price, account_id: item.income_account_id || '', quantity: 1 }];
+    });
+    setCodeEntry('');
+  };
   const itemMatches = (query) => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
@@ -315,6 +334,7 @@ export default function InvoiceFormPage() {
     discount_code: header.discount_code?.trim() || undefined,
     delivery_date: type === 'sales' ? (header.delivery_date || undefined) : undefined,
     delivery_address: type === 'sales' ? (header.delivery_address || undefined) : undefined,
+    salesperson_id: type === 'sales' ? (header.salesperson_id || undefined) : undefined,
     lines: validLines,
   });
 
@@ -386,6 +406,127 @@ export default function InvoiceFormPage() {
         : (type === 'sales' ? t('invoices.newSalesInvoiceTitle') : t('invoices.newPurchaseBillTitle'))} />
 
       <form onSubmit={submit} className="space-y-5">
+        {type === 'sales' ? (
+        <>
+        {/* Header laid out like the POS: one sky box (branch/ref/date/due/salesperson + client/delivery), then discount + notes, then quick add by code. */}
+        <div className="rounded-xl border border-sky-200 dark:border-sky-900/40 bg-sky-50/70 dark:bg-sky-950/20 p-3 grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="min-w-0">
+            <label className="label !text-[11px] !mb-1.5">{t('common.branch')}</label>
+            <select className="input" value={header.branch_id} onChange={(e) => setHeader({ ...header, branch_id: e.target.value })}>
+              <option value="">{t('common.none')}</option>
+              {branches.map((b) => <option key={b.id} value={b.id}>{b.code} - {b.name_en}</option>)}
+            </select>
+          </div>
+          <div className="min-w-0"><label className="label !text-[11px] !mb-1.5">{t('common.referenceNo')}</label><input className="input" value={header.reference_no} onChange={(e) => setHeader({ ...header, reference_no: e.target.value })} /></div>
+          <div className="min-w-0"><label className="label !text-[11px] !mb-1.5">{t('common.date')}</label><input required type="date" className="input" value={header.date} onChange={(e) => setHeader({ ...header, date: e.target.value })} /></div>
+          <div className="min-w-0"><label className="label !text-[11px] !mb-1.5">{t('common.dueDate')}</label><input type="date" className="input" value={header.due_date} min={header.date} onChange={(e) => setHeader({ ...header, due_date: e.target.value })} /></div>
+          <div className="min-w-0">
+            <label className="label !text-[11px] !mb-1.5">{t('pos.salesPerson', { defaultValue: 'Sales person' })}</label>
+            <select className="input" value={header.salesperson_id} onChange={(e) => setHeader({ ...header, salesperson_id: e.target.value })}>
+              <option value="">—</option>
+              {salesPeople.filter((sp) => !header.branch_id || !sp.branch_id || sp.branch_id === header.branch_id).map((sp) => <option key={sp.id} value={sp.id}>{sp.name_en}</option>)}
+            </select>
+          </div>
+
+          <div className="col-span-full grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-sky-200 dark:border-sky-900/40">
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between mb-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wide"><Users size={13} />{t('common.client')}</label>
+              </div>
+              {isNewSales ? (
+                selectedClient ? (
+                  <div className="flex items-center justify-between gap-2 input">
+                    <span className="truncate">{selectedClient.name_en}{selectedClient.phone ? ` — ${selectedClient.phone}` : ''}</span>
+                    <button type="button" onClick={clearClientSelection} className="text-xs font-semibold text-slate-400 hover:text-red-500 shrink-0">{t('common.change')}</button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    {!clientPhoneQuery && <Search size={14} className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400 pointer-events-none" />}
+                    <input
+                      className={`input ${clientPhoneQuery ? '' : '!ps-9'}`}
+                      value={clientPhoneQuery}
+                      onChange={(e) => setClientPhoneQuery(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); selectTopClientMatch(); } }}
+                      placeholder={t('pos.searchCustomerHint')}
+                    />
+                    {clientQueryTrimmed && phoneMatches.length > 0 && (
+                      <div className="absolute z-20 mt-1 w-full max-h-56 overflow-auto rounded-lg border border-slate-200 dark:border-navy-700 bg-white dark:bg-navy-900 shadow-lg">
+                        {phoneMatches.map((c, i) => (
+                          <button type="button" key={c.id} onClick={() => { pickClient(c.id); setClientPhoneQuery(''); }}
+                            className={`w-full text-start px-3 py-2 text-sm flex items-center justify-between gap-2 transition-colors ${i === 0 ? 'bg-slate-100 dark:bg-navy-800' : 'hover:bg-slate-50 dark:hover:bg-navy-800'}`}>
+                            <span className="truncate">{c.name_en}</span>
+                            <span className="text-xs text-slate-400 shrink-0">{c.phone || '-'}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {clientQueryTrimmed && phoneMatches.length === 0 && (
+                      <div className="absolute z-20 mt-1 w-full rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2">
+                        <p className="text-xs text-amber-600">{t('pos.noMatchesCreateNew')}</p>
+                      </div>
+                    )}
+                  </div>
+                )
+              ) : (
+                <select required className="input" value={header.client_id} onChange={(e) => pickClient(e.target.value)}>
+                  <option value="">{t('common.select')}</option>
+                  {clients.map((p) => <option key={p.id} value={p.id}>{p.name_en}</option>)}
+                </select>
+              )}
+            </div>
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-violet-700 dark:text-violet-400 uppercase tracking-wide mb-2"><CalendarClock size={13} />{t('invoices.deliveryDate')}</label>
+              <input type="date" className="input" value={header.delivery_date} onChange={(e) => setHeader({ ...header, delivery_date: e.target.value })} />
+            </div>
+            <div className="md:col-span-3">
+              <label className="label !text-[11px] !mb-1.5">{t('invoices.deliveryAddress')}</label>
+              <textarea className="input" rows={1} value={header.delivery_address} onChange={(e) => setHeader({ ...header, delivery_address: e.target.value })} placeholder={t('invoices.deliveryAddressHint')} />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-pink-50/40 dark:bg-pink-950/10">
+            <label className="flex items-center gap-1.5 text-xs font-bold text-pink-700 dark:text-pink-400 uppercase tracking-wide mb-2"><Tag size={13} />{t('invoices.discountCode')}</label>
+            {!hasLineDiscounts ? (
+              <>
+                <div className="flex gap-2">
+                  <input className="input" value={header.discount_code}
+                    onChange={(e) => setHeader({ ...header, discount_code: e.target.value.toUpperCase(), discount_preview: null, discount_error: '' })}
+                    placeholder={t('invoices.discountCodePlaceholder')} disabled={!!header.discount_preview} />
+                  {header.discount_preview ? (
+                    <button type="button" onClick={removeHeaderDiscount} className="btn-ghost shrink-0">{t('invoices.removeDiscount')}</button>
+                  ) : (
+                    <button type="button" onClick={applyHeaderDiscount} disabled={applyingDiscount || !header.discount_code.trim()} className="btn-ghost shrink-0">{t('invoices.applyDiscount')}</button>
+                  )}
+                </div>
+                {header.discount_preview && <p className="text-xs text-emerald-600 mt-1.5">{t('invoices.discountAppliedAmount', { amount: Number(header.discount_preview.discount_amount).toFixed(3) })}</p>}
+                {header.discount_error && <p className="text-xs text-red-500 mt-1.5">{header.discount_error}</p>}
+                <p className="text-xs text-slate-400 mt-1.5">{t('invoices.invoiceDiscountHint')}</p>
+              </>
+            ) : <p className="text-xs text-slate-400">{t('invoices.lineDiscountHint')}</p>}
+          </div>
+          <div className="rounded-xl border border-slate-100 dark:border-navy-800 p-3 bg-slate-50/60 dark:bg-navy-900/40">
+            <label className="label !text-[11px] !mb-1.5">{t('common.notes')}</label>
+            <textarea className="input resize-none" rows={1} value={header.notes} onChange={(e) => setHeader({ ...header, notes: e.target.value })} />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-100 dark:border-navy-800 bg-indigo-50/40 dark:bg-indigo-950/10 px-3 py-2.5 flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wide shrink-0 whitespace-nowrap"><FileText size={13} />{t('pos.quickAddByCode')}</label>
+          <div className="relative flex-1 min-w-0">
+            {!codeEntry && <Search size={14} className="absolute top-1/2 -translate-y-1/2 start-3 text-slate-400 pointer-events-none" />}
+            <input
+              className={`input ${codeEntry ? '' : '!ps-9'}`}
+              value={codeEntry}
+              onChange={(e) => setCodeEntry(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addByCode(); } }}
+              placeholder={t('pos.quickAddByCodeHint')}
+            />
+          </div>
+        </div>
+        </>
+        ) : (
         <div className="card p-5 grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {type === 'sales' && !isEdit ? (
             <div>
@@ -504,6 +645,7 @@ export default function InvoiceFormPage() {
           </div>
           <div className="col-span-2"><label className="label">{t('common.notes')}</label><textarea className="input" rows={1} value={header.notes} onChange={(e) => setHeader({ ...header, notes: e.target.value })} /></div>
         </div>
+        )}
 
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
